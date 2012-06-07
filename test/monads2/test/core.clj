@@ -2,6 +2,8 @@
   (:use [clojure.test])
   (:require [monads2.core :as m]))
 
+;;;;;;;;;;;;;;;;;;;;
+
 (defn list-f [n]
   (list (inc n)))
 
@@ -31,6 +33,7 @@
          (is (= (m/plus ['() (list 5 6)])
                 (list 5 6))))
 
+;;;;;;;;;;;;;;;;;;;;
 
 (defn vector-f [n]
   (vector (inc n)))
@@ -61,6 +64,7 @@
          (is (= (m/plus [[] (vector 5 6)])
                 (vector 5 6))))
 
+;;;;;;;;;;;;;;;;;;;;
 
 (defn set-f [n]
   (hash-set (inc n)))
@@ -91,6 +95,7 @@
          (is (= (m/plus [#{} (hash-set 5 6)])
                 (hash-set 5 6))))
 
+;;;;;;;;;;;;;;;;;;;;
 
 (defn state-f [n]
   (m/state (inc n)))
@@ -104,12 +109,12 @@
     (is (= (mv1 {}) (mv2 {})))))
 
 (deftest second-law-state
-         (let [mv1 (m/bind (m/state 10) m/state) 
+         (let [mv1 (m/bind (m/state 10) m/state)
                mv2 (m/state 10)]
            (is (= (mv1 :state) (mv2 :state)))))
 
 (deftest third-law-state
-         (let [mv1 (m/bind (m/bind (m/state 4) state-f) state-g) 
+         (let [mv1 (m/bind (m/bind (m/state 4) state-f) state-g)
                mv2 (m/bind (m/state 4)
                            (fn [x]
                              (m/bind (state-f x) state-g)))]
@@ -120,9 +125,10 @@
                 ((m/update-state (constantly :new-state)) :state))))
 
 (deftest test-update-val
-         (is (= [5 {:a 19}] 
+         (is (= [5 {:a 19}]
                 ((m/update-val :a + 14) {:a 5}))))
 
+;;;;;;;;;;;;;;;;;;;;
 
 (defn cont-f [n]
   (m/cont (inc n)))
@@ -136,21 +142,62 @@
     (is (= (mv1 identity) (mv2 identity)))))
 
 (deftest second-law-cont
-         (let [mv1 (m/bind (m/cont 10) m/cont) 
+         (let [mv1 (m/bind (m/cont 10) m/cont)
                mv2 (m/cont 10)]
            (is (= (mv1 identity) (mv2 identity)))))
 
 (deftest third-law-cont
-         (let [mv1 (m/bind (m/bind (m/cont 4) cont-f) cont-g) 
+         (let [mv1 (m/bind (m/bind (m/cont 4) cont-f) cont-g)
                mv2 (m/bind (m/cont 4)
                            (fn [x]
                              (m/bind (cont-f x) cont-g)))]
            (is (= (mv1 identity) (mv2 identity)))))
 
+;;;;;;;;;;;;;;;;;;;;
+
+(deftest if-then-else-test
+  (let [monad-fn (m/do [
+                   a (m/get-state)
+                   b (m/update-state (partial + 1))
+                   :if (not (= a b))
+                   :then [
+                     result (m/state "blah")
+                   ]
+                   :else [
+                     result (m/state "bleh")
+                   ]]
+                   result)]
+    (is (= ["blah" 2] (monad-fn 1)))))
+
+(deftest if-then-else-nested-test
+  (let [monad-fn (m/do [
+                   a (m/get-state)
+                   b (m/update-state #(.toUpperCase %))
+                   :if (= a b)
+                   :then [
+                     c (m/state "... what's up?")
+                     :if (= 5 (.length c))
+                     :then [
+                       result (m/state a)
+                     ]
+                     :else [
+                       result (m/state (concat a c))
+                     ]]
+                   :else [
+                     d (m/state "... you didn't!")
+                     :if (= 5 (.length c))
+                     :then [
+                       result (m/state (concat b d))
+                     ]
+                     :else [
+                       result (m/state b)
+                     ]]]
+                    result)]
+    (is (= ["RINGO" "RINGO"] (monad-fn "ringo")))))
 
 #_(prn :do ((m/do
             [x (m/state 29)
              y (m/state 12)
              :let [z (inc x)]]
             [x y z])
-            :state)) 
+            :state))
