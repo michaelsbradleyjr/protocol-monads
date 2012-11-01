@@ -9,27 +9,30 @@
 (defn list-g [n]
   (list (+ n 5)))
 
+(def m-result-list (partial m/do-result '()))
+(def list-zero-val (m/zero '()))
+
 (deftest first-law-list
   (is (= (m/bind (list 10) list-f)
          (list-f 10))))
 
 (deftest second-law-list
-  (is (= (m/bind '(10) list)
+  (is (= (m/bind '(10) m-result-list)
          '(10))))
 
 (deftest third-law-list
-  (is (= (m/bind (m/bind [4 9] list-f) list-g)
-         (m/bind [4 9] (fn [x]
+  (is (= (m/bind (m/bind '(4 9) list-f) list-g)
+         (m/bind '(4 9) (fn [x]
                          (m/bind (list-f x) list-g))))))
 
 (deftest zero-law-list
-  (is (= (m/bind '() list-f)
-         '()))
-  (is (= (m/bind '(4) (constantly '()))
-         '()))
-  (is (= (m/plus [(list 5 6) '()])
+  (is (= (m/bind list-zero-val list-f)
+         list-zero-val))
+  (is (= (m/bind '(4) (constantly list-zero-val))
+         list-zero-val))
+  (is (= (m/plus [(list 5 6) list-zero-val])
          (list 5 6)))
-  (is (= (m/plus ['() (list 5 6)])
+  (is (= (m/plus [list-zero-val (list 5 6)])
          (list 5 6))))
 
 
@@ -39,12 +42,15 @@
 (defn vector-g [n]
   (vector (+ n 5)))
 
+(def m-result-vector (partial m/do-result []))
+(def vector-zero-val (m/zero []))
+
 (deftest first-law-vector
   (is (= (m/bind [10] vector-f)
          (vector-f 10))))
 
 (deftest second-law-vector
-  (is (= (m/bind [10] vector)
+  (is (= (m/bind [10] m-result-vector)
          [10])))
 
 (deftest third-law-vector
@@ -53,13 +59,13 @@
                          (m/bind (vector-f x) vector-g))))))
 
 (deftest zero-law-vector
-  (is (= (m/bind [] vector-f)
-         []))
+  (is (= (m/bind vector-zero-val vector-f)
+         vector-zero-val))
   (is (= (m/bind '(4) (constantly []))
-         []))
-  (is (= (m/plus [(vector 5 6) []])
+         vector-zero-val))
+  (is (= (m/plus [(vector 5 6) vector-zero-val])
          (vector 5 6)))
-  (is (= (m/plus [[] (vector 5 6)])
+  (is (= (m/plus [vector-zero-val (vector 5 6)])
          (vector 5 6))))
 
 
@@ -69,12 +75,15 @@
 (defn set-g [n]
   (hash-set (+ n 5)))
 
+(def m-result-set (partial m/do-result #{}))
+(def set-zero-val (m/zero #{}))
+
 (deftest first-law-set
   (is (= (m/bind #{10} set-f)
          (set-f 10))))
 
 (deftest second-law-set
-  (is (= (m/bind #{10} hash-set)
+  (is (= (m/bind #{10} m-result-set)
          #{10})))
 
 (deftest third-law-set
@@ -83,13 +92,13 @@
                           (m/bind (set-f x) set-g))))))
 
 (deftest zero-law-set
-  (is (= (m/bind #{} set-f)
-         #{}))
-  (is (= (m/bind #{4} (constantly #{}))
-         #{}))
-  (is (= (m/plus [(hash-set 5 6) #{}])
+  (is (= (m/bind set-zero-val set-f)
+         set-zero-val))
+  (is (= (m/bind #{4} (constantly set-zero-val))
+         set-zero-val))
+  (is (= (m/plus [(hash-set 5 6) set-zero-val])
          (hash-set 5 6)))
-  (is (= (m/plus [#{} (hash-set 5 6)])
+  (is (= (m/plus [set-zero-val (hash-set 5 6)])
          (hash-set 5 6))))
 
 
