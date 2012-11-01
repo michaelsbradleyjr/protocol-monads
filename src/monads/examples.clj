@@ -1,9 +1,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;; Monad application examples
+;;  Monad Application Examples
 ;;
-;; ported from Konrad Hinsen's examples for his `algo.monads` library
-;; http://j.mp/algo-monads-examples
+;;  Ported from Konrad Hinsen's `algo.monads` library for Clojure:
+;;  http://j.mp/algo-monads-examples
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -12,46 +12,46 @@
   (:require [monads.core :as m]
             [clojure.algo.monads :as am]))
 
-(defmacro defexample
+(defmacro defex
   [name & body]
   `(defn ~name [] ~@body))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;; Each example is defined as a function which takes zero arguments.
-;; This is to facilitate experimentation in a Clojure REPL. To run the
-;; first example, you could do `monads.examples> (ex1)`, then make
-;; changes, recompile and run it again. Have fun, be fearless and don't
-;; be afraid to ask lots of questions in #clojure on irc.freenode.net
+;;  Each example is defined as a function which takes zero arguments.
+;;  To run the first example, in a Clojure REPL you could do
+;;  `monads.examples> (ex1)`, then make changes, recompile and run it
+;;  again. Have fun, be fearless and don't be afraid to ask lots of
+;;  questions in #clojure on irc.freenode.net
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defexample ex1
+(defex ex1
   (m/do list
         [x (range 5)
          y (range 3)]
         (+ x y)))
 
-(defexample ex2
+(defex ex2
   (m/do vector
         [x (vec (range 5))
          y (vec (range 3))]
         (+ x y)))
 
-(defexample ex3
+(defex ex3
   (m/do hash-set
         [x (into #{} (range 5))
          y (into #{} (range 3))]
         (+ x y)))
 
-(defexample ex4
+(defex ex4
   (m/do list
         [x (range 5)
          y (range (+ 1 x))
          :when (= (+ x y) 2)]
         (list x y)))
 
-(defexample ex5
+(defex ex5
   (m/do list
         [x (range 5)
          y (range (+ 1 x))
@@ -60,14 +60,7 @@
          :when (= sum 2)]
         (list x y sum diff)))
 
-(defexample ex6
+(defex ex6
   (let [pairs (fn [xs]
-                (m/lift #(list %1 %2)))]
+                ((m/lift #(list %1 %2)) xs xs))]
     (pairs (range 5))))
-
-
-(am/with-monad am/sequence-m
-  (let [pairs (fn [xs]
-                ((am/m-lift 2 #(list %1 %2)) xs xs))]
-    (pairs (range 5))))
-

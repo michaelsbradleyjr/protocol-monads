@@ -63,7 +63,7 @@
        (m-result []))))
 
 (defn lift
-  "Converts of function f to a function of monadic arguments
+  "Converts a function f to a function of monadic arguments
    returning a monadic value."
   [f]
   (fn [& mvs]
