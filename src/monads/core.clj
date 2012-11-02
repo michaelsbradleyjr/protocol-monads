@@ -1,14 +1,51 @@
 (ns monads.core
   (:refer-clojure :exclude [do seq map])
-  (:require [clojure.set :as set]))
+  (:require [clojure.set :as set]
+            [clojure.string :as string]))
 
 (defprotocol Monad
   (do-result [_ v])
-  (bind [mv f]))
+  (bind [mv f])
+  (types [_]))
 
 (defprotocol MonadZero
   (zero [_])
   (plus-step [mv mvs]))
+
+(def ^:dynamic *throw-on-mismatch* false)
+(def ^:dynamic *warn-on-mismatch*  true)
+
+(defn check-result [f ts]
+  (fn [v]
+    (let [rv (f v)]
+      (if-not (clojure.core/seq ts)
+        rv
+        (let [rt (class rv)]
+          (if (some #(= rt %) ts)
+            rv
+            (cond
+              (and *warn-on-mismatch* (not *throw-on-mismatch*))
+              (let []
+                (println "Type mismatch between monadic value and return value of monadic function;"
+                         "return type:"
+                         (str rt ";")
+                         "protocol-monad specifies monadic value types:"
+                         (string/join ", " (clojure.core/map str ts)))
+                rv)
+              *throw-on-mismatch*
+              (throw (Exception. (str "Type mismatch between monadic value and return value of monadic function; "
+                                      "return type: "
+                                      (str rt)
+                                      "; protocol-monad specifies types: "
+                                      (string/join ", " (clojure.core/map str ts)))))
+              :else
+              rv)))))))
+
+(defn wrap-check [mv f]
+  (if-not (or *throw-on-mismatch*
+              *warn-on-mismatch*)
+    f
+    (check-result f (types mv))))
 
 (defn plus [[mv & mvs]]
   (plus-step mv mvs))
@@ -26,18 +63,18 @@
    bindings that can be used in the following steps."
   [result bindings expr]
   (let [steps (partition 2 bindings)]
-    `(monads.core/bind (~result nil)
+    `(monads.core/bind (~result [::nil])
                        (fn [_#]
                          ~(reduce (fn [expr [sym mv]]
                                     (cond
-                                     (= :when sym) `(if ~mv
-                                                      ~expr
-                                                      (monads.core/zero (~result nil)))
-                                     (= :let sym) `(let ~mv
-                                                     ~expr)
-                                     :else `(monads.core/bind ~mv (fn [~sym]
+                                      (= :when sym) `(if ~mv
+                                                       ~expr
+                                                       (monads.core/zero (~result [::nil])))
+                                      (= :let sym) `(let ~mv
+                                                      ~expr)
+                                      :else `(monads.core/bind ~mv (fn [~sym]
                                                                      ~expr))))
-                                  `(monads.core/do-result (~result nil) ~expr)
+                                  `(monads.core/do-result (~result [::nil]) ~expr)
                                   (reverse steps))))))
 
 (defn- comprehend [f mvs]
@@ -116,7 +153,10 @@
   (do-result [_ v]
     (list v))
   (bind [mv f]
-    (mapcat f mv))
+    (apply list (mapcat (wrap-check mv f) mv)))
+  (types [_]
+    [clojure.lang.PersistentList
+     clojure.lang.PersistentList$EmptyList])
 
   MonadZero
   (zero [_]
@@ -136,7 +176,10 @@
   (do-result [_ v]
     (list v))
   (bind [mv f]
-    (mapcat f mv))
+    (apply list (mapcat (wrap-check mv f) mv)))
+  (types [_]
+    [clojure.lang.PersistentList
+     clojure.lang.PersistentList$EmptyList])
 
   MonadZero
   (zero [_]
@@ -154,7 +197,9 @@
   (do-result [_ v]
     [v])
   (bind [mv f]
-    (vec (mapcat f mv)))
+    (vec (mapcat (wrap-check mv f) mv)))
+  (types [_]
+    [clojure.lang.PersistentVector])
 
   MonadZero
   (zero [_]
@@ -180,9 +225,11 @@
 (extend-type clojure.lang.LazySeq
   Monad
   (do-result [_ v]
-    (list v))
+    (lazy-seq [v]))
   (bind [mv f]
-    (mapcat f mv))
+    (mapcat (wrap-check mv f) mv))
+  (types [_]
+    [clojure.lang.LazySeq])
 
   MonadZero
   (zero [_]
@@ -203,7 +250,9 @@
     (hash-set v))
   (bind [mv f]
     (apply set/union
-           (clojure.core/map f mv)))
+           (clojure.core/map (wrap-check mv f) mv)))
+  (types [_]
+    [clojure.lang.PersistentHashSet])
 
   MonadZero
   (zero [_]
@@ -224,14 +273,6 @@
   (deref [_]
     v)
 
-  Monad
-  (do-result [_ v]
-    (maybe-monad. v))
-  (bind [mv f]
-    (if (= mv maybe-zero-val)
-      maybe-zero-val
-      (f @mv)))
-
   MonadZero
   (zero [_]
     maybe-zero-val)
@@ -242,6 +283,17 @@
       (if (nil? mv)
         maybe-zero-val
         mv))))
+
+(extend-type maybe-monad
+  Monad
+  (do-result [_ v]
+    (maybe-monad. v))
+  (bind [mv f]
+    (if (= mv maybe-zero-val)
+      maybe-zero-val
+      ((wrap-check mv f) @mv)))
+  (types [_]
+    [maybe-monad]))
 
 (def maybe-zero-val (maybe-monad. ::nothing))
 
@@ -259,13 +311,16 @@
     (if f
       (let [[v ss] (mv s)]
         ((f v) ss))
-      [v s]))
+      [v s])))
 
+(extend-type state-monad
   Monad
   (do-result [_ v]
     (state-monad. v nil nil))
   (bind [mv f]
-    (state-monad. nil mv f)))
+    (state-monad. nil mv (wrap-check mv f)))
+  (types [_]
+    [state-monad]))
 
 (defn state
   "Monad describing stateful computations. The monadic values have the

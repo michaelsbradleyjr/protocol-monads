@@ -558,8 +558,8 @@
 
   (let [tinc #(vector (inc %))]
     (is ( = [[1 2 3] [3 4 5]]
-            (m/do list
-                  [a (range 5)
+            (m/do vector
+                  [a (vec (range 5))
                    :when (odd? a)
                    x (tinc a)
                    y (tinc x)]

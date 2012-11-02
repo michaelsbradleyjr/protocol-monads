@@ -28,8 +28,8 @@
 
 (defex ex1
   (m/do list
-        [x (range 5)
-         y (range 3)]
+        [x (into '() (range 5))
+         y (into '() (range 3))]
         (+ x y)))
 
 (defex ex2
@@ -51,8 +51,8 @@
   ;; here is the `clojure.set/union` will happily operate on non
   ;; hash-set values
   (m/do hash-set
-        [x (into [] (range 5))
-         y (into #{} (range 3))]
+        [x (into #{} (range 5))
+         y (into [] (range 3))]
         (+ x y)))
 
 (defex ex5
