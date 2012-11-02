@@ -15,7 +15,7 @@
 (def ^:dynamic *throw-on-mismatch* false)
 (def ^:dynamic *warn-on-mismatch*  true)
 
-(defn check-result [f ts]
+(defn check-result [f ts warn-on-mismatch throw-on-mismatch]
   (fn [v]
     (let [rv (f v)]
       (if-not (clojure.core/seq ts)
@@ -24,7 +24,7 @@
           (if (some #(= rt %) ts)
             rv
             (cond
-              (and *warn-on-mismatch* (not *throw-on-mismatch*))
+              (and warn-on-mismatch (not throw-on-mismatch))
               (let []
                 (println "Type mismatch between monadic value and return value of monadic function;"
                          "return type:"
@@ -32,7 +32,7 @@
                          "protocol-monad specifies monadic value types:"
                          (string/join ", " (clojure.core/map str ts)))
                 rv)
-              *throw-on-mismatch*
+              throw-on-mismatch
               (throw (Exception. (str "Type mismatch between monadic value and return value of monadic function; "
                                       "return type: "
                                       (str rt)
@@ -45,7 +45,7 @@
   (if-not (or *throw-on-mismatch*
               *warn-on-mismatch*)
     f
-    (check-result f (types mv))))
+    (check-result f (types mv) *warn-on-mismatch* *throw-on-mismatch*)))
 
 (defn plus [[mv & mvs]]
   (plus-step mv mvs))
@@ -216,11 +216,11 @@
   ([l] l)
   ([l ls]
      (lazy-seq
-      (cond
-       (clojure.core/seq l) (cons (first l)
-                                  (lazy-concat (rest l) ls))
-       (clojure.core/seq ls) (lazy-concat (first l) (rest ls))
-       :else (list)))))
+       (cond
+         (clojure.core/seq l) (cons (first l)
+                                    (lazy-concat (rest l) ls))
+         (clojure.core/seq ls) (lazy-concat (first l) (rest ls))
+         :else (list)))))
 
 (extend-type clojure.lang.LazySeq
   Monad
@@ -320,7 +320,7 @@
   (bind [mv f]
     (state-monad. nil mv (wrap-check mv f)))
   (types [_]
-    [state-monad]))
+    []))
 
 (defn state
   "Monad describing stateful computations. The monadic values have the
@@ -468,19 +468,21 @@
   clojure.lang.IFn
   (invoke [_ s]
     (cond
-     alts (plus (clojure.core/map #(% s) alts))
-     f (bind (mv s)
-             (fn [[v ss]]
-               ((f v) ss)))
-     :else (if (= v (zero (m nil)))
-             v
-             (m [v s]))))
+      alts (plus (clojure.core/map #(% s) alts))
+      f (bind (mv s)
+              (fn [[v ss]]
+                ((f v) ss)))
+      :else (if (= v (zero (m nil)))
+              v
+              (m [v s]))))
 
   Monad
   (do-result [_ v]
     (state-transformer. m v nil nil nil))
   (bind [mv f]
     (state-transformer. m nil mv f nil))
+  (types [_]
+    [state-transformer])
 
   MonadZero
   (zero [_]
@@ -523,9 +525,9 @@
      m (bind (deref mv)
              (fn [x]
                (cond
-                (and (= x maybe-zero-val) (empty? mvs)) (m maybe-zero-val)
-                (= x maybe-zero-val) (deref (plus mvs))
-                :else (m x)))))))
+                 (and (= x maybe-zero-val) (empty? mvs)) (m maybe-zero-val)
+                 (= x maybe-zero-val) (deref (plus mvs))
+                 :else (m x)))))))
 
 (defn maybe-t
   "Monad transformer that transforms a monad m into a monad in which
