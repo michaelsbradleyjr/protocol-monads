@@ -6,7 +6,8 @@
 (defprotocol Monad
   (do-result [_ v])
   (bind [mv f])
-  (types [_]))
+  (val-types [_])
+  (name-monad [_]))
 
 (defprotocol MonadZero
   (zero [_])
@@ -15,7 +16,22 @@
 (def ^:dynamic *throw-on-mismatch* false)
 (def ^:dynamic *warn-on-mismatch*  true)
 
-(defn check-result [f ts warn-on-mismatch throw-on-mismatch]
+(defn mismatch-message [rt mv ts]
+  (let [tw (if (= 1 (count ts))
+             "type"
+             "types")]
+    (str "Type mismatch between bound monadic value and return value of monadic function. "
+         "Function returned type "
+         (second (string/split (str rt) #" "))
+         ". Bound value's protocol-monad "
+         (str "<" (name-monad mv) ">")
+         " has value "
+         tw
+         " "
+         (string/join ", " (clojure.core/map #(second (string/split (str %) #" ")) ts))
+         ".")))
+
+(defn check-return-type [f mv ts warn-on-mismatch throw-on-mismatch]
   (fn [v]
     (let [rv (f v)]
       (if-not (clojure.core/seq ts)
@@ -26,18 +42,10 @@
             (cond
               (and warn-on-mismatch (not throw-on-mismatch))
               (let []
-                (println "Type mismatch between monadic value and return value of monadic function;"
-                         "return type:"
-                         (str rt ";")
-                         "protocol-monad specifies monadic value types:"
-                         (string/join ", " (clojure.core/map str ts)))
+                (println (mismatch-message rt mv ts))
                 rv)
               throw-on-mismatch
-              (throw (Exception. (str "Type mismatch between monadic value and return value of monadic function; "
-                                      "return type: "
-                                      (str rt)
-                                      "; protocol-monad specifies types: "
-                                      (string/join ", " (clojure.core/map str ts)))))
+              (throw (Exception. (mismatch-message rt mv ts)))
               :else
               rv)))))))
 
@@ -45,7 +53,7 @@
   (if-not (or *throw-on-mismatch*
               *warn-on-mismatch*)
     f
-    (check-result f (types mv) *warn-on-mismatch* *throw-on-mismatch*)))
+    (check-return-type f mv (val-types mv) *warn-on-mismatch* *throw-on-mismatch*)))
 
 (defn plus [[mv & mvs]]
   (plus-step mv mvs))
@@ -154,9 +162,11 @@
     (list v))
   (bind [mv f]
     (apply list (mapcat (wrap-check mv f) mv)))
-  (types [_]
+  (val-types [_]
     [clojure.lang.PersistentList
      clojure.lang.PersistentList$EmptyList])
+  (name-monad [_]
+    "list")
 
   MonadZero
   (zero [_]
@@ -177,9 +187,11 @@
     (list v))
   (bind [mv f]
     (apply list (mapcat (wrap-check mv f) mv)))
-  (types [_]
+  (val-types [_]
     [clojure.lang.PersistentList
      clojure.lang.PersistentList$EmptyList])
+  (name-monad [_]
+    "list")
 
   MonadZero
   (zero [_]
@@ -198,8 +210,10 @@
     [v])
   (bind [mv f]
     (vec (mapcat (wrap-check mv f) mv)))
-  (types [_]
+  (val-types [_]
     [clojure.lang.PersistentVector])
+  (name-monad [_]
+    "vector")
 
   MonadZero
   (zero [_]
@@ -228,8 +242,10 @@
     (lazy-seq [v]))
   (bind [mv f]
     (mapcat (wrap-check mv f) mv))
-  (types [_]
+  (val-types [_]
     [clojure.lang.LazySeq])
+  (name-monad [_]
+    "lazy-seq")
 
   MonadZero
   (zero [_]
@@ -251,8 +267,10 @@
   (bind [mv f]
     (apply set/union
            (clojure.core/map (wrap-check mv f) mv)))
-  (types [_]
+  (val-types [_]
     [clojure.lang.PersistentHashSet])
+  (name-monad [_]
+    "hash-set")
 
   MonadZero
   (zero [_]
@@ -280,8 +298,10 @@
     (if (= mv maybe-zero-val)
       maybe-zero-val
       ((wrap-check mv f) @mv)))
-  (types [_]
+  (val-types [_]
     [maybe-monad])
+  (name-monad [_]
+    "maybe")
 
   MonadZero
   (zero [_]
@@ -317,8 +337,10 @@
     (state-monad. v nil nil))
   (bind [mv f]
     (state-monad. nil mv (wrap-check mv f)))
-  (types [_]
-    []))
+  (val-types [_]
+    [])
+  (name-monad [_]
+    "state"))
 
 (defn state
   "Monad describing stateful computations. The monadic values have the
@@ -340,8 +362,10 @@
       (state-monad. v nil nil))
     (bind [mv f]
       (state-monad. nil mv f))
-    (types [_]
-      [])))
+    (val-types [_]
+      [])
+    (name-monad [_]
+      nil)))
 
 (defn set-state
   "Return a state-monad value that replaces the current state by s and
@@ -405,8 +429,10 @@
     (cont-monad. v nil nil))
   (bind [mv f]
     (cont-monad. nil mv f))
-  (types [_]
-    []))
+  (val-types [_]
+    [])
+  (name-monad [_]
+    "cont"))
 
 (defn cont
   "Monad describing computations in continuation-passing style. The monadic
@@ -443,8 +469,10 @@
     (let [[v1 a1] (deref mv)
           [v2 a2] (deref (f v1))]
       (writer-monad. v2 (writer-m-combine a1 a2))))
-  (types [_]
-    []))
+  (val-types [_]
+    [])
+  (name-monad [_]
+    "writer"))
 
 (defn writer
   "Monad describing computations that accumulate data on the side, e.g. for
@@ -485,8 +513,10 @@
     (state-transformer. m v nil nil nil))
   (bind [mv f]
     (state-transformer. m nil mv f nil))
-  (types [_]
+  (val-types [_]
     [])
+  (name-monad [_]
+    "state-t")
 
   MonadZero
   (zero [_]
@@ -520,8 +550,10 @@
                                       (if (= x maybe-zero-val)
                                         (m maybe-zero-val)
                                         (deref (f (deref x)))))))))
-  (types [_]
+  (val-types [_]
     [])
+  (name-monad [_]
+    "maybe-t")
 
   MonadZero
   (zero [_]
@@ -560,8 +592,10 @@
                                             (map (comp deref f))
                                             (fmap (partial apply lazy-concat)))
                                        (m '())))))))
-  (types [_]
+  (val-types [_]
     [])
+  (name-monad [_]
+    "list-t")
 
   MonadZero
   (zero [_]
@@ -596,8 +630,10 @@
                                               (map (comp deref f))
                                               (fmap (partial apply lazy-concat)))
                                          (m [])))))))
-  (types [_]
+  (val-types [_]
     [])
+  (name-monad [_]
+    "vector-t")
 
   MonadZero
   (zero [_]
@@ -632,8 +668,10 @@
                                            (map (comp deref f))
                                            (fmap (partial apply lazy-concat)))
                                       (m #{})))))))
-  (types [_]
+  (val-types [_]
     [])
+  (name-monad [_]
+    "set-t")
 
   MonadZero
   (zero [_]
@@ -671,8 +709,10 @@
                               (let [[v2 a2] (deref v)]
                                 (m (writer-monad. v2 (writer-m-combine a1 a2)))))))))
        writer-m)))
-  (types [_]
+  (val-types [_]
     [])
+  (name-monad [_]
+    "writer-t")
 
   MonadZero
   (zero [mv]
