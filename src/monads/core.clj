@@ -74,7 +74,8 @@
   [monad bindings expr]
   (let [steps (partition 2 bindings)]
     ;; The "dummy value" [nil] is used in several expressions below to
-    ;; couple calls to bind and zero to the appropriate protocol-monad
+    ;; couple calls to bind, zero and do-result to the specified
+    ;; protocol-monad
     `(monads.core/bind (~monad [nil])
                        (fn [_#]
                          ~(reduce (fn [expr [sym mv]]
