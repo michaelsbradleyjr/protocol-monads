@@ -320,9 +320,13 @@
   "Monad describing computations with possible failures. Failure is
    represented by maybe-zero-val, any other value is considered valid.
    As soon as a step returns maybe-zero-val, the whole computation will
-   yield maybe-zero-val as well."
+   yield maybe-zero-val as well. For convenience `(maybe nil)` returns
+   maybe-zero-val, but this is not the case for constructor call
+   `(maybe-monad. nil)` in order to satisfy the first Monad Law."
   [v]
-  (maybe-monad. v))
+  (if (nil? v)
+    maybe-zero-val
+    (maybe-monad. v)))
 
 
 (deftype state-monad [v mv f]
