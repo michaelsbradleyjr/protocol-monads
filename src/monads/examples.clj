@@ -27,7 +27,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defex ex1
-  (m/do lazy-seq
+  (m/do list
         [x (into '() (range 5))
          y (into '() (range 3))]
         (+ x y)))
@@ -45,25 +45,24 @@
         (+ x y)))
 
 (defex ex4
-  ;; need note to the effect that dynamic typing necessitates careful
-  ;; implementation of monadic functions, else one may get unexpected
-  ;; results sans compiler or runtime errors; the key consideration
-  ;; here is the `clojure.set/union` will happily operate on non
-  ;; hash-set values
+  ;; Dynamic typing necessitates careful implementation of monadic
+  ;; functions, else one may get unexpected results sans compiler or
+  ;; runtime errors; the key consideration here is that
+  ;; `clojure.set/union` will happily operate on non hash-set values.
   (m/do hash-set
         [x (into #{} (range 5))
          y (into [] (range 3))]
         (+ x y)))
 
 (defex ex5
-  (m/do list
+  (m/do lazy-seq
         [x (range 5)
          y (range (+ 1 x))
          :when (= (+ x y) 2)]
         (list x y)))
 
 (defex ex6
-  (m/do list
+  (m/do lazy-seq
         [x (range 5)
          y (range (+ 1 x))
          :let [sum (+ x y)

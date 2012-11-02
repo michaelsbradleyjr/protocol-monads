@@ -71,18 +71,18 @@
    bindings that can be used in the following steps."
   [result bindings expr]
   (let [steps (partition 2 bindings)]
-    `(monads.core/bind (~result [::nil])
+    `(monads.core/bind (~result [nil])
                        (fn [_#]
                          ~(reduce (fn [expr [sym mv]]
                                     (cond
                                       (= :when sym) `(if ~mv
                                                        ~expr
-                                                       (monads.core/zero (~result [::nil])))
+                                                       (monads.core/zero (~result [nil])))
                                       (= :let sym) `(let ~mv
                                                       ~expr)
                                       :else `(monads.core/bind ~mv (fn [~sym]
                                                                      ~expr))))
-                                  `(monads.core/do-result (~result [::nil]) ~expr)
+                                  `(monads.core/do-result (~result [nil]) ~expr)
                                   (reverse steps))))))
 
 (defn- comprehend [f mvs]
@@ -249,7 +249,7 @@
 
   MonadZero
   (zero [_]
-    [])
+    (lazy-seq))
   (plus-step [mv mvs]
     (lazy-concat mv mvs))
 
