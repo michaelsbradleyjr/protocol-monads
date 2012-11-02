@@ -318,8 +318,9 @@
 
 (defn maybe
   "Monad describing computations with possible failures. Failure is
-   represented by nil, any other value is considered valid. As soon as
-   a step returns nil, the whole computation will yield nil as well."
+   represented by maybe-zero-val, any other value is considered valid.
+   As soon as a step returns maybe-zero-val, the whole computation will
+   yield maybe-zero-val as well."
   [v]
   (maybe-monad. v))
 

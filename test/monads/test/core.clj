@@ -197,6 +197,7 @@
        [2 {:a {:b 3}}]      {:a {:b 2}}  [:a :b]  [inc]
        [nil {:a {:b [1]}}]  {:a nil}     [:a :b]  [(fnil conj []) 1]))
 
+
 (defn cont-f [n]
   (m/cont (inc n)))
 
