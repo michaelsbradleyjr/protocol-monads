@@ -16,7 +16,7 @@
 (def ^:dynamic *throw-on-mismatch* false)
 (def ^:dynamic *warn-on-mismatch*  true)
 
-(defn mismatch-message [rt mv ts]
+(defn mismatch-message [mv rt ts]
   (let [tw (if (= 1 (count ts))
              "type"
              "types")]
@@ -31,7 +31,7 @@
          (string/join ", " (clojure.core/map #(second (string/split (str %) #" ")) ts))
          ".")))
 
-(defn check-return-type [f mv ts warn-on-mismatch throw-on-mismatch]
+(defn check-return-type [mv f ts warn-on-mismatch throw-on-mismatch]
   (fn [v]
     (let [rv (f v)]
       (if-not (clojure.core/seq ts)
@@ -42,10 +42,10 @@
             (cond
               (and warn-on-mismatch (not throw-on-mismatch))
               (let []
-                (println (mismatch-message rt mv ts))
+                (println (mismatch-message mv rt ts))
                 rv)
               throw-on-mismatch
-              (throw (Exception. (mismatch-message rt mv ts)))
+              (throw (Exception. (mismatch-message mv rt ts)))
               :else
               rv)))))))
 
@@ -53,7 +53,7 @@
   (if-not (or *throw-on-mismatch*
               *warn-on-mismatch*)
     f
-    (check-return-type f mv (val-types mv) *warn-on-mismatch* *throw-on-mismatch*)))
+    (check-return-type mv f (val-types mv) *warn-on-mismatch* *throw-on-mismatch*)))
 
 (defn plus [[mv & mvs]]
   (plus-step mv mvs))
@@ -348,7 +348,7 @@
   (bind [mv f]
     (state-monad. nil mv (wrap-check mv f)))
   (val-types [_]
-    [])
+    [state-monad])
   (name-monad [_]
     "state"))
 
