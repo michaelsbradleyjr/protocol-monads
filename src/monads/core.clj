@@ -273,6 +273,16 @@
   (deref [_]
     v)
 
+  Monad
+  (do-result [_ v]
+    (maybe-monad. v))
+  (bind [mv f]
+    (if (= mv maybe-zero-val)
+      maybe-zero-val
+      ((wrap-check mv f) @mv)))
+  (types [_]
+    [maybe-monad])
+
   MonadZero
   (zero [_]
     maybe-zero-val)
@@ -283,17 +293,6 @@
       (if (nil? mv)
         maybe-zero-val
         mv))))
-
-(extend-type maybe-monad
-  Monad
-  (do-result [_ v]
-    (maybe-monad. v))
-  (bind [mv f]
-    (if (= mv maybe-zero-val)
-      maybe-zero-val
-      ((wrap-check mv f) @mv)))
-  (types [_]
-    [maybe-monad]))
 
 (def maybe-zero-val (maybe-monad. ::nothing))
 
@@ -311,9 +310,8 @@
     (if f
       (let [[v ss] (mv s)]
         ((f v) ss))
-      [v s])))
+      [v s]))
 
-(extend-type state-monad
   Monad
   (do-result [_ v]
     (state-monad. v nil nil))
@@ -341,7 +339,9 @@
     (do-result [_ v]
       (state-monad. v nil nil))
     (bind [mv f]
-      (state-monad. nil mv f))))
+      (state-monad. nil mv f))
+    (types [_]
+      [])))
 
 (defn set-state
   "Return a state-monad value that replaces the current state by s and
@@ -404,7 +404,9 @@
   (do-result [_ v]
     (cont-monad. v nil nil))
   (bind [mv f]
-    (cont-monad. nil mv f)))
+    (cont-monad. nil mv f))
+  (types [_]
+    []))
 
 (defn cont
   "Monad describing computations in continuation-passing style. The monadic
@@ -440,7 +442,9 @@
   (bind [mv f]
     (let [[v1 a1] (deref mv)
           [v2 a2] (deref (f v1))]
-      (writer-monad. v2 (writer-m-combine a1 a2)))))
+      (writer-monad. v2 (writer-m-combine a1 a2))))
+  (types [_]
+    []))
 
 (defn writer
   "Monad describing computations that accumulate data on the side, e.g. for
@@ -482,7 +486,7 @@
   (bind [mv f]
     (state-transformer. m nil mv f nil))
   (types [_]
-    [state-transformer])
+    [])
 
   MonadZero
   (zero [_]
@@ -516,6 +520,8 @@
                                       (if (= x maybe-zero-val)
                                         (m maybe-zero-val)
                                         (deref (f (deref x)))))))))
+  (types [_]
+    [])
 
   MonadZero
   (zero [_]
@@ -554,6 +560,8 @@
                                             (map (comp deref f))
                                             (fmap (partial apply lazy-concat)))
                                        (m '())))))))
+  (types [_]
+    [])
 
   MonadZero
   (zero [_]
@@ -588,6 +596,8 @@
                                               (map (comp deref f))
                                               (fmap (partial apply lazy-concat)))
                                          (m [])))))))
+  (types [_]
+    [])
 
   MonadZero
   (zero [_]
@@ -622,6 +632,8 @@
                                            (map (comp deref f))
                                            (fmap (partial apply lazy-concat)))
                                       (m #{})))))))
+  (types [_]
+    [])
 
   MonadZero
   (zero [_]
@@ -659,6 +671,8 @@
                               (let [[v2 a2] (deref v)]
                                 (m (writer-monad. v2 (writer-m-combine a1 a2)))))))))
        writer-m)))
+  (types [_]
+    [])
 
   MonadZero
   (zero [mv]
