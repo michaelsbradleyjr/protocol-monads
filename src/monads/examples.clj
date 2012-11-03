@@ -26,6 +26,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(alter-var-root (var m/*warn-on-mismatch*) (constantly true))
+
 (defex ex1
   (m/do list
         [x (into '() (range 5))

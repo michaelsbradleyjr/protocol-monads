@@ -14,24 +14,24 @@
   (plus-step [mv mvs]))
 
 (def ^:dynamic *throw-on-mismatch* false)
-(def ^:dynamic *warn-on-mismatch*  true)
+(def ^:dynamic *warn-on-mismatch*  false)
 
-(defn mismatch-message [mv rt ts]
+(defn- mismatch-message [mv rt ts]
   (let [tw (if (= 1 (count ts))
              "type"
              "types")]
     (str "Type mismatch between bound monadic value and return value of monadic function. "
          "Function returned type "
          (second (string/split (str rt) #" "))
-         ". Bound value's protocol-monad "
+         ". The protocol-monad "
          (str "<" (name-monad mv) ">")
-         " has value "
+         " specifies value "
          tw
          " "
          (string/join ", " (clojure.core/map #(second (string/split (str %) #" ")) ts))
          ".")))
 
-(defn check-return-type [mv f ts warn-on-mismatch throw-on-mismatch]
+(defn- check-return-type [mv f ts warn-on-mismatch throw-on-mismatch]
   (fn [v]
     (let [rv (f v)]
       (if-not (clojure.core/seq ts)
@@ -49,7 +49,7 @@
               :else
               rv)))))))
 
-(defn wrap-check [mv f]
+(defn- wrap-check [mv f]
   (if-not (or *throw-on-mismatch*
               *warn-on-mismatch*)
     f
@@ -371,9 +371,9 @@
     (do-result [_ v]
       (state-monad. v nil nil))
     (bind [mv f]
-      (state-monad. nil mv f))
+      (state-monad. nil mv (wrap-check mv f)))
     (val-types [_]
-      [])
+      [state-monad])
     (name-monad [_]
       nil)))
 
@@ -438,9 +438,9 @@
   (do-result [_ v]
     (cont-monad. v nil nil))
   (bind [mv f]
-    (cont-monad. nil mv f))
+    (cont-monad. nil mv (wrap-check mv f)))
   (val-types [_]
-    [])
+    [cont-monad])
   (name-monad [_]
     "cont"))
 
@@ -477,10 +477,10 @@
     (writer-monad. v (writer-m-empty accumulator)))
   (bind [mv f]
     (let [[v1 a1] (deref mv)
-          [v2 a2] (deref (f v1))]
+          [v2 a2] (deref ((wrap-check mv f) v1))]
       (writer-monad. v2 (writer-m-combine a1 a2))))
   (val-types [_]
-    [])
+    [writer-monad])
   (name-monad [_]
     "writer"))
 
@@ -522,9 +522,9 @@
   (do-result [_ v]
     (state-transformer. m v nil nil nil))
   (bind [mv f]
-    (state-transformer. m nil mv f nil))
+    (state-transformer. m nil mv (wrap-check mv f) nil))
   (val-types [_]
-    [])
+    [state-transformer])
   (name-monad [_]
     "state-t")
 
@@ -559,9 +559,9 @@
       (maybe-transformer. m (bind v (fn [x]
                                       (if (= x maybe-zero-val)
                                         (m maybe-zero-val)
-                                        (deref (f (deref x)))))))))
+                                        (deref ((wrap-check mv f) (deref x)))))))))
   (val-types [_]
-    [])
+    [maybe-transformer])
   (name-monad [_]
     "maybe-t")
 
@@ -599,11 +599,11 @@
       (list-transformer. m (bind v (fn [xs]
                                      (if (clojure.core/seq xs)
                                        (->> xs
-                                            (map (comp deref f))
+                                            (map (comp deref (wrap-check mv f)))
                                             (fmap (partial apply lazy-concat)))
                                        (m '())))))))
   (val-types [_]
-    [])
+    [list-transformer])
   (name-monad [_]
     "list-t")
 
@@ -637,11 +637,11 @@
       (vector-transformer. m (bind v (fn [xs]
                                        (if (clojure.core/seq xs)
                                          (->> xs
-                                              (map (comp deref f))
+                                              (map (comp deref (wrap-check mv f)))
                                               (fmap (partial apply lazy-concat)))
                                          (m [])))))))
   (val-types [_]
-    [])
+    [vector-transformer])
   (name-monad [_]
     "vector-t")
 
@@ -675,11 +675,11 @@
       (set-transformer. m (bind v (fn [xs]
                                     (if (clojure.core/seq xs)
                                       (->> xs
-                                           (map (comp deref f))
+                                           (map (comp deref (wrap-check mv f)))
                                            (fmap (partial apply lazy-concat)))
                                       (m #{})))))))
   (val-types [_]
-    [])
+    [set-transformer])
   (name-monad [_]
     "set-t")
 
@@ -714,13 +714,13 @@
       (writer-transformer.
        m (bind mv (fn [v]
                     (let [[v1 a1] (deref v)]
-                      (bind (deref (f v1))
+                      (bind (deref ((wrap-check mv f) v1))
                             (fn [v]
                               (let [[v2 a2] (deref v)]
                                 (m (writer-monad. v2 (writer-m-combine a1 a2)))))))))
        writer-m)))
   (val-types [_]
-    [])
+    [writer-transformer])
   (name-monad [_]
     "writer-t")
 
