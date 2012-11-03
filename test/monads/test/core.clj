@@ -4,6 +4,7 @@
   (:import [monads.core writer-transformer state-transformer]))
 
 (alter-var-root (var m/*throw-on-mismatch*) (constantly true))
+(alter-var-root (var m/*warn-on-mismatch*) (constantly false))
 
 (defn list-f [n]
   (list (inc n)))
