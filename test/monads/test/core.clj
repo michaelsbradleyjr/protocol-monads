@@ -164,6 +164,24 @@
        [2 {:a {:b 3}}]      {:a {:b 2}}  [:a :b]  [inc]
        [nil {:a {:b [1]}}]  {:a nil}     [:a :b]  [(fnil conj []) 1]))
 
+
+(deftest maybe-plus
+  (is (= :test
+         @(m/plus* [(m/maybe :test)
+                   (m/do m/maybe
+                         [_ (m/maybe 10)]
+                         (throw (Exception. "Should not be thrown")))]))))
+
+(deftest test-state-maybe
+  (let [test-m (m/state-t m/maybe)]
+    (is (= [:test :state]
+           @((m/plus* [(test-m :test)
+                      (m/do test-m
+                            [_ (test-m nil)]
+                            (throw (Exception. "Should not be thrown")))])
+             :state)))))
+
+
 (comment
 
   (def test-writer (m/writer #{}))
@@ -277,24 +295,6 @@
                    y (state-t-g x)]
                   [x y])
             :state))))
-
-  ;; TODO: these two tests demonstrate a shorcoming of the maybe monad
-  ;; that needs to be fixed
-  #_(deftest maybe-plus
-      (is (= :bogus
-             @(m/plus [(m/maybe 10)
-                       (m/do m/maybe
-                             [_ (m/maybe 1)]
-                             (throw (Exception. "Should not be thrown")))]))))
-
-  #_(deftest test-state-maybe
-      (let [test-m (m/state-t m/maybe)]
-        (is (= [:bogus :state]
-               @((m/plus [(test-m :bogus)
-                          (m/do test-m
-                                [_ (test-m nil)]
-                                (throw (Exception. "Should not be thrown")))])
-                 :state)))))
 
 
   (defn maybe-f [n]

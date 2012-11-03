@@ -11,7 +11,8 @@
 
 (defprotocol MonadZero
   (zero [_])
-  (plus-step [mv mvs]))
+  (plus-step [mv mvs])
+  (plus-step* [mv mvs]))
 
 (def ^:dynamic *throw-on-mismatch* false)
 (def ^:dynamic *warn-on-mismatch*  false)
@@ -57,6 +58,14 @@
 
 (defn plus [[mv & mvs]]
   (plus-step mv mvs))
+
+(defmacro plus*
+  "Lazy variant of plus. Implemented as a macro to avoid eager
+  argument evaluation."
+  [mvs]
+  (let [mv (first mvs)
+        mvs (rest mvs)]
+    `(plus-step* ~mv (list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs)))))
 
 (defmacro do
   "Monad comprehension. Takes the name of a monad (like vector, hash-set),
@@ -317,7 +326,16 @@
                   first)]
       (if (nil? mv)
         maybe-zero-val
-        mv))))
+        mv)))
+  (plus-step* [mv mvs]
+    (if-not (= maybe-zero-val mv)
+      mv
+      (let [mv (->> mvs
+                    (drop-while #(= maybe-zero-val (%)))
+                    first)]
+        (if (nil? mv)
+          maybe-zero-val
+          (mv))))))
 
 (def maybe-zero-val (maybe-monad. ::nothing))
 
@@ -375,7 +393,7 @@
     (val-types [_]
       [state-monad])
     (name-monad [_]
-      nil)))
+      "state")))
 
 (defn set-state
   "Return a state-monad value that replaces the current state by s and
@@ -506,11 +524,12 @@
     (writer-monad. v (f a))))
 
 
-(deftype state-transformer [m v mv f alts]
+(deftype state-transformer [m v mv f alts lzalts]
   clojure.lang.IFn
   (invoke [_ s]
     (cond
-      alts (plus (clojure.core/map #(% s) alts))
+      alts (plus-step ((first alts) s) (clojure.core/map #(% s) (rest alts)))
+      lzalts (plus-step* ((first lzalts) s) (clojure.core/map #(fn [] (% s)) (rest lzalts)))
       f (bind (mv s)
               (fn [[v ss]]
                 ((f v) ss)))
@@ -520,9 +539,9 @@
 
   Monad
   (do-result [_ v]
-    (state-transformer. m v nil nil nil))
+    (state-transformer. m v nil nil nil nil))
   (bind [mv f]
-    (state-transformer. m nil mv (wrap-check mv f) nil))
+    (state-transformer. m nil mv (wrap-check mv f) nil nil))
   (val-types [_]
     [state-transformer])
   (name-monad [_]
@@ -533,17 +552,20 @@
     (state-transformer. m nil
                         (fn [s] (zero (m nil)))
                         (fn [v]
-                          (state-transformer. m v nil nil nil))
+                          (state-transformer. m v nil nil nil nil))
+                        nil
                         nil))
   (plus-step [mv mvs]
-    (state-transformer. m nil nil nil (cons mv mvs))))
+    (state-transformer. m nil nil nil (cons mv mvs) nil))
+  (plus-step* [mv mvs]
+    (state-transformer. m nil nil nil nil (cons mv mvs))))
 
 (defn state-t
   "Monad transformer that transforms a monad m into a monad of stateful
   computations that have the base monad type as their result."
   [m]
   (fn [v]
-    (state-transformer. m v nil nil nil)))
+    (state-transformer. m v nil nil nil nil)))
 
 
 (deftype maybe-transformer [m v]
