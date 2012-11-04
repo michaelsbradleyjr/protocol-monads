@@ -62,10 +62,8 @@
 (defmacro plus*
   "Lazy variant of plus. Implemented as a macro to avoid eager
   argument evaluation."
-  [mvs]
-  (let [mv (first mvs)
-        mvs (rest mvs)]
-    `(plus-step* ~mv (list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs)))))
+  [[mv & mvs]]
+  `(plus-step* ~mv (list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs))))
 
 (defmacro do
   "Monad comprehension. Takes the name of a monad (like vector, hash-set),
@@ -528,8 +526,15 @@
   clojure.lang.IFn
   (invoke [_ s]
     (cond
-      alts (plus-step ((first alts) s) (clojure.core/map #(% s) (rest alts)))
-      lzalts (plus-step* ((first lzalts) s) (clojure.core/map #(fn [] (% s)) (rest lzalts)))
+      ;; Use of clojure.core/doall "enforces" the non-laziness of
+      ;; regular plus / plus-step. Otherwise you can end up with
+      ;; monadic computations that make use of plus / plus-step which
+      ;; sometimes are lazy enough and sometimes aren't (apparently
+      ;; owing to sequence chunking, per a conversation in IRC).  If
+      ;; laziness is desirable, then one should use plus* /
+      ;; plus-step*.
+      alts (plus-step ((first alts) s) (clojure.core/doall (clojure.core/map #(% s) (second alts))))
+      lzalts (plus-step* ((first lzalts) s) (clojure.core/map #(fn [] ((%) s)) (second lzalts)))
       f (bind (mv s)
               (fn [[v ss]]
                 ((f v) ss)))
@@ -550,22 +555,26 @@
   MonadZero
   (zero [_]
     (state-transformer. m nil
-                        (fn [s] (zero (m nil)))
+                        (fn [s] (zero (m [nil])))
                         (fn [v]
                           (state-transformer. m v nil nil nil nil))
                         nil
                         nil))
   (plus-step [mv mvs]
-    (state-transformer. m nil nil nil (cons mv mvs) nil))
+    (state-transformer. m nil nil nil (list mv mvs) nil))
   (plus-step* [mv mvs]
-    (state-transformer. m nil nil nil nil (cons mv mvs))))
+    (state-transformer. m nil nil nil nil (list mv mvs))))
 
 (defn state-t
   "Monad transformer that transforms a monad m into a monad of stateful
   computations that have the base monad type as their result."
   [m]
-  (fn [v]
-    (state-transformer. m v nil nil nil nil)))
+  (if (= m maybe)
+    (fn [v]
+      (let [v (if (nil? v) maybe-zero-val v)]
+        (state-transformer. m v nil nil nil nil)))
+    (fn [v]
+      (state-transformer. m v nil nil nil nil))))
 
 
 (deftype maybe-transformer [m v]

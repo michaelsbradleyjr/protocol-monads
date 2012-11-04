@@ -168,17 +168,32 @@
 (deftest maybe-plus
   (is (= :test
          @(m/plus* [(m/maybe :test)
-                   (m/do m/maybe
-                         [_ (m/maybe 10)]
-                         (throw (Exception. "Should not be thrown")))]))))
+                    (m/do m/maybe
+                          [_ (m/maybe 10)
+                           _ (m/maybe (/ 1 0))]
+                          (throw (Exception. "Should not be thrown")))]))))
 
-(deftest test-state-maybe
+(deftest test-state-maybe-1
   (let [test-m (m/state-t m/maybe)]
     (is (= [:test :state]
-           @((m/plus* [(test-m :test)
-                      (m/do test-m
-                            [_ (test-m nil)]
-                            (throw (Exception. "Should not be thrown")))])
+           @((m/plus* [(test-m nil)
+                       (m/do test-m
+                             [:when false]
+                             (throw (Exception. "Really should not be thrown")))
+                       (test-m :test)
+                       (m/do test-m
+                             [_ (test-m 10)]
+                             (throw (Exception. "Should not be thrown")))])
+             :state)))))
+
+(deftest test-state-maybe-2
+  (let [test-m (m/state-t m/maybe)]
+    (is (= [:test :state]
+           @((m/plus* [(test-m nil)
+                       (test-m :test)
+                       (m/do test-m
+                             [_ (test-m 10)]
+                             (throw (Exception. "Should not be thrown")))])
              :state)))))
 
 
