@@ -14,6 +14,16 @@
   (plus-step [mv mvs])
   (plus-step* [mv mvs]))
 
+;; for the writer monad
+(defprotocol MonadWriter
+  "Accumulation of values into containers"
+  (writer-m-empty [_]
+    "return an empty container")
+  (writer-m-add [container value]
+    "add value to container, return new container")
+  (writer-m-combine [container1 container2]
+    "combine two containers, return new container"))
+
 (def ^:dynamic *throw-on-mismatch* false)
 (def ^:dynamic *warn-on-mismatch*  false)
 
@@ -157,16 +167,6 @@
                         (partial do-result mv)
                         (reverse (rest steps)))]
       (bind mv chain))))
-
-;; for the writer monad
-(defprotocol MonadWriter
-  "Accumulation of values into containers"
-  (writer-m-empty [_]
-    "return an empty container")
-  (writer-m-add [container value]
-    "add value to container, return new container")
-  (writer-m-combine [container1 container2]
-    "combine two containers, return new container"))
 
 (extend-type clojure.lang.PersistentList
   Monad
