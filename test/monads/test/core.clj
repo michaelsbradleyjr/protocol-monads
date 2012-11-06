@@ -13,7 +13,7 @@
   (list (+ n 5)))
 
 (def do-result-list (partial m/do-result '()))
-(def list-zero-val (m/zero '()))
+(def zero-val-list (m/zero '()))
 
 (deftest first-law-list
   (is (= (m/bind (list 10) list-f)
@@ -29,13 +29,13 @@
                           (m/bind (list-f x) list-g))))))
 
 (deftest zero-law-list
-  (is (= (m/bind list-zero-val list-f)
-         list-zero-val))
-  (is (= (m/bind '(4) (constantly list-zero-val))
-         list-zero-val))
-  (is (= (m/plus [(list 5 6) list-zero-val])
+  (is (= (m/bind zero-val-list list-f)
+         zero-val-list))
+  (is (= (m/bind '(4) (constantly zero-val-list))
+         zero-val-list))
+  (is (= (m/plus [(list 5 6) zero-val-list])
          (list 5 6)))
-  (is (= (m/plus [list-zero-val (list 5 6)])
+  (is (= (m/plus [zero-val-list (list 5 6)])
          (list 5 6))))
 
 
@@ -46,7 +46,7 @@
   (vector (+ n 5)))
 
 (def do-result-vector (partial m/do-result []))
-(def vector-zero-val (m/zero []))
+(def zero-val-vector (m/zero []))
 
 (deftest first-law-vector
   (is (= (m/bind [10] vector-f)
@@ -62,13 +62,13 @@
                          (m/bind (vector-f x) vector-g))))))
 
 (deftest zero-law-vector
-  (is (= (m/bind vector-zero-val vector-f)
-         vector-zero-val))
-  (is (= (m/bind [4] (constantly vector-zero-val))
-         vector-zero-val))
-  (is (= (m/plus [(vector 5 6) vector-zero-val])
+  (is (= (m/bind zero-val-vector vector-f)
+         zero-val-vector))
+  (is (= (m/bind [4] (constantly zero-val-vector))
+         zero-val-vector))
+  (is (= (m/plus [(vector 5 6) zero-val-vector])
          (vector 5 6)))
-  (is (= (m/plus [vector-zero-val (vector 5 6)])
+  (is (= (m/plus [zero-val-vector (vector 5 6)])
          (vector 5 6))))
 
 
@@ -79,7 +79,7 @@
   (hash-set (+ n 5)))
 
 (def do-result-set (partial m/do-result #{}))
-(def set-zero-val (m/zero #{}))
+(def zero-val-set (m/zero #{}))
 
 (deftest first-law-set
   (is (= (m/bind #{10} set-f)
@@ -95,18 +95,18 @@
                           (m/bind (set-f x) set-g))))))
 
 (deftest zero-law-set
-  (is (= (m/bind set-zero-val set-f)
-         set-zero-val))
-  (is (= (m/bind #{4} (constantly set-zero-val))
-         set-zero-val))
-  (is (= (m/plus [(hash-set 5 6) set-zero-val])
+  (is (= (m/bind zero-val-set set-f)
+         zero-val-set))
+  (is (= (m/bind #{4} (constantly zero-val-set))
+         zero-val-set))
+  (is (= (m/plus [(hash-set 5 6) zero-val-set])
          (hash-set 5 6)))
-  (is (= (m/plus [set-zero-val (hash-set 5 6)])
+  (is (= (m/plus [zero-val-set (hash-set 5 6)])
          (hash-set 5 6))))
 
 
 (def do-result-maybe (partial m/do-result (m/maybe [nil])))
-(def maybe-zero-val m/maybe-zero-val)
+(def zero-val-maybe m/maybe-zero-val)
 
 (defn maybe-f [n]
   (m/maybe (inc n)))
@@ -145,13 +145,13 @@
          nil)))
 
 (deftest zero-law-maybe
-  (is (= (m/bind maybe-zero-val maybe-f)
-         maybe-zero-val))
-  (is (= (m/bind (m/maybe 4) (constantly maybe-zero-val))
-         maybe-zero-val))
-  (is (= @(m/plus [(m/maybe 6) maybe-zero-val])
+  (is (= (m/bind zero-val-maybe maybe-f)
+         zero-val-maybe))
+  (is (= (m/bind (m/maybe 4) (constantly zero-val-maybe))
+         zero-val-maybe))
+  (is (= @(m/plus [(m/maybe 6) zero-val-maybe])
          @(m/maybe 6)))
-  (is (= @(m/plus [maybe-zero-val (m/maybe 6)])
+  (is (= @(m/plus [zero-val-maybe (m/maybe 6)])
          @(m/maybe 6))))
 
 (deftest maybe-plus
