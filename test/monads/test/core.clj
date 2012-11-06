@@ -12,7 +12,7 @@
 (defn list-g [n]
   (list (+ n 5)))
 
-(def m-result-list (partial m/do-result '()))
+(def do-result-list (partial m/do-result '()))
 (def list-zero-val (m/zero '()))
 
 (deftest first-law-list
@@ -20,7 +20,7 @@
          (list-f 10))))
 
 (deftest second-law-list
-  (is (= (m/bind '(10) m-result-list)
+  (is (= (m/bind '(10) do-result-list)
          '(10))))
 
 (deftest third-law-list
@@ -45,7 +45,7 @@
 (defn vector-g [n]
   (vector (+ n 5)))
 
-(def m-result-vector (partial m/do-result []))
+(def do-result-vector (partial m/do-result []))
 (def vector-zero-val (m/zero []))
 
 (deftest first-law-vector
@@ -53,7 +53,7 @@
          (vector-f 10))))
 
 (deftest second-law-vector
-  (is (= (m/bind [10] m-result-vector)
+  (is (= (m/bind [10] do-result-vector)
          [10])))
 
 (deftest third-law-vector
@@ -78,7 +78,7 @@
 (defn set-g [n]
   (hash-set (+ n 5)))
 
-(def m-result-set (partial m/do-result #{}))
+(def do-result-set (partial m/do-result #{}))
 (def set-zero-val (m/zero #{}))
 
 (deftest first-law-set
@@ -86,7 +86,7 @@
          (set-f 10))))
 
 (deftest second-law-set
-  (is (= (m/bind #{10} m-result-set)
+  (is (= (m/bind #{10} do-result-set)
          #{10})))
 
 (deftest third-law-set
@@ -103,6 +103,64 @@
          (hash-set 5 6)))
   (is (= (m/plus [set-zero-val (hash-set 5 6)])
          (hash-set 5 6))))
+
+
+(def do-result-maybe (partial m/do-result (m/maybe [nil])))
+(def maybe-zero-val m/maybe-zero-val)
+
+(defn maybe-f [n]
+  (m/maybe (inc n)))
+
+(defn maybe-g [n]
+  (m/maybe (+ n 5)))
+
+(deftest first-law-maybe
+  (is (= @(m/bind (m/maybe 10) maybe-f)
+         @(maybe-f 10))))
+
+(deftest second-law-maybe
+  (is (= @(m/bind (m/maybe 10) m/maybe)
+         10)))
+
+(deftest third-law-maybe
+  (is (= @(m/bind (m/bind (m/maybe 5) maybe-f) maybe-g)
+         @(m/bind (m/maybe 5) (fn [x]
+                                (m/bind (maybe-f x) maybe-g))))))
+
+;; Special cases -- ensure we're handling them correctly. The m/maybe
+;; factory function is not used to generate the monadic value passed
+;; as the first argument to m/bind, since m/maybe implements
+;; "convenience logic" which short-circuits nil to maybe-zero-val. The
+;; procol method do-result, as implemented for class maybe-monad does
+;; not short-circuit.
+(deftest first-law-maybe-nil
+  (is (= @(m/bind (do-result-maybe nil) (comp m/maybe not))
+         @((comp m/maybe not) nil))))
+
+;; For the same reasons given in the previous comment, m/maybe is not
+;; used as the monadic function for this test, nor to generate the
+;; monadic value passed as the first argument to m/bind.
+(deftest second-law-maybe-nil
+  (is (= @(m/bind (do-result-maybe nil) do-result-maybe)
+         nil)))
+
+(deftest zero-law-maybe
+  (is (= (m/bind maybe-zero-val maybe-f)
+         maybe-zero-val))
+  (is (= (m/bind (m/maybe 4) (constantly maybe-zero-val))
+         maybe-zero-val))
+  (is (= @(m/plus [(m/maybe 6) maybe-zero-val])
+         @(m/maybe 6)))
+  (is (= @(m/plus [maybe-zero-val (m/maybe 6)])
+         @(m/maybe 6))))
+
+(deftest maybe-plus
+  (is (= :test
+         @(m/plus* [(m/maybe :test)
+                    (m/do m/maybe
+                          [_ (m/maybe 10)
+                           _ (m/maybe (/ 1 0))]
+                          (throw (Exception. "Should not be thrown")))]))))
 
 
 (defn state-f [n]
@@ -163,38 +221,6 @@
        [2 {:a {:b 4}}]      {:a {:b 2}}  [:a :b]  [* 2]
        [2 {:a {:b 3}}]      {:a {:b 2}}  [:a :b]  [inc]
        [nil {:a {:b [1]}}]  {:a nil}     [:a :b]  [(fnil conj []) 1]))
-
-
-(deftest maybe-plus
-  (is (= :test
-         @(m/plus* [(m/maybe :test)
-                    (m/do m/maybe
-                          [_ (m/maybe 10)
-                           _ (m/maybe (/ 1 0))]
-                          (throw (Exception. "Should not be thrown")))]))))
-
-(deftest test-state-maybe-1
-  (let [test-m (m/state-t m/maybe)]
-    (is (= [:test :state]
-           @((m/plus* [(test-m nil)
-                       (m/do test-m
-                             [:when false]
-                             (throw (Exception. "Really should not be thrown")))
-                       (test-m :test)
-                       (m/do test-m
-                             [_ (test-m 10)]
-                             (throw (Exception. "Should not be thrown")))])
-             :state)))))
-
-(deftest test-state-maybe-2
-  (let [test-m (m/state-t m/maybe)]
-    (is (= [:test :state]
-           @((m/plus* [(test-m nil)
-                       (test-m :test)
-                       (m/do test-m
-                             [_ (test-m 10)]
-                             (throw (Exception. "Should not be thrown")))])
-             :state)))))
 
 
 (comment
@@ -310,36 +336,6 @@
                    y (state-t-g x)]
                   [x y])
             :state))))
-
-
-  (defn maybe-f [n]
-    (m/maybe (inc n)))
-
-  (defn maybe-g [n]
-    (m/maybe (+ n 5)))
-
-  (deftest first-law-maybe
-    (is (= @(m/bind (m/maybe 10) maybe-f)
-           @(maybe-f 10))))
-
-  (deftest second-law-maybe
-    (is (= @(m/bind (m/maybe 10) m/maybe)
-           10)))
-
-  (deftest third-law-maybe
-    (is (= @(m/bind (m/bind (m/maybe 5) maybe-f) maybe-g)
-           @(m/bind (m/maybe 5) (fn [x]
-                                  (m/bind (maybe-f x) maybe-g))))))
-
-  (deftest zero-law-maybe
-    (is (= (m/bind (m/zero (m/maybe nil)) maybe-f)
-           (m/zero (m/maybe nil))))
-    (is (= (m/bind (m/maybe 4) (constantly (m/zero (m/maybe nil))))
-           (m/zero (m/maybe nil))))
-    (is (= @(m/plus [(m/maybe 6) (m/zero (m/maybe nil))])
-           @(m/maybe 6)))
-    (is (= @(m/plus [(m/zero (m/maybe nil)) (m/maybe 6)])
-           @(m/maybe 6))))
 
 
   (deftest test-seq
@@ -627,6 +623,31 @@
                   deref
                   (map deref)
                   set)))))
+
+
+  (deftest test-state-maybe-1
+    (let [test-m (m/state-t m/maybe)]
+      (is (= [:test :state]
+             @((m/plus* [(test-m nil)
+                         (m/do test-m
+                               [:when false]
+                               (throw (Exception. "Really should not be thrown")))
+                         (test-m :test)
+                         (m/do test-m
+                               [_ (test-m 10)]
+                               (throw (Exception. "Should not be thrown")))])
+               :state)))))
+
+  (deftest test-state-maybe-2
+    (let [test-m (m/state-t m/maybe)]
+      (is (= [:test :state]
+             @((m/plus* [(test-m nil)
+                         (test-m :test)
+                         (m/do test-m
+                               [_ (test-m 10)]
+                               (throw (Exception. "Should not be thrown")))])
+               :state)))))
+
 
   (deftest test-state-writer-maybe
     (let [test-m (m/state-t (m/writer-t m/maybe []))
