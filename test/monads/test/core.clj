@@ -72,6 +72,39 @@
          (vector 5 6))))
 
 
+(defn lazy-seq-f [n]
+  (lazy-seq [(inc n)]))
+
+(defn lazy-seq-g [n]
+  (lazy-seq [(+ n 5)]))
+
+(def do-result-lazy-seq (partial m/do-result (lazy-seq)))
+(def zero-val-lazy-seq (m/zero (lazy-seq)))
+
+(deftest first-law-lazy-seq
+  (is (= (m/bind (lazy-seq [10]) lazy-seq-f)
+         (lazy-seq-f 10))))
+
+(deftest second-law-lazy-seq
+  (is (= (m/bind (lazy-seq [10]) do-result-lazy-seq)
+         (lazy-seq [10]))))
+
+(deftest third-law-lazy-seq
+  (is (= (m/bind (m/bind (lazy-seq [4 9]) lazy-seq-f) lazy-seq-g)
+         (m/bind (lazy-seq [4 9]) (fn [x]
+                                    (m/bind (lazy-seq-f x) lazy-seq-g))))))
+
+(deftest zero-law-lazy-seq
+  (is (= (m/bind zero-val-lazy-seq lazy-seq-f)
+         zero-val-lazy-seq))
+  (is (= (m/bind (lazy-seq [4]) (constantly zero-val-lazy-seq))
+         zero-val-lazy-seq))
+  (is (= (m/plus [(lazy-seq [5 6]) zero-val-lazy-seq])
+         (lazy-seq [5 6])))
+  (is (= (m/plus [zero-val-lazy-seq (lazy-seq [5 6])])
+         (lazy-seq [5 6]))))
+
+
 (defn set-f [n]
   (hash-set (inc n)))
 
