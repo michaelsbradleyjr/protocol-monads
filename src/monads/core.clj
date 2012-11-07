@@ -194,8 +194,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monadd describing multi-valued computations, i.e. computations
-;; that can yield multiple values as lists.
+;; Monadd describing multi-valued computations, i.e. computations that
+;; can yield multiple values as lists.
 
 (extend-type clojure.lang.PersistentList
   Monad
@@ -230,8 +230,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monadd describing multi-valued computations, i.e. computations
-;; that can yield multiple values as lists.
+;; Monadd describing multi-valued computations, i.e. computations that
+;; can yield multiple values as lists.
 
 (extend-type clojure.lang.PersistentList$EmptyList
   Monad
@@ -266,8 +266,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monadd describing multi-valued computations, i.e. computations
-;; that can yield multiple values as vectors.
+;; Monadd describing multi-valued computations, i.e. computations that
+;; can yield multiple values as vectors.
 
 (extend-type clojure.lang.PersistentVector
   Monad
@@ -295,6 +295,15 @@
   (writer-m-add [c v] (conj c v))
   (writer-m-combine [c1 c2] (vec (concat c1 c2))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  LazySeq
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monadd describing multi-valued computations, i.e. computations that
+;; can yield multiple values as lazy sequences.
+
 (defn- lazy-concat
   ([l] l)
   ([l ls]
@@ -304,15 +313,6 @@
                                     (lazy-concat (rest l) ls))
          (clojure.core/seq ls) (lazy-concat (first ls) (rest ls))
          :else (lazy-seq)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;;  LazySeq
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Monadd describing multi-valued computations, i.e. computations
-;; that can yield multiple values as lazy sequences.
 
 (extend-type clojure.lang.LazySeq
   Monad
@@ -346,8 +346,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monadd describing multi-valued computations, i.e. computations
-;; that can yield multiple values as sets.
+;; Monadd describing multi-valued computations, i.e. computations that
+;; can yield multiple values as sets.
 
 (extend-type clojure.lang.PersistentHashSet
   Monad
@@ -381,6 +381,13 @@
 ;;  MaybeMonad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad describing computations with possible failures. Failure is
+;; represented by maybe-zero-val, any other value is considered valid.
+;; As soon as a step returns maybe-zero-val, the whole computation
+;; will yield maybe-zero-val as well. For convenience `(maybe nil)`
+;; returns maybe-zero-val, but this is not the case for constructor
+;; call `(MaybeMonad. nil)` in order to satisfy the first Monad Law.
 
 (declare maybe-zero-val)
 
@@ -426,12 +433,6 @@
 (def maybe-zero-val (MaybeMonad. ::nothing))
 
 (defn maybe
-  "Monad describing computations with possible failures. Failure is
-   represented by maybe-zero-val, any other value is considered valid.
-   As soon as a step returns maybe-zero-val, the whole computation will
-   yield maybe-zero-val as well. For convenience `(maybe nil)` returns
-   maybe-zero-val, but this is not the case for constructor call
-   `(MaybeMonad. nil)` in order to satisfy the first Monad Law."
   [v]
   (if (nil? v)
     maybe-zero-val
@@ -442,6 +443,9 @@
 ;;  StateMonad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad describing stateful computations. The monadic values have the
+;; structure (fn [old-state] [result new-state]).
 
 (deftype StateMonad [v mv f]
   clojure.lang.IFn
@@ -464,8 +468,6 @@
     "state"))
 
 (defn state
-  "Monad describing stateful computations. The monadic values have the
-   structure (fn [old-state] [result new-state])."
   [v]
   (StateMonad. v nil nil))
 
@@ -541,6 +543,11 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+;; Monad describing computations in continuation-passing style. The
+;; monadic values are functions that are called with a single argument
+;; representing the continuation of the computation, to which they
+;; pass their result.
+
 (deftype ContinuationMonad [v mv f]
   clojure.lang.IDeref
   (deref [mv]
@@ -565,18 +572,22 @@
     "cont"))
 
 (defn cont
-  "Monad describing computations in continuation-passing style. The monadic
-   values are functions that are called with a single argument representing
-   the continuation of the computation, to which they pass their result."
   [v]
   (ContinuationMonad. v nil nil))
 
-;; holding off on implementing this until later
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  CallWithCurrentContinuationMonad
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; A computation in the cont monad that calls function f with a single
+;; argument representing the current continuation. The function f
+;; should return a continuation (which becomes the return value of
+;; call-cc), or call the passed-in current continuation to terminate.
+
+;; Holding off on implementing this until later.
 (defn call-cc
-  "A computation in the cont monad that calls function f with a single
-   argument representing the current continuation. The function f should
-   return a continuation (which becomes the return value of call-cc),
-   or call the passed-in current continuation to terminate."
   [f]
   )
 
@@ -585,6 +596,12 @@
 ;;  WriterMonad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad describing computations that accumulate data on the side,
+;; e.g. for logging. The monadic values have the structure [value
+;; log]. Any of the accumulators from clojure.contrib.accumulators can
+;; be used for storing the log data. Its empty value is passed as a
+;; parameter.
 
 (extend-type java.lang.String
   MonadWriter
@@ -612,10 +629,6 @@
     "writer"))
 
 (defn writer
-  "Monad describing computations that accumulate data on the side, e.g. for
-   logging. The monadic values have the structure [value log]. Any of the
-   accumulators from clojure.contrib.accumulators can be used for storing the
-   log data. Its empty value is passed as a parameter."
   [accumulator]
   (fn [v]
     (WriterMonad. v accumulator)))
@@ -637,6 +650,10 @@
 ;;  StateTransformer
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad transformer that transforms a monad m into a monad of
+;; stateful computations that have the base monad type as their
+;; result.
 
 (deftype StateTransformer [m v mv f alts lzalts]
   clojure.lang.IFn
@@ -684,8 +701,6 @@
     "state-t"))
 
 (defn state-t
-  "Monad transformer that transforms a monad m into a monad of stateful
-  computations that have the base monad type as their result."
   [m]
   (if (= m maybe)
     (fn [v]
@@ -699,6 +714,9 @@
 ;;  MaybeTransformer
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad transformer that transforms a monad m into a monad in which
+;; the base values can be invalid (represented by :nothing).
 
 (deftype MaybeTransformer [m v]
   clojure.lang.IDeref
@@ -734,8 +752,6 @@
     "maybe-t"))
 
 (defn maybe-t
-  "Monad transformer that transforms a monad m into a monad in which
-   the base values can be invalid (represented by :nothing)."
   [m]
   (fn [v]
     (MaybeTransformer. m (m (maybe v)))))
@@ -745,6 +761,9 @@
 ;;  ListTransformer
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad transformer that transforms a monad m into a monad in which
+;; the base values are lists.
 
 (deftype ListTransformer [m v]
   clojure.lang.IDeref
@@ -778,8 +797,6 @@
     "list-t"))
 
 (defn list-t
-  "Monad transformer that transforms a monad m into a monad in which
-   the base values are lists."
   [m]
   (fn [v]
     (ListTransformer. m (m (list v)))))
@@ -789,6 +806,9 @@
 ;;  VectorTransformer
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad transformer that transforms a monad m into a monad in which
+;; the base values are vectors.
 
 (deftype VectorTransformer [m v]
   clojure.lang.IDeref
@@ -823,8 +843,6 @@
     "vector-t"))
 
 (defn vector-t
-  "Monad transformer that transforms a monad m into a monad in which
-   the base values are vectors."
   [m]
   (fn [v]
     (VectorTransformer. m (m (vector v)))))
@@ -834,6 +852,9 @@
 ;;  SetTransformer
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad transformer that transforms a monad m into a monad in which
+;; the base values are sets.
 
 (deftype SetTransformer [m v]
   clojure.lang.IDeref
@@ -868,8 +889,6 @@
     "set-t"))
 
 (defn set-t
-  "Monad transformer that transforms a monad m into a monad in which
-   the base values are sets."
   [m]
   (fn [v]
     (SetTransformer. m (m (hash-set v)))))
