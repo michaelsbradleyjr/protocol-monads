@@ -96,10 +96,11 @@
   `(plus-step* ~mv (list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs))))
 
 (defmacro do
-  "Monad comprehension. Takes the name of a monad (like vector, hash-set),
-   a vector of steps given as binding-form/monadic-expression pairs, and
-   a result value specified by expr. The monadic-expression terms can use
-   the binding variables of the previous steps.
+  "Monad comprehension. Takes the name of a monadic value factory
+   function (like vector, hash-set, m/maybe), a vector of steps given as
+   binding-form/monadic-expression pairs, and a result value specified
+   by expr. The monadic-expression terms can use the binding variables
+   of the previous steps.
 
    If the monad contains a definition of m-zero, the step list can also
    contain conditions of the form :when p, where the predicate p can
@@ -108,23 +109,24 @@
    A clause of the form :let [binding-form expr ...], where the bindings
    are given as a vector as for the use in let, establishes additional
    bindings that can be used in the following steps. "
-  [monad bindings expr]
+  [mv-factory bindings expr]
   (let [steps (partition 2 bindings)]
     ;; The "dummy value" [nil] is used in several expressions below to
-    ;; couple calls to bind, zero and do-result to the specified
-    ;; protocol-monad
-    `(monads.core/bind (~monad [nil])
+    ;; couple calls to bind, zero and do-result to a particular
+    ;; protocol-monad, as determined by the return type of the monadic
+    ;; value factory functin
+    `(monads.core/bind (~mv-factory [nil])
                        (fn [_#]
                          ~(reduce (fn [expr [sym mv]]
                                     (cond
                                       (= :when sym) `(if ~mv
                                                        ~expr
-                                                       (monads.core/zero (~monad [nil])))
+                                                       (monads.core/zero (~mv-factory [nil])))
                                       (= :let sym) `(let ~mv
                                                       ~expr)
                                       :else `(monads.core/bind ~mv (fn [~sym]
                                                                      ~expr))))
-                                  `(monads.core/do-result (~monad [nil]) ~expr)
+                                  `(monads.core/do-result (~mv-factory [nil]) ~expr)
                                   (reverse steps))))))
 
 (defn- comprehend [f mvs]
@@ -144,10 +146,10 @@
      (assert (clojure.core/seq mvs)
              "At least one monadic value is required by monads.core/seq")
      (seq (first mvs) mvs))
-  ([m-result mvs]
+  ([mv-factory mvs]
      (if (clojure.core/seq mvs)
        (comprehend identity mvs)
-       (m-result []))))
+       (mv-factory []))))
 
 (defn lift
   "Converts a function f to a function of monadic arguments
