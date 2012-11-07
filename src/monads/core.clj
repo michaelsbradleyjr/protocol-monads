@@ -185,6 +185,8 @@
     (list))
   (plus-step [mv mvs]
     (apply concat mv mvs))
+  (plus-step* [mv mvs]
+    (apply concat mv (clojure.core/map #(%) mvs)))
 
   MonadWriter
   (writer-m-empty [_] (list))
@@ -210,6 +212,8 @@
     (list))
   (plus-step [mv mvs]
     (apply concat mv mvs))
+  (plus-step* [mv mvs]
+    (apply concat mv (clojure.core/map #(%) mvs)))
 
   MonadWriter
   (writer-m-empty [_] (list))
@@ -232,6 +236,8 @@
     [])
   (plus-step [mv mvs]
     (vec (apply concat mv mvs)))
+  (plus-step* [mv mvs]
+    (vec (apply concat mv (clojure.core/map #(%) mvs))))
 
   MonadWriter
   (writer-m-empty [_] [])
@@ -264,6 +270,8 @@
     (lazy-seq))
   (plus-step [mv mvs]
     (lazy-concat mv mvs))
+  (plus-step* [mv mvs]
+    (lazy-concat mv (clojure.core/map #(%) mvs)))
 
   MonadWriter
   (writer-m-empty [_] (list))
@@ -289,6 +297,8 @@
     #{})
   (plus-step [mv mvs]
     (apply set/union mv mvs))
+  (plus-step* [mv mvs]
+    (apply set/union mv (clojure.core/map #(%) mvs)))
 
   MonadWriter
   (writer-m-empty [_] #{})

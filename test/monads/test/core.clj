@@ -36,6 +36,10 @@
   (is (= (m/plus [(list 5 6) zero-val-list])
          (list 5 6)))
   (is (= (m/plus [zero-val-list (list 5 6)])
+         (list 5 6)))
+  (is (= (m/plus* [(list 5 6) zero-val-list])
+         (list 5 6)))
+  (is (= (m/plus* [zero-val-list (list 5 6)])
          (list 5 6))))
 
 
@@ -69,6 +73,10 @@
   (is (= (m/plus [(vector 5 6) zero-val-vector])
          (vector 5 6)))
   (is (= (m/plus [zero-val-vector (vector 5 6)])
+         (vector 5 6)))
+  (is (= (m/plus* [(vector 5 6) zero-val-vector])
+         (vector 5 6)))
+  (is (= (m/plus* [zero-val-vector (vector 5 6)])
          (vector 5 6))))
 
 
@@ -102,6 +110,10 @@
   (is (= (m/plus [(lazy-seq [5 6]) zero-val-lazy-seq])
          (lazy-seq [5 6])))
   (is (= (m/plus [zero-val-lazy-seq (lazy-seq [5 6])])
+         (lazy-seq [5 6])))
+  (is (= (m/plus* [(lazy-seq [5 6]) zero-val-lazy-seq])
+         (lazy-seq [5 6])))
+  (is (= (m/plus* [zero-val-lazy-seq (lazy-seq [5 6])])
          (lazy-seq [5 6]))))
 
 
@@ -135,6 +147,10 @@
   (is (= (m/plus [(hash-set 5 6) zero-val-set])
          (hash-set 5 6)))
   (is (= (m/plus [zero-val-set (hash-set 5 6)])
+         (hash-set 5 6)))
+  (is (= (m/plus* [(hash-set 5 6) zero-val-set])
+         (hash-set 5 6)))
+  (is (= (m/plus* [zero-val-set (hash-set 5 6)])
          (hash-set 5 6))))
 
 
@@ -185,6 +201,10 @@
   (is (= @(m/plus [(m/maybe 6) zero-val-maybe])
          @(m/maybe 6)))
   (is (= @(m/plus [zero-val-maybe (m/maybe 6)])
+         @(m/maybe 6)))
+  (is (= @(m/plus* [(m/maybe 6) zero-val-maybe])
+         @(m/maybe 6)))
+  (is (= @(m/plus* [zero-val-maybe (m/maybe 6)])
          @(m/maybe 6))))
 
 (deftest maybe-plus
