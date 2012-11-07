@@ -18,16 +18,16 @@
 (defn list-g [n]
   (list (+ n 5)))
 
-(def do-result-list (partial m/do-result '()))
-(def zero-val-list (m/zero '()))
+(def do-result-list (partial m/do-result (list [nil])))
+(def zero-val-list (m/zero (list [nil])))
 
 (deftest first-law-list
-  (is (= (m/bind (list 10) list-f)
+  (is (= (m/bind (do-result-list 10) list-f)
          (list-f 10))))
 
 (deftest second-law-list
-  (is (= (m/bind '(10) do-result-list)
-         '(10))))
+  (is (= (m/bind (do-result-list 10) do-result-list)
+         (do-result-list 10))))
 
 (deftest third-law-list
   (is (= (m/bind (m/bind '(4 9) list-f) list-g)
@@ -37,7 +37,7 @@
 (deftest zero-law-list
   (is (= (m/bind zero-val-list list-f)
          zero-val-list))
-  (is (= (m/bind '(4) (constantly zero-val-list))
+  (is (= (m/bind (do-result-list 4) (constantly zero-val-list))
          zero-val-list))
   (is (= (m/plus [(list 5 6) zero-val-list])
          (list 5 6)))
@@ -60,16 +60,16 @@
 (defn vector-g [n]
   (vector (+ n 5)))
 
-(def do-result-vector (partial m/do-result []))
-(def zero-val-vector (m/zero []))
+(def do-result-vector (partial m/do-result (vector [nil])))
+(def zero-val-vector (m/zero (vector [nil])))
 
 (deftest first-law-vector
-  (is (= (m/bind [10] vector-f)
+  (is (= (m/bind (do-result-vector 10) vector-f)
          (vector-f 10))))
 
 (deftest second-law-vector
-  (is (= (m/bind [10] do-result-vector)
-         [10])))
+  (is (= (m/bind (do-result-vector 10) do-result-vector)
+         (do-result-vector 10))))
 
 (deftest third-law-vector
   (is (= (m/bind (m/bind [4 9] vector-f) vector-g)
@@ -79,7 +79,7 @@
 (deftest zero-law-vector
   (is (= (m/bind zero-val-vector vector-f)
          zero-val-vector))
-  (is (= (m/bind [4] (constantly zero-val-vector))
+  (is (= (m/bind (do-result-vector 4) (constantly zero-val-vector))
          zero-val-vector))
   (is (= (m/plus [(vector 5 6) zero-val-vector])
          (vector 5 6)))
@@ -102,16 +102,16 @@
 (defn lazy-seq-g [n]
   (lazy-seq [(+ n 5)]))
 
-(def do-result-lazy-seq (partial m/do-result (lazy-seq)))
-(def zero-val-lazy-seq (m/zero (lazy-seq)))
+(def do-result-lazy-seq (partial m/do-result (lazy-seq [[nil]])))
+(def zero-val-lazy-seq (m/zero (lazy-seq [[nil]])))
 
 (deftest first-law-lazy-seq
-  (is (= (m/bind (lazy-seq [10]) lazy-seq-f)
+  (is (= (m/bind (do-result-lazy-seq 10) lazy-seq-f)
          (lazy-seq-f 10))))
 
 (deftest second-law-lazy-seq
-  (is (= (m/bind (lazy-seq [10]) do-result-lazy-seq)
-         (lazy-seq [10]))))
+  (is (= (m/bind (do-result-lazy-seq 10) do-result-lazy-seq)
+         (do-result-lazy-seq 10))))
 
 (deftest third-law-lazy-seq
   (is (= (m/bind (m/bind (lazy-seq [4 9]) lazy-seq-f) lazy-seq-g)
@@ -121,7 +121,7 @@
 (deftest zero-law-lazy-seq
   (is (= (m/bind zero-val-lazy-seq lazy-seq-f)
          zero-val-lazy-seq))
-  (is (= (m/bind (lazy-seq [4]) (constantly zero-val-lazy-seq))
+  (is (= (m/bind (do-result-lazy-seq 4) (constantly zero-val-lazy-seq))
          zero-val-lazy-seq))
   (is (= (m/plus [(lazy-seq [5 6]) zero-val-lazy-seq])
          (lazy-seq [5 6])))
@@ -144,16 +144,16 @@
 (defn set-g [n]
   (hash-set (+ n 5)))
 
-(def do-result-set (partial m/do-result #{}))
-(def zero-val-set (m/zero #{}))
+(def do-result-set (partial m/do-result (hash-set [nil])))
+(def zero-val-set (m/zero (hash-set [nil])))
 
 (deftest first-law-set
-  (is (= (m/bind #{10} set-f)
+  (is (= (m/bind (do-result-set 10) set-f)
          (set-f 10))))
 
 (deftest second-law-set
-  (is (= (m/bind #{10} do-result-set)
-         #{10})))
+  (is (= (m/bind (do-result-set 10) do-result-set)
+         (do-result-set 10))))
 
 (deftest third-law-set
   (is (= (m/bind (m/bind #{4 9} set-f) set-g)
@@ -163,7 +163,7 @@
 (deftest zero-law-set
   (is (= (m/bind zero-val-set set-f)
          zero-val-set))
-  (is (= (m/bind #{4} (constantly zero-val-set))
+  (is (= (m/bind (do-result-set 4) (constantly zero-val-set))
          zero-val-set))
   (is (= (m/plus [(hash-set 5 6) zero-val-set])
          (hash-set 5 6)))
@@ -181,7 +181,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def do-result-maybe (partial m/do-result (m/maybe [nil])))
-(def zero-val-maybe m/maybe-zero-val)
+(def zero-val-maybe (m/zero (m/maybe [nil])))
 
 (defn maybe-f [n]
   (m/maybe (inc n)))
@@ -190,12 +190,12 @@
   (m/maybe (+ n 5)))
 
 (deftest first-law-maybe
-  (is (= @(m/bind (m/maybe 10) maybe-f)
+  (is (= @(m/bind (do-result-maybe 10) maybe-f)
          @(maybe-f 10))))
 
 (deftest second-law-maybe
-  (is (= @(m/bind (m/maybe 10) m/maybe)
-         10)))
+  (is (= @(m/bind (do-result-maybe 10) do-result-maybe)
+         @(do-result-maybe 10))))
 
 (deftest third-law-maybe
   (is (= @(m/bind (m/bind (m/maybe 5) maybe-f) maybe-g)
@@ -217,12 +217,12 @@
 ;; monadic value passed as the first argument to m/bind.
 (deftest second-law-maybe-nil
   (is (= @(m/bind (do-result-maybe nil) do-result-maybe)
-         nil)))
+         @(do-result-maybe nil))))
 
 (deftest zero-law-maybe
   (is (= (m/bind zero-val-maybe maybe-f)
          zero-val-maybe))
-  (is (= (m/bind (m/maybe 4) (constantly zero-val-maybe))
+  (is (= (m/bind (do-result-maybe 4) (constantly zero-val-maybe))
          zero-val-maybe))
   (is (= @(m/plus [(m/maybe 6) zero-val-maybe])
          @(m/maybe 6)))
@@ -247,6 +247,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def do-result-state (partial m/do-result (m/state [nil])))
+
 (defn state-f [n]
   (m/state (inc n)))
 
@@ -254,13 +256,13 @@
   (m/state (+ n 5)))
 
 (deftest first-law-state
-  (let [mv1 (m/bind (m/state 10) state-f)
+  (let [mv1 (m/bind (do-result-state 10) state-f)
         mv2 (state-f 10)]
     (is (= (mv1 {}) (mv2 {})))))
 
 (deftest second-law-state
-  (let [mv1 (m/bind (m/state 10) m/state)
-        mv2 (m/state 10)]
+  (let [mv1 (m/bind (do-result-state 10) do-result-state)
+        mv2 (do-result-state 10)]
     (is (= (mv1 :state) (mv2 :state)))))
 
 (deftest third-law-state
@@ -312,6 +314,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def do-result-cont (partial m/do-result (m/cont [nil])))
+
 (defn cont-f [n]
   (m/cont (inc n)))
 
@@ -319,13 +323,13 @@
   (m/cont (+ n 5)))
 
 (deftest first-law-cont
-  (let [mv1 (m/bind (m/cont 10) cont-f)
+  (let [mv1 (m/bind (do-result-cont 10) cont-f)
         mv2 (cont-f 10)]
     (is (= (mv1 identity) (mv2 identity)))))
 
 (deftest second-law-cont
-  (let [mv1 (m/bind (m/cont 10) m/cont)
-        mv2 (m/cont 10)]
+  (let [mv1 (m/bind (do-result-cont 10) m/cont)
+        mv2 (do-result-cont 10)]
     (is (= (mv1 identity) (mv2 identity)))))
 
 (deftest third-law-cont
