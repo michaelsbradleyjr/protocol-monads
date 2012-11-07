@@ -105,17 +105,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn lazy-seq-f [n]
-  (lazy-seq [(inc n)]))
+  (m/lazy-seq (inc n)))
 
 (defn lazy-seq-g [n]
-  (lazy-seq [(+ n 5)]))
+  (m/lazy-seq (+ n 5)))
 
-(def do-result-lazy-seq (partial m/do-result (lazy-seq [[nil]])))
-(def zero-val-lazy-seq (m/zero (lazy-seq [[nil]])))
+(deftest demo-clojure-core-and-monads-core-lazy-seq-factory-equiv
+  (is (= (m/lazy-seq 1 2 3)
+         (lazy-seq [1 2 3]))))
+
+(def do-result-lazy-seq (partial m/do-result (m/lazy-seq [nil])))
+(def zero-val-lazy-seq (m/zero (m/lazy-seq [nil])))
 
 (deftest do-result-and-lazy-seq-factory-func-equiv
   (is (= (do-result-lazy-seq [nil])
-         (lazy-seq [[nil]]))))
+         (m/lazy-seq [nil]))))
 
 (deftest first-law-lazy-seq
   (is (= (m/bind (do-result-lazy-seq 10) lazy-seq-f)
@@ -126,8 +130,8 @@
          (do-result-lazy-seq 10))))
 
 (deftest third-law-lazy-seq
-  (is (= (m/bind (m/bind (lazy-seq [4 9]) lazy-seq-f) lazy-seq-g)
-         (m/bind (lazy-seq [4 9]) (fn [x]
+  (is (= (m/bind (m/bind (m/lazy-seq 4 9) lazy-seq-f) lazy-seq-g)
+         (m/bind (m/lazy-seq 4 9) (fn [x]
                                     (m/bind (lazy-seq-f x) lazy-seq-g))))))
 
 (deftest zero-law-lazy-seq
@@ -135,14 +139,14 @@
          zero-val-lazy-seq))
   (is (= (m/bind (do-result-lazy-seq 4) (constantly zero-val-lazy-seq))
          zero-val-lazy-seq))
-  (is (= (m/plus [(lazy-seq [5 6]) zero-val-lazy-seq])
-         (lazy-seq [5 6])))
-  (is (= (m/plus [zero-val-lazy-seq (lazy-seq [5 6])])
-         (lazy-seq [5 6])))
-  (is (= (m/plus* [(lazy-seq [5 6]) zero-val-lazy-seq])
-         (lazy-seq [5 6])))
-  (is (= (m/plus* [zero-val-lazy-seq (lazy-seq [5 6])])
-         (lazy-seq [5 6]))))
+  (is (= (m/plus [(m/lazy-seq 5 6) zero-val-lazy-seq])
+         (m/lazy-seq 5 6)))
+  (is (= (m/plus [zero-val-lazy-seq (m/lazy-seq 5 6)])
+         (m/lazy-seq 5 6)))
+  (is (= (m/plus* [(m/lazy-seq 5 6) zero-val-lazy-seq])
+         (m/lazy-seq 5 6)))
+  (is (= (m/plus* [zero-val-lazy-seq (m/lazy-seq 5 6)])
+         (m/lazy-seq 5 6))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

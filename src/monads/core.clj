@@ -1,5 +1,5 @@
 (ns monads.core
-  (:refer-clojure :exclude [do seq map])
+  (:refer-clojure :exclude [do seq map lazy-seq])
   (:require [clojure.set :as set]
             [clojure.string :as string]))
 
@@ -193,12 +193,16 @@
 (defn- lazy-concat
   ([l] l)
   ([l ls]
-     (lazy-seq
+     (clojure.core/lazy-seq
        (cond
          (clojure.core/seq l) (cons (first l)
                                     (lazy-concat (rest l) ls))
          (clojure.core/seq ls) (lazy-concat (first ls) (rest ls))
-         :else (lazy-seq)))))
+         :else (clojure.core/lazy-seq)))))
+
+(defn lazy-seq
+  [& v]
+  (clojure.core/lazy-seq v))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -319,7 +323,7 @@
 (extend-type clojure.lang.LazySeq
   Monad
   (do-result [_ v]
-    (lazy-seq [v]))
+    (lazy-seq v))
   (bind [mv f]
     (mapcat (wrap-check mv f) mv))
 
