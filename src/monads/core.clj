@@ -605,12 +605,6 @@
 ;; be used for storing the log data. Its empty value is passed as a
 ;; parameter.
 
-(extend-type java.lang.String
-  MonadWriter
-  (writer-m-empty [_] "")
-  (writer-m-add [c v] (str c v))
-  (writer-m-combine [c1 c2] (str c1 c2)))
-
 (deftype WriterMonad [v accumulator]
   clojure.lang.IDeref
   (deref [_]
@@ -646,6 +640,12 @@
 (defn censor [f mv]
   (let [[v a] (deref mv)]
     (WriterMonad. v (f a))))
+
+(extend-type java.lang.String
+  MonadWriter
+  (writer-m-empty [_] "")
+  (writer-m-add [c v] (str c v))
+  (writer-m-combine [c1 c2] (str c1 c2)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
