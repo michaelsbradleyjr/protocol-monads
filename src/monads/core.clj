@@ -34,7 +34,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  Return Type Checker
+;;  Return type checker
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -82,7 +82,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  Monad Utilities
+;;  Monad and utility functions
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -189,6 +189,16 @@
                         (partial do-result mv)
                         (reverse (rest steps)))]
       (bind mv chain))))
+
+(defn- lazy-concat
+  ([l] l)
+  ([l ls]
+     (lazy-seq
+       (cond
+         (clojure.core/seq l) (cons (first l)
+                                    (lazy-concat (rest l) ls))
+         (clojure.core/seq ls) (lazy-concat (first ls) (rest ls))
+         :else (lazy-seq)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -305,16 +315,6 @@
 
 ;; Monadd describing multi-valued computations, i.e. computations that
 ;; can yield multiple values as lazy sequences.
-
-(defn- lazy-concat
-  ([l] l)
-  ([l ls]
-     (lazy-seq
-       (cond
-         (clojure.core/seq l) (cons (first l)
-                                    (lazy-concat (rest l) ls))
-         (clojure.core/seq ls) (lazy-concat (first ls) (rest ls))
-         :else (lazy-seq)))))
 
 (extend-type clojure.lang.LazySeq
   Monad
