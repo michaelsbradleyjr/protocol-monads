@@ -6,6 +6,12 @@
 (alter-var-root (var m/*throw-on-mismatch*) (constantly true))
 (alter-var-root (var m/*warn-on-mismatch*) (constantly false))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  PersistenList / PersistentList$EmptyList
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defn list-f [n]
   (list (inc n)))
 
@@ -42,6 +48,11 @@
   (is (= (m/plus* [zero-val-list (list 5 6)])
          (list 5 6))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  PersistentVector
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn vector-f [n]
   (vector (inc n)))
@@ -79,6 +90,11 @@
   (is (= (m/plus* [zero-val-vector (vector 5 6)])
          (vector 5 6))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  LazySeq
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn lazy-seq-f [n]
   (lazy-seq [(inc n)]))
@@ -116,6 +132,11 @@
   (is (= (m/plus* [zero-val-lazy-seq (lazy-seq [5 6])])
          (lazy-seq [5 6]))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  PersistentHashSet
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn set-f [n]
   (hash-set (inc n)))
@@ -153,6 +174,11 @@
   (is (= (m/plus* [zero-val-set (hash-set 5 6)])
          (hash-set 5 6))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  maybe-monad
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def do-result-maybe (partial m/do-result (m/maybe [nil])))
 (def zero-val-maybe m/maybe-zero-val)
@@ -207,7 +233,7 @@
   (is (= @(m/plus* [zero-val-maybe (m/maybe 6)])
          @(m/maybe 6))))
 
-(deftest maybe-plus
+(deftest lazy-maybe-plus*
   (is (= :test
          @(m/plus* [(m/maybe :test)
                     (m/do m/maybe
@@ -215,6 +241,11 @@
                            _ (m/maybe (/ 1 0))]
                           (throw (Exception. "Should not be thrown")))]))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  state-monad
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn state-f [n]
   (m/state (inc n)))
@@ -275,8 +306,47 @@
        [2 {:a {:b 3}}]      {:a {:b 2}}  [:a :b]  [inc]
        [nil {:a {:b [1]}}]  {:a nil}     [:a :b]  [(fnil conj []) 1]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  cont-monad
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn cont-f [n]
+  (m/cont (inc n)))
+
+(defn cont-g [n]
+  (m/cont (+ n 5)))
+
+(deftest first-law-cont
+  (let [mv1 (m/bind (m/cont 10) cont-f)
+        mv2 (cont-f 10)]
+    (is (= (mv1 identity) (mv2 identity)))))
+
+(deftest second-law-cont
+  (let [mv1 (m/bind (m/cont 10) m/cont)
+        mv2 (m/cont 10)]
+    (is (= (mv1 identity) (mv2 identity)))))
+
+(deftest third-law-cont
+  (let [mv1 (m/bind (m/bind (m/cont 4) cont-f) cont-g)
+        mv2 (m/bind (m/cont 4)
+                    (fn [x]
+                      (m/bind (cont-f x) cont-g)))]
+    (is (= (mv1 identity) (mv2 identity)))))
+
+(deftest deref-cont
+  (is (= 10 @(m/cont 10))))
+
+;; The tests below have been disabled, and are in the process of being
+;; reworked and re-enabled in light of monads.core/check-return-type
 (comment
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;
+  ;;  writer-monad
+  ;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (def test-writer (m/writer #{}))
 
@@ -313,33 +383,11 @@
            @(m/censor (constantly #{:new-written})
                       (m/write test-writer :written)))))
 
-
-  (defn cont-f [n]
-    (m/cont (inc n)))
-
-  (defn cont-g [n]
-    (m/cont (+ n 5)))
-
-  (deftest first-law-cont
-    (let [mv1 (m/bind (m/cont 10) cont-f)
-          mv2 (cont-f 10)]
-      (is (= (mv1 identity) (mv2 identity)))))
-
-  (deftest second-law-cont
-    (let [mv1 (m/bind (m/cont 10) m/cont)
-          mv2 (m/cont 10)]
-      (is (= (mv1 identity) (mv2 identity)))))
-
-  (deftest third-law-cont
-    (let [mv1 (m/bind (m/bind (m/cont 4) cont-f) cont-g)
-          mv2 (m/bind (m/cont 4)
-                      (fn [x]
-                        (m/bind (cont-f x) cont-g)))]
-      (is (= (mv1 identity) (mv2 identity)))))
-
-  (deftest deref-cont
-    (is (= 10 @(m/cont 10))))
-
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;
+  ;;  state-transformer
+  ;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (def vect-state (m/state-t vector))
   (defn state-t-f [n]
@@ -390,6 +438,52 @@
                   [x y])
             :state))))
 
+  (def parse-m (m/state-t m/maybe))
+
+  (deftest test-do
+    (is (= [19 {:val 19}]
+           @((m/do parse-m
+                   [_ (m/set-val :val 19)]
+                   19)
+             {})))
+
+    (let [tinc #(vector (inc %))]
+      (is ( = [[1 2 3] [3 4 5]]
+              (m/do vector
+                    [a (vec (range 5))
+                     :when (odd? a)
+                     x (tinc a)
+                     y (tinc x)]
+                    [a x y])))))
+
+  (deftest test-state-maybe-1
+    (let [test-m (m/state-t m/maybe)]
+      (is (= [:test :state]
+             @((m/plus* [(test-m nil)
+                         (m/do test-m
+                               [:when false]
+                               (throw (Exception. "Really should not be thrown")))
+                         (test-m :test)
+                         (m/do test-m
+                               [_ (test-m 10)]
+                               (throw (Exception. "Should not be thrown")))])
+               :state)))))
+
+  (deftest test-state-maybe-2
+    (let [test-m (m/state-t m/maybe)]
+      (is (= [:test :state]
+             @((m/plus* [(test-m nil)
+                         (test-m :test)
+                         (m/do test-m
+                               [_ (test-m 10)]
+                               (throw (Exception. "Should not be thrown")))])
+               :state)))))
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;
+  ;;  monad utils
+  ;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (deftest test-seq
     (is (= [[3 :a] [3 :b] [5 :a] [5 :b]]
@@ -416,6 +510,11 @@
       (is (= ((m/do m/state [x (st 8) y (su x)] y) :state)
              (((m/chain [st su]) 8) :state)))))
 
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;
+  ;;  maybe-transformer
+  ;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (def vect-maybe (m/maybe-t vector))
   (defn maybe-t-f [n]
@@ -456,6 +555,11 @@
                            y (maybe-t-g x)]
                           [x y])))))
 
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;
+  ;;  list-transformer
+  ;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (def set-list (m/list-t hash-set))
   (defn list-t-f [n]
@@ -496,6 +600,11 @@
                    y (list-t-g x)]
                   [x y]))))
 
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;
+  ;;  vector-transformer
+  ;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (def set-vect (m/vector-t hash-set))
   (defn vector-t-f [n]
@@ -536,6 +645,11 @@
                    y (vector-t-g x)]
                   [x y]))))
 
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;
+  ;;  set-transformer
+  ;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (def vect-set (m/set-t vector))
   (defn set-t-f [n]
@@ -576,6 +690,11 @@
                    y (set-t-g x)]
                   [x y]))))
 
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;
+  ;;  writer-transformer
+  ;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (def vect-writer (m/writer-t hash-set []))
   (defn writer-t-f [n]
@@ -615,24 +734,6 @@
                           [x (writer-t-f 9)
                            y (writer-t-g x)]
                           [x y])))))
-
-  (def parse-m (m/state-t m/maybe))
-
-  (deftest test-do
-    (is (= [19 {:val 19}]
-           @((m/do parse-m
-                   [_ (m/set-val :val 19)]
-                   19)
-             {})))
-
-    (let [tinc #(vector (inc %))]
-      (is ( = [[1 2 3] [3 4 5]]
-              (m/do vector
-                    [a (vec (range 5))
-                     :when (odd? a)
-                     x (tinc a)
-                     y (tinc x)]
-                    [a x y])))))
 
   (deftest test-hash-set-writer
     (let [test-m (m/writer-t hash-set [])
@@ -676,31 +777,6 @@
                   deref
                   (map deref)
                   set)))))
-
-
-  (deftest test-state-maybe-1
-    (let [test-m (m/state-t m/maybe)]
-      (is (= [:test :state]
-             @((m/plus* [(test-m nil)
-                         (m/do test-m
-                               [:when false]
-                               (throw (Exception. "Really should not be thrown")))
-                         (test-m :test)
-                         (m/do test-m
-                               [_ (test-m 10)]
-                               (throw (Exception. "Should not be thrown")))])
-               :state)))))
-
-  (deftest test-state-maybe-2
-    (let [test-m (m/state-t m/maybe)]
-      (is (= [:test :state]
-             @((m/plus* [(test-m nil)
-                         (test-m :test)
-                         (m/do test-m
-                               [_ (test-m 10)]
-                               (throw (Exception. "Should not be thrown")))])
-               :state)))))
-
 
   (deftest test-state-writer-maybe
     (let [test-m (m/state-t (m/writer-t m/maybe []))
