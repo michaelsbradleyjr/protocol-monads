@@ -60,6 +60,22 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+;;  Utility functions
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn- lazy-concat
+  ([l] l)
+  ([l ls]
+     (clojure.core/lazy-seq
+       (cond
+         (clojure.core/seq l) (cons (first l)
+                                    (lazy-concat (rest l) ls))
+         (clojure.core/seq ls) (lazy-concat (first ls) (rest ls))
+         :else (clojure.core/lazy-seq)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 ;;  Return type checker
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -108,127 +124,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  Monad and utility functions
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(defn plus [[mv & mvs]]
-  (plus-step mv mvs))
-
-(defmacro plus*
-  "Lazy variant of plus. Implemented as a macro to avoid eager
-  argument evaluation."
-  [[mv & mvs]]
-  `(plus-step* ~mv (clojure.core/list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs))))
-
-(defmacro do
-  "Monad comprehension. Takes the name of a monadic value factory
-   function (like vector, hash-set, m/maybe), a vector of steps given as
-   binding-form/monadic-expression pairs, and a result value specified
-   by expr. The monadic-expression terms can use the binding variables
-   of the previous steps.
-
-   If the monad contains a definition of m-zero, the step list can also
-   contain conditions of the form :when p, where the predicate p can
-   contain the binding variables from all previous steps.
-
-   A clause of the form :let [binding-form expr ...], where the bindings
-   are given as a vector as for the use in let, establishes additional
-   bindings that can be used in the following steps. "
-  [mv-factory bindings expr]
-  (let [steps (partition 2 bindings)]
-    ;; The "dummy value" [nil] is used in several expressions below to
-    ;; couple calls to bind, zero and do-result to a particular
-    ;; protocol-monad, as determined by the return type of the monadic
-    ;; value factory functin
-    `(monads.core/bind (~mv-factory [nil])
-                       (fn [_#]
-                         ~(reduce (fn [expr [sym mv]]
-                                    (cond
-                                      (= :when sym) `(if ~mv
-                                                       ~expr
-                                                       (monads.core/zero (~mv-factory [nil])))
-                                      (= :let sym) `(let ~mv
-                                                      ~expr)
-                                      :else `(monads.core/bind ~mv (fn [~sym]
-                                                                     ~expr))))
-                                  `(monads.core/do-result (~mv-factory [nil]) ~expr)
-                                  (reverse steps))))))
-
-(defn- comprehend [f mvs]
-  (let [mv (first mvs)
-        rest-steps (reduce (fn [steps mv]
-                             (fn [acc x]
-                               (bind mv (partial steps (conj acc x)))))
-                           (fn [acc x]
-                             (do-result mv (f (conj acc x))))
-                           (reverse (rest mvs)))]
-    (bind mv (partial rest-steps []))))
-
-(defn seq
-  "'Executes' the monadic values in 'mvs' and returns a sequence of the
-   basic values contained in them."
-  ([mvs]
-     (assert (clojure.core/seq mvs)
-             "At least one monadic value is required by monads.core/seq")
-     (seq (first mvs) mvs))
-  ([mv-factory mvs]
-     (if (clojure.core/seq mvs)
-       (comprehend identity mvs)
-       (mv-factory []))))
-
-(defn lift
-  "Converts a function f to a function of monadic arguments
-   returning a monadic value."
-  [f]
-  (fn [& mvs]
-    (comprehend (partial apply f) mvs)))
-
-(defn join
-  "Converts a monadic value containing a monadic value into a 'simple'
-   monadic value."
-  [mv]
-  (bind mv identity))
-
-(defn fmap
-  "Bind the monadic value mv to the function f. Returning (f x) for argument x"
-  [f mv]
-  (bind mv (fn [x] (do-result mv (f x)))))
-
-(defn map
-  "'Executes' the sequence of monadic values resulting from mapping
-   f onto the values xs. f must return a monadic value."
-  [f xs]
-  (seq (clojure.core/map f xs)))
-
-(defn chain
-  "Chains together monadic computation steps that are each functions
-   of one parameter. Each step is called with the result of the previous
-   step as its argument. (m-chain (step1 step2)) is equivalent to
-   (fn [x] (domonad [r1 (step1 x) r2 (step2 r1)] r2))."
-  [steps]
-  (fn [x]
-    (let [mv ((first steps) x)
-          chain (reduce (fn [chain step]
-                          (fn [x]
-                            (bind (step x) chain)))
-                        (partial do-result mv)
-                        (reverse (rest steps)))]
-      (bind mv chain))))
-
-(defn- lazy-concat
-  ([l] l)
-  ([l ls]
-     (clojure.core/lazy-seq
-       (cond
-         (clojure.core/seq l) (cons (first l)
-                                    (lazy-concat (rest l) ls))
-         (clojure.core/seq ls) (lazy-concat (first ls) (rest ls))
-         :else (clojure.core/lazy-seq)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;;  clojure.lang.PersistenList
+;;  clojure.lang.PersistentList monad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -264,7 +160,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  clojure.lang.PersistentList$EmptyList
+;;  clojure.lang.PersistentList$EmptyList monad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -300,7 +196,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  clojure.lang.PersistentVector
+;;  clojure.lang.PersistentVector monad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -335,7 +231,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  clojure.lang.LazySeq
+;;  clojure.lang.LazySeq monad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -370,7 +266,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  clojure.lang.PersistentHashSet
+;;  clojure.lang.PersistentHashSet monad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -605,7 +501,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  CallWithCurrentContinuation
+;;  call-cc
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -617,7 +513,7 @@
 
 (comment
 
-  "The call-cc monad is not yet implemented."
+  "call-cc is not yet implemented."
 
   (defn call-cc
     [f]
@@ -681,7 +577,301 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  StateTransformer
+;;  Monad functions
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn plus [[mv & mvs]]
+  (plus-step mv mvs))
+
+(defmacro plus*
+  "Lazy variant of plus. Implemented as a macro to avoid eager
+  argument evaluation."
+  [[mv & mvs]]
+  `(plus-step* ~mv (clojure.core/list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs))))
+
+(defmacro do
+  "Monad comprehension. Takes the name of a monadic value factory
+   function (like vector, hash-set, m/maybe), a vector of steps given as
+   binding-form/monadic-expression pairs, and a result value specified
+   by expr. The monadic-expression terms can use the binding variables
+   of the previous steps.
+
+   If the monad contains a definition of m-zero, the step list can also
+   contain conditions of the form :when p, where the predicate p can
+   contain the binding variables from all previous steps.
+
+   A clause of the form :let [binding-form expr ...], where the bindings
+   are given as a vector as for the use in let, establishes additional
+   bindings that can be used in the following steps. "
+  [mv-factory bindings expr]
+  (let [steps (partition 2 bindings)]
+    ;; The "dummy value" [nil] is used in several expressions below to
+    ;; couple calls to bind, zero and do-result to a particular
+    ;; protocol-monad, as determined by the return type of the monadic
+    ;; value factory functin
+    `(monads.core/bind (~mv-factory [nil])
+                       (fn [_#]
+                         ~(reduce (fn [expr [sym mv]]
+                                    (cond
+                                      (= :when sym) `(if ~mv
+                                                       ~expr
+                                                       (monads.core/zero (~mv-factory [nil])))
+                                      (= :let sym) `(let ~mv
+                                                      ~expr)
+                                      :else `(monads.core/bind ~mv (fn [~sym]
+                                                                     ~expr))))
+                                  `(monads.core/do-result (~mv-factory [nil]) ~expr)
+                                  (reverse steps))))))
+
+(defn- comprehend [f mvs]
+  (let [mv (first mvs)
+        rest-steps (reduce (fn [steps mv]
+                             (fn [acc x]
+                               (bind mv (partial steps (conj acc x)))))
+                           (fn [acc x]
+                             (do-result mv (f (conj acc x))))
+                           (reverse (rest mvs)))]
+    (bind mv (partial rest-steps []))))
+
+(defn seq
+  "'Executes' the monadic values in 'mvs' and returns a sequence of the
+   basic values contained in them."
+  ([mvs]
+     (assert (clojure.core/seq mvs)
+             "At least one monadic value is required by monads.core/seq")
+     (seq (first mvs) mvs))
+  ([mv-factory mvs]
+     (if (clojure.core/seq mvs)
+       (comprehend identity mvs)
+       (mv-factory []))))
+
+(defn lift
+  "Converts a function f to a function of monadic arguments
+   returning a monadic value."
+  [f]
+  (fn [& mvs]
+    (comprehend (partial apply f) mvs)))
+
+(defn join
+  "Converts a monadic value containing a monadic value into a 'simple'
+   monadic value."
+  [mv]
+  (bind mv identity))
+
+(defn fmap
+  "Bind the monadic value mv to the function f. Returning (f x) for argument x"
+  [f mv]
+  (bind mv (fn [x] (do-result mv (f x)))))
+
+(defn map
+  "'Executes' the sequence of monadic values resulting from mapping
+   f onto the values xs. f must return a monadic value."
+  [f xs]
+  (seq (clojure.core/map f xs)))
+
+(defn chain
+  "Chains together monadic computation steps that are each functions
+   of one parameter. Each step is called with the result of the previous
+   step as its argument. (m-chain (step1 step2)) is equivalent to
+   (fn [x] (domonad [r1 (step1 x) r2 (step2 r1)] r2))."
+  [steps]
+  (fn [x]
+    (let [mv ((first steps) x)
+          chain (reduce (fn [chain step]
+                          (fn [x]
+                            (bind (step x) chain)))
+                        (partial do-result mv)
+                        (reverse (rest steps)))]
+      (bind mv chain))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  List transformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad transformer that transforms a monad m into a monad in which
+;; the base values are lists.
+
+(deftype ListTransformer [m v]
+  clojure.lang.IDeref
+  (deref [_]
+    v)
+
+  Monad
+  (do-result [_ v]
+    (ListTransformer. m (m (clojure.core/list v))))
+  (bind [mv f]
+    (let [v (deref mv)]
+      (ListTransformer. m (bind v (fn [xs]
+                                     (if (clojure.core/seq xs)
+                                       (->> xs
+                                            (map (comp deref (wrap-check mv f)))
+                                            (fmap (partial apply lazy-concat)))
+                                       (m '())))))))
+  MonadZero
+  (zero [_]
+    (ListTransformer. m (m '())))
+  (plus-step [mv mvs]
+    (ListTransformer.
+     m (reduce (lift concat)
+               (m '())
+               (clojure.core/map deref (cons mv mvs)))))
+
+  MonadDev
+  (val-types [_]
+    [ListTransformer])
+  (name-monad [_]
+    "list-t"))
+
+(defn list-t
+  [m]
+  (fn [v]
+    (ListTransformer. m (m (clojure.core/list v)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  Vector transformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad transformer that transforms a monad m into a monad in which
+;; the base values are vectors.
+
+(deftype VectorTransformer [m v]
+  clojure.lang.IDeref
+  (deref [_]
+    v)
+
+  Monad
+  (do-result [_ v]
+    (VectorTransformer. m (m (clojure.core/vector v))))
+  (bind [mv f]
+    (let [v (deref mv)]
+      (VectorTransformer. m (bind v (fn [xs]
+                                       (if (clojure.core/seq xs)
+                                         (->> xs
+                                              (map (comp deref (wrap-check mv f)))
+                                              (fmap (partial apply lazy-concat)))
+                                         (m [])))))))
+
+  MonadZero
+  (zero [_]
+    (VectorTransformer. m (m [])))
+  (plus-step [mv mvs]
+    (VectorTransformer.
+     m (reduce (lift (comp clojure.core/vec concat))
+               (m [])
+               (clojure.core/map deref (cons mv mvs)))))
+
+  MonadDev
+  (val-types [_]
+    [VectorTransformer])
+  (name-monad [_]
+    "vector-t"))
+
+(defn vector-t
+  [m]
+  (fn [v]
+    (VectorTransformer. m (m (clojure.core/vector v)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  Set transformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad transformer that transforms a monad m into a monad in which
+;; the base values are sets.
+
+(deftype SetTransformer [m v]
+  clojure.lang.IDeref
+  (deref [_]
+    v)
+
+  Monad
+  (do-result [_ v]
+    (SetTransformer. m (m (clojure.core/hash-set v))))
+  (bind [mv f]
+    (let [v (deref mv)]
+      (SetTransformer. m (bind v (fn [xs]
+                                    (if (clojure.core/seq xs)
+                                      (->> xs
+                                           (map (comp deref (wrap-check mv f)))
+                                           (fmap (partial apply lazy-concat)))
+                                      (m #{})))))))
+
+  MonadZero
+  (zero [_]
+    (SetTransformer. m (m #{})))
+  (plus-step [mv mvs]
+    (SetTransformer.
+     m (reduce (lift set/union)
+               (m #{})
+               (clojure.core/map deref (cons mv mvs)))))
+
+  MonadDev
+  (val-types [_]
+    [SetTransformer])
+  (name-monad [_]
+    "set-t"))
+
+(defn set-t
+  [m]
+  (fn [v]
+    (SetTransformer. m (m (clojure.core/hash-set v)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  Maybe transformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monad transformer that transforms a monad m into a monad in which
+;; the base values can be invalid (represented by :nothing).
+
+(deftype MaybeTransformer [m v]
+  clojure.lang.IDeref
+  (deref [_]
+    v)
+
+  Monad
+  (do-result [_ v]
+    (MaybeTransformer. m (m (maybe v))))
+  (bind [mv f]
+    (let [v (deref mv)]
+      (MaybeTransformer. m (bind v (fn [x]
+                                      (if (= x maybe-zero-val)
+                                        (m maybe-zero-val)
+                                        (deref ((wrap-check mv f) (deref x)))))))))
+
+  MonadZero
+  (zero [_]
+    (MaybeTransformer. m (m maybe-zero-val)))
+  (plus-step [mv mvs]
+    (MaybeTransformer.
+     m (bind (deref mv)
+             (fn [x]
+               (cond
+                 (and (= x maybe-zero-val) (empty? mvs)) (m maybe-zero-val)
+                 (= x maybe-zero-val) (deref (plus mvs))
+                 :else (m x))))))
+
+  MonadDev
+  (val-types [_]
+    [MaybeTransformer])
+  (name-monad [_]
+    "maybe-t"))
+
+(defn maybe-t
+  [m]
+  (fn [v]
+    (MaybeTransformer. m (m (maybe v)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  State transformer
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -745,191 +935,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  MaybeTransformer
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Monad transformer that transforms a monad m into a monad in which
-;; the base values can be invalid (represented by :nothing).
-
-(deftype MaybeTransformer [m v]
-  clojure.lang.IDeref
-  (deref [_]
-    v)
-
-  Monad
-  (do-result [_ v]
-    (MaybeTransformer. m (m (maybe v))))
-  (bind [mv f]
-    (let [v (deref mv)]
-      (MaybeTransformer. m (bind v (fn [x]
-                                      (if (= x maybe-zero-val)
-                                        (m maybe-zero-val)
-                                        (deref ((wrap-check mv f) (deref x)))))))))
-
-  MonadZero
-  (zero [_]
-    (MaybeTransformer. m (m maybe-zero-val)))
-  (plus-step [mv mvs]
-    (MaybeTransformer.
-     m (bind (deref mv)
-             (fn [x]
-               (cond
-                 (and (= x maybe-zero-val) (empty? mvs)) (m maybe-zero-val)
-                 (= x maybe-zero-val) (deref (plus mvs))
-                 :else (m x))))))
-
-  MonadDev
-  (val-types [_]
-    [MaybeTransformer])
-  (name-monad [_]
-    "maybe-t"))
-
-(defn maybe-t
-  [m]
-  (fn [v]
-    (MaybeTransformer. m (m (maybe v)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;;  ListTransformer
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Monad transformer that transforms a monad m into a monad in which
-;; the base values are lists.
-
-(deftype ListTransformer [m v]
-  clojure.lang.IDeref
-  (deref [_]
-    v)
-
-  Monad
-  (do-result [_ v]
-    (ListTransformer. m (m (clojure.core/list v))))
-  (bind [mv f]
-    (let [v (deref mv)]
-      (ListTransformer. m (bind v (fn [xs]
-                                     (if (clojure.core/seq xs)
-                                       (->> xs
-                                            (map (comp deref (wrap-check mv f)))
-                                            (fmap (partial apply lazy-concat)))
-                                       (m '())))))))
-  MonadZero
-  (zero [_]
-    (ListTransformer. m (m '())))
-  (plus-step [mv mvs]
-    (ListTransformer.
-     m (reduce (lift concat)
-               (m '())
-               (clojure.core/map deref (cons mv mvs)))))
-
-  MonadDev
-  (val-types [_]
-    [ListTransformer])
-  (name-monad [_]
-    "list-t"))
-
-(defn list-t
-  [m]
-  (fn [v]
-    (ListTransformer. m (m (clojure.core/list v)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;;  VectorTransformer
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Monad transformer that transforms a monad m into a monad in which
-;; the base values are vectors.
-
-(deftype VectorTransformer [m v]
-  clojure.lang.IDeref
-  (deref [_]
-    v)
-
-  Monad
-  (do-result [_ v]
-    (VectorTransformer. m (m (clojure.core/vector v))))
-  (bind [mv f]
-    (let [v (deref mv)]
-      (VectorTransformer. m (bind v (fn [xs]
-                                       (if (clojure.core/seq xs)
-                                         (->> xs
-                                              (map (comp deref (wrap-check mv f)))
-                                              (fmap (partial apply lazy-concat)))
-                                         (m [])))))))
-
-  MonadZero
-  (zero [_]
-    (VectorTransformer. m (m [])))
-  (plus-step [mv mvs]
-    (VectorTransformer.
-     m (reduce (lift (comp clojure.core/vec concat))
-               (m [])
-               (clojure.core/map deref (cons mv mvs)))))
-
-  MonadDev
-  (val-types [_]
-    [VectorTransformer])
-  (name-monad [_]
-    "vector-t"))
-
-(defn vector-t
-  [m]
-  (fn [v]
-    (VectorTransformer. m (m (clojure.core/vector v)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;;  SetTransformer
-;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;; Monad transformer that transforms a monad m into a monad in which
-;; the base values are sets.
-
-(deftype SetTransformer [m v]
-  clojure.lang.IDeref
-  (deref [_]
-    v)
-
-  Monad
-  (do-result [_ v]
-    (SetTransformer. m (m (clojure.core/hash-set v))))
-  (bind [mv f]
-    (let [v (deref mv)]
-      (SetTransformer. m (bind v (fn [xs]
-                                    (if (clojure.core/seq xs)
-                                      (->> xs
-                                           (map (comp deref (wrap-check mv f)))
-                                           (fmap (partial apply lazy-concat)))
-                                      (m #{})))))))
-
-  MonadZero
-  (zero [_]
-    (SetTransformer. m (m #{})))
-  (plus-step [mv mvs]
-    (SetTransformer.
-     m (reduce (lift set/union)
-               (m #{})
-               (clojure.core/map deref (cons mv mvs)))))
-
-  MonadDev
-  (val-types [_]
-    [SetTransformer])
-  (name-monad [_]
-    "set-t"))
-
-(defn set-t
-  [m]
-  (fn [v]
-    (SetTransformer. m (m (clojure.core/hash-set v)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
-;;  WriterTransformer
+;;  Writer transformer
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 

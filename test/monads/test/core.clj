@@ -116,6 +116,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(comment "Need test for monads.core/lazy-concat.")
+
 (defn lazy-seq-f [n]
   (m/lazy-seq (inc n)))
 
@@ -402,11 +404,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  monads.core.CallWithCurrentContinuation
+;;  monads.core.call-cc
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(comment "The call-cc monad is not yet implemented.")
+(comment "monads.core/call-cc is not yet implemented.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -451,107 +453,12 @@
 
 ;; The tests below have been disabled, and are in the process of being
 ;; reworked and re-enabled in light of monads.core/check-return-type
+;; and other modifications to the protocol-monads library
 (comment
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
-  ;;  monads.core.StateTransformer
-  ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (def vect-state (m/state-t vector))
-  (defn state-t-f [n]
-    (vect-state (inc n)))
-
-  (defn state-t-g [n]
-    (vect-state (+ n 5)))
-
-  (deftest first-law-state-t
-    (let [mv1 (m/bind (vect-state 10) state-t-f)
-          mv2 (state-t-f 10)]
-      (is (= (mv1 {}) (mv2 {})))))
-
-  (deftest second-law-state-t
-    (let [mv1 (m/bind (vect-state 10) vect-state)
-          mv2 (vect-state 10)]
-      (is (= (mv1 :state-t) (mv2 :state-t)))))
-
-  (deftest third-law-state-t
-    (let [mv1 (m/bind (m/bind (vect-state 4) state-t-f) state-t-g)
-          mv2 (m/bind (vect-state 4)
-                      (fn [x]
-                        (m/bind (state-t-f x) state-t-g)))]
-      (is (= (mv1 :state-t) (mv2 :state-t)))))
-
-  (deftest zero-law-state-t
-    (is (= [] ((m/zero (vect-state nil)) :state)))
-    (is (= ((m/bind (m/zero (vect-state nil)) state-t-f) :state)
-           []))
-    (is (= ((m/bind (vect-state 4) (constantly (m/zero (vect-state nil)))) :state)
-           []))
-    (is (= ((m/plus [(vect-state 5) (m/zero (vect-state nil))]) :state)
-           ((vect-state 5) :state)))
-    (is (= ((m/plus [(m/zero (vect-state nil)) (vect-state 4)]) :state)
-           ((vect-state 4) :state))))
-
-  (deftest do-state-t
-    (is (= []
-           ((m/do vect-state
-                  [:when false]
-                  :something)
-            :state)))
-
-    (is (= [[[10 15] :state]]
-           ((m/do vect-state
-                  [x (state-t-f 9)
-                   y (state-t-g x)]
-                  [x y])
-            :state))))
-
-  (def parse-m (m/state-t m/maybe))
-
-  (deftest test-do
-    (is (= [19 {:val 19}]
-           @((m/do parse-m
-                   [_ (m/set-val :val 19)]
-                   19)
-             {})))
-
-    (let [tinc #(vector (inc %))]
-      (is ( = [[1 2 3] [3 4 5]]
-              (m/do vector
-                    [a (vec (range 5))
-                     :when (odd? a)
-                     x (tinc a)
-                     y (tinc x)]
-                    [a x y])))))
-
-  (deftest test-state-maybe-1
-    (let [test-m (m/state-t m/maybe)]
-      (is (= [:test :state]
-             @((m/plus* [(test-m nil)
-                         (m/do test-m
-                               [:when false]
-                               (throw (Exception. "Really should not be thrown")))
-                         (test-m :test)
-                         (m/do test-m
-                               [_ (test-m 10)]
-                               (throw (Exception. "Should not be thrown")))])
-               :state)))))
-
-  (deftest test-state-maybe-2
-    (let [test-m (m/state-t m/maybe)]
-      (is (= [:test :state]
-             @((m/plus* [(test-m nil)
-                         (test-m :test)
-                         (m/do test-m
-                               [_ (test-m 10)]
-                               (throw (Exception. "Should not be thrown")))])
-               :state)))))
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;
-  ;;  Monad and utility functions
+  ;;  Monad functions
   ;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -579,51 +486,6 @@
              ((m/chain [range t u]) 4)))
       (is (= ((m/do m/state [x (st 8) y (su x)] y) :state)
              (((m/chain [st su]) 8) :state)))))
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;
-  ;;  monads.core.MaybeTransformer
-  ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (def vect-maybe (m/maybe-t vector))
-  (defn maybe-t-f [n]
-    (vect-maybe (inc n)))
-
-  (defn maybe-t-g [n]
-    (vect-maybe (+ n 5)))
-
-  (deftest first-law-maybe-t
-    (is (= @(first @(m/bind (vect-maybe 10) maybe-t-f))
-           @(first @(maybe-t-f 10)))))
-
-  (deftest second-law-maybe-t
-    (is (= @(first @(m/bind (vect-maybe 10) vect-maybe))
-           @(first @(vect-maybe 10)))))
-
-  (deftest third-law-maybe-t
-    (is (= @(first @(m/bind (m/bind (vect-maybe 4) maybe-t-f) maybe-t-g))
-           @(first @(m/bind (vect-maybe 4)
-                            (fn [x]
-                              (m/bind (maybe-t-f x) maybe-t-g)))))))
-
-  (deftest zero-law-maybe-t
-    (is (= m/maybe-zero-val (first @ (m/zero (vect-maybe nil)))))
-    (is (= (first @(m/bind (m/zero (vect-maybe nil)) maybe-t-f))
-           (first @(m/zero (vect-maybe nil)))))
-    (is (= (first @(m/bind (vect-maybe 4) (constantly (m/zero (vect-maybe nil)))))
-           (first @(m/zero (vect-maybe nil)))))
-    (is (= @(first @(m/plus [(vect-maybe 4) (m/zero (vect-maybe nil))]))
-           @(first @(vect-maybe 4))))
-    (is (= @(first @(m/plus [(m/zero (vect-maybe nil)) (vect-maybe 4)]))
-           @(first @(vect-maybe 4)))))
-
-  (deftest do-maybe-t
-    (is (= [10 15]
-           @(first @(m/do vect-maybe
-                          [x (maybe-t-f 9)
-                           y (maybe-t-g x)]
-                          [x y])))))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
@@ -759,6 +621,148 @@
                   [x (set-t-f 9)
                    y (set-t-g x)]
                   [x y]))))
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;
+  ;;  monads.core.MaybeTransformer
+  ;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (def vect-maybe (m/maybe-t vector))
+  (defn maybe-t-f [n]
+    (vect-maybe (inc n)))
+
+  (defn maybe-t-g [n]
+    (vect-maybe (+ n 5)))
+
+  (deftest first-law-maybe-t
+    (is (= @(first @(m/bind (vect-maybe 10) maybe-t-f))
+           @(first @(maybe-t-f 10)))))
+
+  (deftest second-law-maybe-t
+    (is (= @(first @(m/bind (vect-maybe 10) vect-maybe))
+           @(first @(vect-maybe 10)))))
+
+  (deftest third-law-maybe-t
+    (is (= @(first @(m/bind (m/bind (vect-maybe 4) maybe-t-f) maybe-t-g))
+           @(first @(m/bind (vect-maybe 4)
+                            (fn [x]
+                              (m/bind (maybe-t-f x) maybe-t-g)))))))
+
+  (deftest zero-law-maybe-t
+    (is (= m/maybe-zero-val (first @ (m/zero (vect-maybe nil)))))
+    (is (= (first @(m/bind (m/zero (vect-maybe nil)) maybe-t-f))
+           (first @(m/zero (vect-maybe nil)))))
+    (is (= (first @(m/bind (vect-maybe 4) (constantly (m/zero (vect-maybe nil)))))
+           (first @(m/zero (vect-maybe nil)))))
+    (is (= @(first @(m/plus [(vect-maybe 4) (m/zero (vect-maybe nil))]))
+           @(first @(vect-maybe 4))))
+    (is (= @(first @(m/plus [(m/zero (vect-maybe nil)) (vect-maybe 4)]))
+           @(first @(vect-maybe 4)))))
+
+  (deftest do-maybe-t
+    (is (= [10 15]
+           @(first @(m/do vect-maybe
+                          [x (maybe-t-f 9)
+                           y (maybe-t-g x)]
+                          [x y])))))
+
+
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  ;;
+  ;;  monads.core.StateTransformer
+  ;;
+  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+  (def vect-state (m/state-t vector))
+  (defn state-t-f [n]
+    (vect-state (inc n)))
+
+  (defn state-t-g [n]
+    (vect-state (+ n 5)))
+
+  (deftest first-law-state-t
+    (let [mv1 (m/bind (vect-state 10) state-t-f)
+          mv2 (state-t-f 10)]
+      (is (= (mv1 {}) (mv2 {})))))
+
+  (deftest second-law-state-t
+    (let [mv1 (m/bind (vect-state 10) vect-state)
+          mv2 (vect-state 10)]
+      (is (= (mv1 :state-t) (mv2 :state-t)))))
+
+  (deftest third-law-state-t
+    (let [mv1 (m/bind (m/bind (vect-state 4) state-t-f) state-t-g)
+          mv2 (m/bind (vect-state 4)
+                      (fn [x]
+                        (m/bind (state-t-f x) state-t-g)))]
+      (is (= (mv1 :state-t) (mv2 :state-t)))))
+
+  (deftest zero-law-state-t
+    (is (= [] ((m/zero (vect-state nil)) :state)))
+    (is (= ((m/bind (m/zero (vect-state nil)) state-t-f) :state)
+           []))
+    (is (= ((m/bind (vect-state 4) (constantly (m/zero (vect-state nil)))) :state)
+           []))
+    (is (= ((m/plus [(vect-state 5) (m/zero (vect-state nil))]) :state)
+           ((vect-state 5) :state)))
+    (is (= ((m/plus [(m/zero (vect-state nil)) (vect-state 4)]) :state)
+           ((vect-state 4) :state))))
+
+  (deftest do-state-t
+    (is (= []
+           ((m/do vect-state
+                  [:when false]
+                  :something)
+            :state)))
+
+    (is (= [[[10 15] :state]]
+           ((m/do vect-state
+                  [x (state-t-f 9)
+                   y (state-t-g x)]
+                  [x y])
+            :state))))
+
+  (def parse-m (m/state-t m/maybe))
+
+  (deftest test-do
+    (is (= [19 {:val 19}]
+           @((m/do parse-m
+                   [_ (m/set-val :val 19)]
+                   19)
+             {})))
+
+    (let [tinc #(vector (inc %))]
+      (is ( = [[1 2 3] [3 4 5]]
+              (m/do vector
+                    [a (vec (range 5))
+                     :when (odd? a)
+                     x (tinc a)
+                     y (tinc x)]
+                    [a x y])))))
+
+  (deftest test-state-maybe-1
+    (let [test-m (m/state-t m/maybe)]
+      (is (= [:test :state]
+             @((m/plus* [(test-m nil)
+                         (m/do test-m
+                               [:when false]
+                               (throw (Exception. "Really should not be thrown")))
+                         (test-m :test)
+                         (m/do test-m
+                               [_ (test-m 10)]
+                               (throw (Exception. "Should not be thrown")))])
+               :state)))))
+
+  (deftest test-state-maybe-2
+    (let [test-m (m/state-t m/maybe)]
+      (is (= [:test :state]
+             @((m/plus* [(test-m nil)
+                         (test-m :test)
+                         (m/do test-m
+                               [_ (test-m 10)]
+                               (throw (Exception. "Should not be thrown")))])
+               :state)))))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
