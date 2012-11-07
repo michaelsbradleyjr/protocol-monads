@@ -18,6 +18,10 @@
 (defn list-g [n]
   (list (+ n 5)))
 
+(deftest monads-core-and-clojure-core-list-factory-equiv
+  (is (= (m/list 1 2 3)
+         (list 1 2 3))))
+
 (def do-result-list (partial m/do-result (list [nil])))
 (def zero-val-list (m/zero (list [nil])))
 
@@ -63,6 +67,14 @@
 
 (defn vector-g [n]
   (vector (+ n 5)))
+
+(deftest monads-core-and-clojure-core-vector-factory-equiv
+  (is (= (m/vector 1 2 3)
+         (vector 1 2 3))))
+
+(deftest monads-core-and-clojure-core-vec-factory-equiv
+  (is (= (m/vec (list 1 2 3))
+         (vec (list 1 2 3)))))
 
 (def do-result-vector (partial m/do-result (vector [nil])))
 (def zero-val-vector (m/zero (vector [nil])))
@@ -110,7 +122,7 @@
 (defn lazy-seq-g [n]
   (m/lazy-seq (+ n 5)))
 
-(deftest demo-clojure-core-and-monads-core-lazy-seq-factory-equiv
+(deftest monads-core-and-clojure-core-lazy-seq-factory-equiv
   (is (= (m/lazy-seq 1 2 3)
          (lazy-seq [1 2 3]))))
 
@@ -159,6 +171,10 @@
 
 (defn set-g [n]
   (hash-set (+ n 5)))
+
+(deftest monads-core-and-clojure-core-hash-set-factory-equiv
+  (is (= (m/hash-set 1 2 3)
+         (hash-set 1 2 3))))
 
 (def do-result-set (partial m/do-result (hash-set [nil])))
 (def zero-val-set (m/zero (hash-set [nil])))

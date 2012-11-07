@@ -1,5 +1,5 @@
 (ns monads.core
-  (:refer-clojure :exclude [do seq map lazy-seq])
+  (:refer-clojure :exclude [do seq map list vector vec lazy-seq hash-set])
   (:require [clojure.set :as set]
             [clojure.string :as string]))
 
@@ -31,6 +31,32 @@
     "add value to container, return new container")
   (writer-m-combine [container1 container2]
     "combine two containers, return new container"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  Factory functions for clojure.core types, namespaced in monads.core
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defn list
+  [& vs]
+  (apply clojure.core/list vs))
+
+(defn vector
+  [& vs]
+  (apply clojure.core/vector vs))
+
+(defn vec
+  [vs]
+  (clojure.core/vec vs))
+
+(defn lazy-seq
+  [& vs]
+  (clojure.core/lazy-seq vs))
+
+(defn hash-set
+  [& vs]
+  (apply clojure.core/hash-set vs))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -93,7 +119,7 @@
   "Lazy variant of plus. Implemented as a macro to avoid eager
   argument evaluation."
   [[mv & mvs]]
-  `(plus-step* ~mv (list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs))))
+  `(plus-step* ~mv (clojure.core/list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs))))
 
 (defmacro do
   "Monad comprehension. Takes the name of a monadic value factory
@@ -200,10 +226,6 @@
          (clojure.core/seq ls) (lazy-concat (first ls) (rest ls))
          :else (clojure.core/lazy-seq)))))
 
-(defn lazy-seq
-  [& v]
-  (clojure.core/lazy-seq v))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;;  clojure.lang.PersistenList
@@ -216,13 +238,13 @@
 (extend-type clojure.lang.PersistentList
   Monad
   (do-result [_ v]
-    (list v))
+    (clojure.core/list v))
   (bind [mv f]
-    (apply list (mapcat (wrap-check mv f) mv)))
+    (apply clojure.core/list (mapcat (wrap-check mv f) mv)))
 
   MonadZero
   (zero [_]
-    (list))
+    (clojure.core/list))
   (plus-step [mv mvs]
     (apply concat mv mvs))
   (plus-step* [mv mvs]
@@ -236,7 +258,7 @@
     "list")
 
   MonadWriter
-  (writer-m-empty [_] (list))
+  (writer-m-empty [_] (clojure.core/list))
   (writer-m-add [c v] (conj c v))
   (writer-m-combine [c1 c2] (concat c1 c2)))
 
@@ -252,13 +274,13 @@
 (extend-type clojure.lang.PersistentList$EmptyList
   Monad
   (do-result [_ v]
-    (list v))
+    (clojure.core/list v))
   (bind [mv f]
-    (apply list (mapcat (wrap-check mv f) mv)))
+    (apply clojure.core/list (mapcat (wrap-check mv f) mv)))
 
   MonadZero
   (zero [_]
-    (list))
+    (clojure.core/list))
   (plus-step [mv mvs]
     (apply concat mv mvs))
   (plus-step* [mv mvs]
@@ -272,7 +294,7 @@
     "list")
 
   MonadWriter
-  (writer-m-empty [_] (list))
+  (writer-m-empty [_] (clojure.core/list))
   (writer-m-add [c v] (conj c v))
   (writer-m-combine [c1 c2] (concat c1 c2)))
 
@@ -290,15 +312,15 @@
   (do-result [_ v]
     [v])
   (bind [mv f]
-    (vec (mapcat (wrap-check mv f) mv)))
+    (clojure.core/vec (mapcat (wrap-check mv f) mv)))
 
   MonadZero
   (zero [_]
     [])
   (plus-step [mv mvs]
-    (vec (apply concat mv mvs)))
+    (clojure.core/vec (apply concat mv mvs)))
   (plus-step* [mv mvs]
-    (vec (apply concat mv (clojure.core/map #(%) mvs))))
+    (clojure.core/vec (apply concat mv (clojure.core/map #(%) mvs))))
 
   MonadDev
   (val-types [_]
@@ -309,7 +331,7 @@
   MonadWriter
   (writer-m-empty [_] [])
   (writer-m-add [c v] (conj c v))
-  (writer-m-combine [c1 c2] (vec (concat c1 c2))))
+  (writer-m-combine [c1 c2] (clojure.core/vec (concat c1 c2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -342,7 +364,7 @@
     "lazy-seq")
 
   MonadWriter
-  (writer-m-empty [_] (list))
+  (writer-m-empty [_] (clojure.core/list))
   (writer-m-add [c v] (conj c v))
   (writer-m-combine [c1 c2] (concat c1 c2)))
 
@@ -358,7 +380,7 @@
 (extend-type clojure.lang.PersistentHashSet
   Monad
   (do-result [_ v]
-    (hash-set v))
+    (clojure.core/hash-set v))
   (bind [mv f]
     (apply set/union
            (clojure.core/map (wrap-check mv f) mv)))
@@ -697,9 +719,9 @@
                         nil
                         nil))
   (plus-step [mv mvs]
-    (StateTransformer. m nil nil nil (list mv mvs) nil))
+    (StateTransformer. m nil nil nil (clojure.core/list mv mvs) nil))
   (plus-step* [mv mvs]
-    (StateTransformer. m nil nil nil nil (list mv mvs)))
+    (StateTransformer. m nil nil nil nil (clojure.core/list mv mvs)))
 
   MonadDev
   (val-types [_]
@@ -779,7 +801,7 @@
 
   Monad
   (do-result [_ v]
-    (ListTransformer. m (m (list v))))
+    (ListTransformer. m (m (clojure.core/list v))))
   (bind [mv f]
     (let [v (deref mv)]
       (ListTransformer. m (bind v (fn [xs]
@@ -806,7 +828,7 @@
 (defn list-t
   [m]
   (fn [v]
-    (ListTransformer. m (m (list v)))))
+    (ListTransformer. m (m (clojure.core/list v)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -824,7 +846,7 @@
 
   Monad
   (do-result [_ v]
-    (VectorTransformer. m (m (vector v))))
+    (VectorTransformer. m (m (clojure.core/vector v))))
   (bind [mv f]
     (let [v (deref mv)]
       (VectorTransformer. m (bind v (fn [xs]
@@ -839,7 +861,7 @@
     (VectorTransformer. m (m [])))
   (plus-step [mv mvs]
     (VectorTransformer.
-     m (reduce (lift (comp vec concat))
+     m (reduce (lift (comp clojure.core/vec concat))
                (m [])
                (clojure.core/map deref (cons mv mvs)))))
 
@@ -852,7 +874,7 @@
 (defn vector-t
   [m]
   (fn [v]
-    (VectorTransformer. m (m (vector v)))))
+    (VectorTransformer. m (m (clojure.core/vector v)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -870,7 +892,7 @@
 
   Monad
   (do-result [_ v]
-    (SetTransformer. m (m (hash-set v))))
+    (SetTransformer. m (m (clojure.core/hash-set v))))
   (bind [mv f]
     (let [v (deref mv)]
       (SetTransformer. m (bind v (fn [xs]
@@ -898,7 +920,7 @@
 (defn set-t
   [m]
   (fn [v]
-    (SetTransformer. m (m (hash-set v)))))
+    (SetTransformer. m (m (clojure.core/hash-set v)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
