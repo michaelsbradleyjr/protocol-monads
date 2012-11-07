@@ -586,7 +586,7 @@
 ;; should return a continuation (which becomes the return value of
 ;; call-cc), or call the passed-in current continuation to terminate.
 
-;; Holding off on implementing this until later.
+;; Not yet implemented.
 (defn call-cc
   [f]
   )

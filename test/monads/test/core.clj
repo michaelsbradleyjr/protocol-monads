@@ -342,6 +342,14 @@
 (deftest deref-cont
   (is (= 10 @(m/cont 10))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  CallWithCurrentContinuationMonad
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(comment "The call-cc monad is not yet implemented.")
+
 ;; The tests below have been disabled, and are in the process of being
 ;; reworked and re-enabled in light of monads.core/check-return-type
 (comment
