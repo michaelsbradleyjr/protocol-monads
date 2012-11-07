@@ -615,9 +615,14 @@
 ;; value of call-cc), or call the passed-in current continuation to
 ;; terminate.
 
-;; Not yet implemented.
-(defn call-cc
-  [f]
+(comment
+
+  "The call-cc monad is not yet implemented."
+
+  (defn call-cc
+    [f]
+    )
+
   )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
