@@ -380,7 +380,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  MaybeMonad
+;;  Maybe monad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -389,18 +389,18 @@
 ;; As soon as a step returns maybe-zero-val, the whole computation
 ;; will yield maybe-zero-val as well. For convenience `(maybe nil)`
 ;; returns maybe-zero-val, but this is not the case for constructor
-;; call `(MaybeMonad. nil)` in order to satisfy the first Monad Law.
+;; call `(Maybe. nil)` in order to satisfy the first Monad Law.
 
 (declare maybe-zero-val)
 
-(deftype MaybeMonad [v]
+(deftype Maybe [v]
   clojure.lang.IDeref
   (deref [_]
     v)
 
   Monad
   (do-result [_ v]
-    (MaybeMonad. v))
+    (Maybe. v))
   (bind [mv f]
     (if (= mv maybe-zero-val)
       maybe-zero-val
@@ -428,28 +428,28 @@
 
   MonadDev
   (val-types [_]
-    [MaybeMonad])
+    [Maybe])
   (name-monad [_]
     "maybe"))
 
-(def maybe-zero-val (MaybeMonad. ::nothing))
+(def maybe-zero-val (Maybe. ::nothing))
 
 (defn maybe
   [v]
   (if (nil? v)
     maybe-zero-val
-    (MaybeMonad. v)))
+    (Maybe. v)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  StateMonad
+;;  State monad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Monad describing stateful computations. The monadic values have the
 ;; structure (fn [old-state] [result new-state]).
 
-(deftype StateMonad [v mv f]
+(deftype State [v mv f]
   clojure.lang.IFn
   (invoke [_ s]
     (if f
@@ -459,22 +459,22 @@
 
   Monad
   (do-result [_ v]
-    (StateMonad. v nil nil))
+    (State. v nil nil))
   (bind [mv f]
-    (StateMonad. nil mv (wrap-check mv f)))
+    (State. nil mv (wrap-check mv f)))
 
   MonadDev
   (val-types [_]
-    [StateMonad])
+    [State])
   (name-monad [_]
     "state"))
 
 (defn state
   [v]
-  (StateMonad. v nil nil))
+  (State. v nil nil))
 
 (defn update-state
-  "Return a StateMonad value that replaces the current state by the
+  "Return a State monad value that replaces the current state by the
    result of f applied to the current state and that returns the old state."
   [f]
   (reify
@@ -484,37 +484,37 @@
 
     Monad
     (do-result [_ v]
-      (StateMonad. v nil nil))
+      (State. v nil nil))
     (bind [mv f]
-      (StateMonad. nil mv (wrap-check mv f)))
+      (State. nil mv (wrap-check mv f)))
 
     MonadDev
     (val-types [_]
-      [StateMonad])
+      [State])
     (name-monad [_]
       "state")))
 
 (defn set-state
-  "Return a StateMonad value that replaces the current state by s and
+  "Return a State monad value that replaces the current state by s and
    returns the previous state."
   [s]
   (update-state (constantly s)))
 
 (defn get-state
-  "Return a StateMonad value that returns the current state and does not
+  "Return a State monad value that returns the current state and does not
    modify it."
   []
   (update-state identity))
 
 (defn get-val
-  "Return a StateMonad value that assumes the state to be a map and
+  "Return a State monad value that assumes the state to be a map and
    returns the value corresponding to the given key. The state is not modified."
   [key]
   (bind (get-state)
         #(state (get % key))))
 
 (defn update-val
-  "Return a StateMonad value that assumes the state to be a map and
+  "Return a State monad value that assumes the state to be a map and
    replaces the value associated with the given key by the return value
    of f applied to the old value and args. The old value is returned."
   [key f & args]
@@ -522,7 +522,7 @@
         #(state (get % key))))
 
 (defn set-val
-  "Return a StateMonad value that assumes the state to be a map and
+  "Return a State monad value that assumes the state to be a map and
    replaces the value associated with key by val. The old value is returned."
   [key val]
   (update-val key (constantly val)))
@@ -541,7 +541,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  ContinuationMonad
+;;  Continuation monad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -550,7 +550,7 @@
 ;; representing the continuation of the computation, to which they
 ;; pass their result.
 
-(deftype ContinuationMonad [v mv f]
+(deftype Continuation [v mv f]
   clojure.lang.IDeref
   (deref [mv]
     (mv identity))
@@ -563,30 +563,31 @@
 
   Monad
   (do-result [_ v]
-    (ContinuationMonad. v nil nil))
+    (Continuation. v nil nil))
   (bind [mv f]
-    (ContinuationMonad. nil mv (wrap-check mv f)))
+    (Continuation. nil mv (wrap-check mv f)))
 
   MonadDev
   (val-types [_]
-    [ContinuationMonad])
+    [Continuation])
   (name-monad [_]
     "cont"))
 
 (defn cont
   [v]
-  (ContinuationMonad. v nil nil))
+  (Continuation. v nil nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  CallWithCurrentContinuationMonad
+;;  CallWithCurrentContinuation
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; A computation in the cont monad that calls function f with a single
-;; argument representing the current continuation. The function f
-;; should return a continuation (which becomes the return value of
-;; call-cc), or call the passed-in current continuation to terminate.
+;; A computation in the Continuation monad that calls function f with
+;; a single argument representing the current continuation. The
+;; function f should return a continuation (which becomes the return
+;; value of call-cc), or call the passed-in current continuation to
+;; terminate.
 
 ;; Not yet implemented.
 (defn call-cc
@@ -595,7 +596,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  WriterMonad
+;;  Writer monad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -605,41 +606,41 @@
 ;; be used for storing the log data. Its empty value is passed as a
 ;; parameter.
 
-(deftype WriterMonad [v accumulator]
+(deftype Writer [v accumulator]
   clojure.lang.IDeref
   (deref [_]
     [v accumulator])
 
   Monad
   (do-result [_ v]
-    (WriterMonad. v (writer-m-empty accumulator)))
+    (Writer. v (writer-m-empty accumulator)))
   (bind [mv f]
     (let [[v1 a1] (deref mv)
           [v2 a2] (deref ((wrap-check mv f) v1))]
-      (WriterMonad. v2 (writer-m-combine a1 a2))))
+      (Writer. v2 (writer-m-combine a1 a2))))
 
   MonadDev
   (val-types [_]
-    [WriterMonad])
+    [Writer])
   (name-monad [_]
     "writer"))
 
 (defn writer
   [accumulator]
   (fn [v]
-    (WriterMonad. v accumulator)))
+    (Writer. v accumulator)))
 
 (defn write [m-result val-to-write]
   (let [[_ a] (deref (m-result nil))]
-    (WriterMonad. nil (writer-m-add a val-to-write))))
+    (Writer. nil (writer-m-add a val-to-write))))
 
 (defn listen [mv]
   (let [[v a :as va] (deref mv)]
-    (WriterMonad. va a)))
+    (Writer. va a)))
 
 (defn censor [f mv]
   (let [[v a] (deref mv)]
-    (WriterMonad. v (f a))))
+    (Writer. v (f a))))
 
 (extend-type java.lang.String
   MonadWriter
@@ -918,7 +919,7 @@
                       (bind (deref ((wrap-check mv f) v1))
                             (fn [v]
                               (let [[v2 a2] (deref v)]
-                                (m (WriterMonad. v2 (writer-m-combine a1 a2)))))))))
+                                (m (Writer. v2 (writer-m-combine a1 a2)))))))))
        writer-m)))
 
   MonadZero
