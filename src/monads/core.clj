@@ -128,7 +128,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monadd describing multi-valued computations, i.e. computations that
+;; Monad describing multi-valued computations, i.e. computations that
 ;; can yield multiple values as lists.
 
 (extend-type clojure.lang.PersistentList
@@ -164,7 +164,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monadd describing multi-valued computations, i.e. computations that
+;; Monad describing multi-valued computations, i.e. computations that
 ;; can yield multiple values as lists.
 
 (extend-type clojure.lang.PersistentList$EmptyList
@@ -200,7 +200,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monadd describing multi-valued computations, i.e. computations that
+;; Monad describing multi-valued computations, i.e. computations that
 ;; can yield multiple values as vectors.
 
 (extend-type clojure.lang.PersistentVector
@@ -235,7 +235,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monadd describing multi-valued computations, i.e. computations that
+;; Monad describing multi-valued computations, i.e. computations that
 ;; can yield multiple values as lazy sequences.
 
 (extend-type clojure.lang.LazySeq
@@ -270,7 +270,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monadd describing multi-valued computations, i.e. computations that
+;; Monad describing multi-valued computations, i.e. computations that
 ;; can yield multiple values as sets.
 
 (extend-type clojure.lang.PersistentHashSet
