@@ -1,7 +1,7 @@
 (ns monads.test.core
   (:use [clojure.test])
   (:require [monads.core :as m])
-  (:import [monads.core writer-transformer state-transformer]))
+  (:import [monads.core WriterTransformer StateTransformer]))
 
 (alter-var-root (var m/*throw-on-mismatch*) (constantly true))
 (alter-var-root (var m/*warn-on-mismatch*) (constantly false))
@@ -176,7 +176,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  maybe-monad
+;;  MaybeMonad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -243,7 +243,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  state-monad
+;;  StateMonad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -308,7 +308,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  cont-monad
+;;  ContinuationMonad
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -344,7 +344,7 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
-  ;;  writer-monad
+  ;;  WriterMonad
   ;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -385,7 +385,7 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
-  ;;  state-transformer
+  ;;  StateTransformer
   ;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -481,7 +481,7 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
-  ;;  monad utils
+  ;;  Monad Utilities
   ;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -512,7 +512,7 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
-  ;;  maybe-transformer
+  ;;  MaybeTransformer
   ;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -557,7 +557,7 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
-  ;;  list-transformer
+  ;;  ListTransformer
   ;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -602,7 +602,7 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
-  ;;  vector-transformer
+  ;;  VectorTransformer
   ;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -647,7 +647,7 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
-  ;;  set-transformer
+  ;;  SetTransformer
   ;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -692,7 +692,7 @@
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
-  ;;  writer-transformer
+  ;;  WriterTransformer
   ;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -739,17 +739,17 @@
     (let [test-m (m/writer-t hash-set [])
           writer-m (m/writer [])
           write-msg (fn [msg]
-                      (writer-transformer. hash-set
+                      (WriterTransformer. hash-set
                                            (hash-set ((m/writer [msg]) nil))
                                            writer-m))
           listen-msgs (fn [mv]
-                        (writer-transformer. hash-set
+                        (WriterTransformer. hash-set
                                              (->> @mv
                                                   (map #(m/listen %))
                                                   set)
                                              writer-m))
           censor-msgs (fn [f mv]
-                        (writer-transformer. hash-set
+                        (WriterTransformer. hash-set
                                              (->> @mv
                                                   (map #(m/censor f %))
                                                   set)
@@ -782,13 +782,13 @@
     (let [test-m (m/state-t (m/writer-t m/maybe []))
           writer-m (m/writer-t m/maybe [])
           write-msg (fn [msg]
-                      (state-transformer. writer-m
+                      (StateTransformer. writer-m
                                           nil
                                           ((m/state-t (m/writer-t m/maybe [msg])) nil)
                                           (constantly (test-m nil))
                                           nil))
           listen-msgs (fn [mv]
-                        (state-transformer. writer-m
+                        (StateTransformer. writer-m
                                             nil
                                             (fn [s]
                                               (let [[[_ s] msgs] @@@(mv s)]
@@ -797,7 +797,7 @@
                                               (test-m v))
                                             nil))
           censor-msgs (fn [f mv]
-                        (state-transformer. writer-m
+                        (StateTransformer. writer-m
                                             nil
                                             (fn [s]
                                               (let [[[v s] msgs] @@@(mv s)]

@@ -3,26 +3,40 @@
   (:require [clojure.set :as set]
             [clojure.string :as string]))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  Protocols
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (defprotocol Monad
   (do-result [_ v])
-  (bind [mv f])
-  (val-types [_])
-  (name-monad [_]))
+  (bind [mv f]))
 
 (defprotocol MonadZero
   (zero [_])
   (plus-step [mv mvs])
   (plus-step* [mv mvs]))
 
-;; for the writer monad
+(defprotocol MonadDev
+  "Used in conjunction with the return type checker."
+  (val-types [_])
+  (name-monad [_]))
+
 (defprotocol MonadWriter
-  "Accumulation of values into containers"
+  "Accumulation of values into containers."
   (writer-m-empty [_]
     "return an empty container")
   (writer-m-add [container value]
     "add value to container, return new container")
   (writer-m-combine [container1 container2]
     "combine two containers, return new container"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  Return Type Checker
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def ^:dynamic *throw-on-mismatch* false)
 (def ^:dynamic *warn-on-mismatch*  false)
@@ -65,6 +79,12 @@
               *warn-on-mismatch*)
     f
     (check-return-type mv f (val-types mv) *warn-on-mismatch* *throw-on-mismatch*)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  Monad Utilities
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn plus [[mv & mvs]]
   (plus-step mv mvs))
@@ -168,17 +188,21 @@
                         (reverse (rest steps)))]
       (bind mv chain))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  PersistenList
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monadd describing multi-valued computations, i.e. computations
+;; that can yield multiple values as lists.
+
 (extend-type clojure.lang.PersistentList
   Monad
   (do-result [_ v]
     (list v))
   (bind [mv f]
     (apply list (mapcat (wrap-check mv f) mv)))
-  (val-types [_]
-    [clojure.lang.PersistentList
-     clojure.lang.PersistentList$EmptyList])
-  (name-monad [_]
-    "list")
 
   MonadZero
   (zero [_]
@@ -188,24 +212,33 @@
   (plus-step* [mv mvs]
     (apply concat mv (clojure.core/map #(%) mvs)))
 
+  MonadDev
+  (val-types [_]
+    [clojure.lang.PersistentList
+     clojure.lang.PersistentList$EmptyList])
+  (name-monad [_]
+    "list")
+
   MonadWriter
   (writer-m-empty [_] (list))
   (writer-m-add [c v] (conj c v))
   (writer-m-combine [c1 c2] (concat c1 c2)))
 
-;; Monads describing multi-valued computations, i.e. computations
-;; that can yield multiple values. 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  PersistentList$EmptyList
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monadd describing multi-valued computations, i.e. computations
+;; that can yield multiple values as lists.
+
 (extend-type clojure.lang.PersistentList$EmptyList
   Monad
   (do-result [_ v]
     (list v))
   (bind [mv f]
     (apply list (mapcat (wrap-check mv f) mv)))
-  (val-types [_]
-    [clojure.lang.PersistentList
-     clojure.lang.PersistentList$EmptyList])
-  (name-monad [_]
-    "list")
 
   MonadZero
   (zero [_]
@@ -215,10 +248,26 @@
   (plus-step* [mv mvs]
     (apply concat mv (clojure.core/map #(%) mvs)))
 
+  MonadDev
+  (val-types [_]
+    [clojure.lang.PersistentList
+     clojure.lang.PersistentList$EmptyList])
+  (name-monad [_]
+    "list")
+
   MonadWriter
   (writer-m-empty [_] (list))
   (writer-m-add [c v] (conj c v))
   (writer-m-combine [c1 c2] (concat c1 c2)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  PersistentVector
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monadd describing multi-valued computations, i.e. computations
+;; that can yield multiple values as vectors.
 
 (extend-type clojure.lang.PersistentVector
   Monad
@@ -226,10 +275,6 @@
     [v])
   (bind [mv f]
     (vec (mapcat (wrap-check mv f) mv)))
-  (val-types [_]
-    [clojure.lang.PersistentVector])
-  (name-monad [_]
-    "vector")
 
   MonadZero
   (zero [_]
@@ -238,6 +283,12 @@
     (vec (apply concat mv mvs)))
   (plus-step* [mv mvs]
     (vec (apply concat mv (clojure.core/map #(%) mvs))))
+
+  MonadDev
+  (val-types [_]
+    [clojure.lang.PersistentVector])
+  (name-monad [_]
+    "vector")
 
   MonadWriter
   (writer-m-empty [_] [])
@@ -254,16 +305,21 @@
          (clojure.core/seq ls) (lazy-concat (first ls) (rest ls))
          :else (lazy-seq)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  LazySeq
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monadd describing multi-valued computations, i.e. computations
+;; that can yield multiple values as lazy sequences.
+
 (extend-type clojure.lang.LazySeq
   Monad
   (do-result [_ v]
     (lazy-seq [v]))
   (bind [mv f]
     (mapcat (wrap-check mv f) mv))
-  (val-types [_]
-    [clojure.lang.LazySeq])
-  (name-monad [_]
-    "lazy-seq")
 
   MonadZero
   (zero [_]
@@ -273,13 +329,26 @@
   (plus-step* [mv mvs]
     (lazy-concat mv (clojure.core/map #(%) mvs)))
 
+  MonadDev
+  (val-types [_]
+    [clojure.lang.LazySeq])
+  (name-monad [_]
+    "lazy-seq")
+
   MonadWriter
   (writer-m-empty [_] (list))
   (writer-m-add [c v] (conj c v))
   (writer-m-combine [c1 c2] (concat c1 c2)))
 
-;; Monad describing multi-valued computations, like the sequence monads,
-;; but returning sets of results instead of sequences of results.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  PersistentHashSet
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Monadd describing multi-valued computations, i.e. computations
+;; that can yield multiple values as sets.
+
 (extend-type clojure.lang.PersistentHashSet
   Monad
   (do-result [_ v]
@@ -287,10 +356,6 @@
   (bind [mv f]
     (apply set/union
            (clojure.core/map (wrap-check mv f) mv)))
-  (val-types [_]
-    [clojure.lang.PersistentHashSet])
-  (name-monad [_]
-    "hash-set")
 
   MonadZero
   (zero [_]
@@ -300,30 +365,37 @@
   (plus-step* [mv mvs]
     (apply set/union mv (clojure.core/map #(%) mvs)))
 
+  MonadDev
+  (val-types [_]
+    [clojure.lang.PersistentHashSet])
+  (name-monad [_]
+    "hash-set")
+
   MonadWriter
   (writer-m-empty [_] #{})
   (writer-m-add [c v] (conj c v))
   (writer-m-combine [c1 c2] (clojure.set/union c1 c2)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  MaybeMonad
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (declare maybe-zero-val)
 
-(deftype maybe-monad [v]
+(deftype MaybeMonad [v]
   clojure.lang.IDeref
   (deref [_]
     v)
 
   Monad
   (do-result [_ v]
-    (maybe-monad. v))
+    (MaybeMonad. v))
   (bind [mv f]
     (if (= mv maybe-zero-val)
       maybe-zero-val
       ((wrap-check mv f) @mv)))
-  (val-types [_]
-    [maybe-monad])
-  (name-monad [_]
-    "maybe")
 
   MonadZero
   (zero [_]
@@ -343,9 +415,15 @@
                     first)]
         (if (nil? mv)
           maybe-zero-val
-          (mv))))))
+          (mv)))))
 
-(def maybe-zero-val (maybe-monad. ::nothing))
+  MonadDev
+  (val-types [_]
+    [MaybeMonad])
+  (name-monad [_]
+    "maybe"))
+
+(def maybe-zero-val (MaybeMonad. ::nothing))
 
 (defn maybe
   "Monad describing computations with possible failures. Failure is
@@ -353,14 +431,19 @@
    As soon as a step returns maybe-zero-val, the whole computation will
    yield maybe-zero-val as well. For convenience `(maybe nil)` returns
    maybe-zero-val, but this is not the case for constructor call
-   `(maybe-monad. nil)` in order to satisfy the first Monad Law."
+   `(MaybeMonad. nil)` in order to satisfy the first Monad Law."
   [v]
   (if (nil? v)
     maybe-zero-val
-    (maybe-monad. v)))
+    (MaybeMonad. v)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  StateMonad
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype state-monad [v mv f]
+(deftype StateMonad [v mv f]
   clojure.lang.IFn
   (invoke [_ s]
     (if f
@@ -370,11 +453,13 @@
 
   Monad
   (do-result [_ v]
-    (state-monad. v nil nil))
+    (StateMonad. v nil nil))
   (bind [mv f]
-    (state-monad. nil mv (wrap-check mv f)))
+    (StateMonad. nil mv (wrap-check mv f)))
+
+  MonadDev
   (val-types [_]
-    [state-monad])
+    [StateMonad])
   (name-monad [_]
     "state"))
 
@@ -382,10 +467,10 @@
   "Monad describing stateful computations. The monadic values have the
    structure (fn [old-state] [result new-state])."
   [v]
-  (state-monad. v nil nil))
+  (StateMonad. v nil nil))
 
 (defn update-state
-  "Return a state-monad value that replaces the current state by the
+  "Return a StateMonad value that replaces the current state by the
    result of f applied to the current state and that returns the old state."
   [f]
   (reify
@@ -395,35 +480,37 @@
 
     Monad
     (do-result [_ v]
-      (state-monad. v nil nil))
+      (StateMonad. v nil nil))
     (bind [mv f]
-      (state-monad. nil mv (wrap-check mv f)))
+      (StateMonad. nil mv (wrap-check mv f)))
+
+    MonadDev
     (val-types [_]
-      [state-monad])
+      [StateMonad])
     (name-monad [_]
       "state")))
 
 (defn set-state
-  "Return a state-monad value that replaces the current state by s and
+  "Return a StateMonad value that replaces the current state by s and
    returns the previous state."
   [s]
   (update-state (constantly s)))
 
 (defn get-state
-  "Return a state-monad value that returns the current state and does not
+  "Return a StateMonad value that returns the current state and does not
    modify it."
   []
   (update-state identity))
 
 (defn get-val
-  "Return a state-monad value that assumes the state to be a map and
+  "Return a StateMonad value that assumes the state to be a map and
    returns the value corresponding to the given key. The state is not modified."
   [key]
   (bind (get-state)
         #(state (get % key))))
 
 (defn update-val
-  "Return a state-monad value that assumes the state to be a map and
+  "Return a StateMonad value that assumes the state to be a map and
    replaces the value associated with the given key by the return value
    of f applied to the old value and args. The old value is returned."
   [key f & args]
@@ -431,7 +518,7 @@
         #(state (get % key))))
 
 (defn set-val
-  "Return a state-monad value that assumes the state to be a map and
+  "Return a StateMonad value that assumes the state to be a map and
    replaces the value associated with key by val. The old value is returned."
   [key val]
   (update-val key (constantly val)))
@@ -448,8 +535,13 @@
   (bind (update-state #(apply update-in % path f args))
         #(state (get-in % path))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  ContinuationMonad
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype cont-monad [v mv f]
+(deftype ContinuationMonad [v mv f]
   clojure.lang.IDeref
   (deref [mv]
     (mv identity))
@@ -462,11 +554,13 @@
 
   Monad
   (do-result [_ v]
-    (cont-monad. v nil nil))
+    (ContinuationMonad. v nil nil))
   (bind [mv f]
-    (cont-monad. nil mv (wrap-check mv f)))
+    (ContinuationMonad. nil mv (wrap-check mv f)))
+
+  MonadDev
   (val-types [_]
-    [cont-monad])
+    [ContinuationMonad])
   (name-monad [_]
     "cont"))
 
@@ -475,7 +569,7 @@
    values are functions that are called with a single argument representing
    the continuation of the computation, to which they pass their result."
   [v]
-  (cont-monad. v nil nil))
+  (ContinuationMonad. v nil nil))
 
 ;; holding off on implementing this until later
 (defn call-cc
@@ -486,6 +580,11 @@
   [f]
   )
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  WriterMonad
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (extend-type java.lang.String
   MonadWriter
@@ -493,20 +592,22 @@
   (writer-m-add [c v] (str c v))
   (writer-m-combine [c1 c2] (str c1 c2)))
 
-(deftype writer-monad [v accumulator]
+(deftype WriterMonad [v accumulator]
   clojure.lang.IDeref
   (deref [_]
     [v accumulator])
 
   Monad
   (do-result [_ v]
-    (writer-monad. v (writer-m-empty accumulator)))
+    (WriterMonad. v (writer-m-empty accumulator)))
   (bind [mv f]
     (let [[v1 a1] (deref mv)
           [v2 a2] (deref ((wrap-check mv f) v1))]
-      (writer-monad. v2 (writer-m-combine a1 a2))))
+      (WriterMonad. v2 (writer-m-combine a1 a2))))
+
+  MonadDev
   (val-types [_]
-    [writer-monad])
+    [WriterMonad])
   (name-monad [_]
     "writer"))
 
@@ -517,22 +618,27 @@
    log data. Its empty value is passed as a parameter."
   [accumulator]
   (fn [v]
-    (writer-monad. v accumulator)))
+    (WriterMonad. v accumulator)))
 
 (defn write [m-result val-to-write]
   (let [[_ a] (deref (m-result nil))]
-    (writer-monad. nil (writer-m-add a val-to-write))))
+    (WriterMonad. nil (writer-m-add a val-to-write))))
 
 (defn listen [mv]
   (let [[v a :as va] (deref mv)]
-    (writer-monad. va a)))
+    (WriterMonad. va a)))
 
 (defn censor [f mv]
   (let [[v a] (deref mv)]
-    (writer-monad. v (f a))))
+    (WriterMonad. v (f a))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  StateTransformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype state-transformer [m v mv f alts lzalts]
+(deftype StateTransformer [m v mv f alts lzalts]
   clojure.lang.IFn
   (invoke [_ s]
     (cond
@@ -554,26 +660,28 @@
 
   Monad
   (do-result [_ v]
-    (state-transformer. m v nil nil nil nil))
+    (StateTransformer. m v nil nil nil nil))
   (bind [mv f]
-    (state-transformer. m nil mv (wrap-check mv f) nil nil))
-  (val-types [_]
-    [state-transformer])
-  (name-monad [_]
-    "state-t")
+    (StateTransformer. m nil mv (wrap-check mv f) nil nil))
 
   MonadZero
   (zero [_]
-    (state-transformer. m nil
+    (StateTransformer. m nil
                         (fn [s] (zero (m [nil])))
                         (fn [v]
-                          (state-transformer. m v nil nil nil nil))
+                          (StateTransformer. m v nil nil nil nil))
                         nil
                         nil))
   (plus-step [mv mvs]
-    (state-transformer. m nil nil nil (list mv mvs) nil))
+    (StateTransformer. m nil nil nil (list mv mvs) nil))
   (plus-step* [mv mvs]
-    (state-transformer. m nil nil nil nil (list mv mvs))))
+    (StateTransformer. m nil nil nil nil (list mv mvs)))
+
+  MonadDev
+  (val-types [_]
+    [StateTransformer])
+  (name-monad [_]
+    "state-t"))
 
 (defn state-t
   "Monad transformer that transforms a monad m into a monad of stateful
@@ -582,199 +690,232 @@
   (if (= m maybe)
     (fn [v]
       (let [v (if (nil? v) maybe-zero-val v)]
-        (state-transformer. m v nil nil nil nil)))
+        (StateTransformer. m v nil nil nil nil)))
     (fn [v]
-      (state-transformer. m v nil nil nil nil))))
+      (StateTransformer. m v nil nil nil nil))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  MaybeTransformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype maybe-transformer [m v]
+(deftype MaybeTransformer [m v]
   clojure.lang.IDeref
   (deref [_]
     v)
 
   Monad
   (do-result [_ v]
-    (maybe-transformer. m (m (maybe v))))
+    (MaybeTransformer. m (m (maybe v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (maybe-transformer. m (bind v (fn [x]
+      (MaybeTransformer. m (bind v (fn [x]
                                       (if (= x maybe-zero-val)
                                         (m maybe-zero-val)
                                         (deref ((wrap-check mv f) (deref x)))))))))
-  (val-types [_]
-    [maybe-transformer])
-  (name-monad [_]
-    "maybe-t")
 
   MonadZero
   (zero [_]
-    (maybe-transformer. m (m maybe-zero-val)))
+    (MaybeTransformer. m (m maybe-zero-val)))
   (plus-step [mv mvs]
-    (maybe-transformer.
+    (MaybeTransformer.
      m (bind (deref mv)
              (fn [x]
                (cond
                  (and (= x maybe-zero-val) (empty? mvs)) (m maybe-zero-val)
                  (= x maybe-zero-val) (deref (plus mvs))
-                 :else (m x)))))))
+                 :else (m x))))))
+
+  MonadDev
+  (val-types [_]
+    [MaybeTransformer])
+  (name-monad [_]
+    "maybe-t"))
 
 (defn maybe-t
   "Monad transformer that transforms a monad m into a monad in which
    the base values can be invalid (represented by :nothing)."
   [m]
   (fn [v]
-    (maybe-transformer. m (m (maybe v)))))
+    (MaybeTransformer. m (m (maybe v)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  ListTransformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-
-(deftype list-transformer [m v]
+(deftype ListTransformer [m v]
   clojure.lang.IDeref
   (deref [_]
     v)
 
   Monad
   (do-result [_ v]
-    (list-transformer. m (m (list v))))
+    (ListTransformer. m (m (list v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (list-transformer. m (bind v (fn [xs]
+      (ListTransformer. m (bind v (fn [xs]
                                      (if (clojure.core/seq xs)
                                        (->> xs
                                             (map (comp deref (wrap-check mv f)))
                                             (fmap (partial apply lazy-concat)))
                                        (m '())))))))
-  (val-types [_]
-    [list-transformer])
-  (name-monad [_]
-    "list-t")
-
   MonadZero
   (zero [_]
-    (list-transformer. m (m '())))
+    (ListTransformer. m (m '())))
   (plus-step [mv mvs]
-    (list-transformer.
+    (ListTransformer.
      m (reduce (lift concat)
                (m '())
-               (clojure.core/map deref (cons mv mvs))))))
+               (clojure.core/map deref (cons mv mvs)))))
+
+  MonadDev
+  (val-types [_]
+    [ListTransformer])
+  (name-monad [_]
+    "list-t"))
 
 (defn list-t
-  "monad transformer that transforms a monad m into a monad in which
+  "Monad transformer that transforms a monad m into a monad in which
    the base values are lists."
   [m]
   (fn [v]
-    (list-transformer. m (m (list v)))))
+    (ListTransformer. m (m (list v)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  VectorTransformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype vector-transformer [m v]
+(deftype VectorTransformer [m v]
   clojure.lang.IDeref
   (deref [_]
     v)
 
   Monad
   (do-result [_ v]
-    (vector-transformer. m (m (vector v))))
+    (VectorTransformer. m (m (vector v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (vector-transformer. m (bind v (fn [xs]
+      (VectorTransformer. m (bind v (fn [xs]
                                        (if (clojure.core/seq xs)
                                          (->> xs
                                               (map (comp deref (wrap-check mv f)))
                                               (fmap (partial apply lazy-concat)))
                                          (m [])))))))
-  (val-types [_]
-    [vector-transformer])
-  (name-monad [_]
-    "vector-t")
 
   MonadZero
   (zero [_]
-    (vector-transformer. m (m [])))
+    (VectorTransformer. m (m [])))
   (plus-step [mv mvs]
-    (vector-transformer.
+    (VectorTransformer.
      m (reduce (lift (comp vec concat))
                (m [])
-               (clojure.core/map deref (cons mv mvs))))))
+               (clojure.core/map deref (cons mv mvs)))))
+
+  MonadDev
+  (val-types [_]
+    [VectorTransformer])
+  (name-monad [_]
+    "vector-t"))
 
 (defn vector-t
-  "monad transformer that transforms a monad m into a monad in which
+  "Monad transformer that transforms a monad m into a monad in which
    the base values are vectors."
   [m]
   (fn [v]
-    (vector-transformer. m (m (vector v)))))
+    (VectorTransformer. m (m (vector v)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  SetTransformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype set-transformer [m v]
+(deftype SetTransformer [m v]
   clojure.lang.IDeref
   (deref [_]
     v)
 
   Monad
   (do-result [_ v]
-    (set-transformer. m (m (hash-set v))))
+    (SetTransformer. m (m (hash-set v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (set-transformer. m (bind v (fn [xs]
+      (SetTransformer. m (bind v (fn [xs]
                                     (if (clojure.core/seq xs)
                                       (->> xs
                                            (map (comp deref (wrap-check mv f)))
                                            (fmap (partial apply lazy-concat)))
                                       (m #{})))))))
-  (val-types [_]
-    [set-transformer])
-  (name-monad [_]
-    "set-t")
 
   MonadZero
   (zero [_]
-    (set-transformer. m (m #{})))
+    (SetTransformer. m (m #{})))
   (plus-step [mv mvs]
-    (set-transformer.
+    (SetTransformer.
      m (reduce (lift set/union)
                (m #{})
-               (clojure.core/map deref (cons mv mvs))))))
+               (clojure.core/map deref (cons mv mvs)))))
+
+  MonadDev
+  (val-types [_]
+    [SetTransformer])
+  (name-monad [_]
+    "set-t"))
 
 (defn set-t
-  "monad transformer that transforms a monad m into a monad in which
+  "Monad transformer that transforms a monad m into a monad in which
    the base values are sets."
   [m]
   (fn [v]
-    (set-transformer. m (m (hash-set v)))))
+    (SetTransformer. m (m (hash-set v)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  WriterTransformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype writer-transformer [m mv writer-m]
+(deftype WriterTransformer [m mv writer-m]
   clojure.lang.IDeref
   (deref [_]
     mv)
 
   Monad
   (do-result [_ v]
-    (writer-transformer.
+    (WriterTransformer.
      m (m (writer-m v)) writer-m))
   (bind [mv f]
     (let [mv (deref mv)]
-      (writer-transformer.
+      (WriterTransformer.
        m (bind mv (fn [v]
                     (let [[v1 a1] (deref v)]
                       (bind (deref ((wrap-check mv f) v1))
                             (fn [v]
                               (let [[v2 a2] (deref v)]
-                                (m (writer-monad. v2 (writer-m-combine a1 a2)))))))))
+                                (m (WriterMonad. v2 (writer-m-combine a1 a2)))))))))
        writer-m)))
-  (val-types [_]
-    [writer-transformer])
-  (name-monad [_]
-    "writer-t")
 
   MonadZero
   (zero [mv]
     (let [v (deref mv)]
-      (writer-transformer. m (zero v) writer-m)))
+      (WriterTransformer. m (zero v) writer-m)))
   (plus-step [mv mvs]
-    (writer-transformer.
+    (WriterTransformer.
      m (plus (clojure.core/map deref (cons mv mvs)))
-     writer-m)))
+     writer-m))
+
+  MonadDev
+  (val-types [_]
+    [WriterTransformer])
+  (name-monad [_]
+    "writer-t"))
 
 (defn writer-t [m accumulator]
   (let [writer-m (writer accumulator)]
     (fn [v]
-      (writer-transformer. m (m (writer-m v)) writer-m))))
+      (WriterTransformer. m (m (writer-m v)) writer-m))))
