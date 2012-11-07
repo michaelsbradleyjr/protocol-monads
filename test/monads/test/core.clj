@@ -21,6 +21,10 @@
 (def do-result-list (partial m/do-result (list [nil])))
 (def zero-val-list (m/zero (list [nil])))
 
+(deftest do-result-and-list-factory-func-equiv
+  (is (= (do-result-list [nil])
+         (list [nil]))))
+
 (deftest first-law-list
   (is (= (m/bind (do-result-list 10) list-f)
          (list-f 10))))
@@ -62,6 +66,10 @@
 
 (def do-result-vector (partial m/do-result (vector [nil])))
 (def zero-val-vector (m/zero (vector [nil])))
+
+(deftest do-result-and-vector-factory-func-equiv
+  (is (= (do-result-vector [nil])
+         (vector [nil]))))
 
 (deftest first-law-vector
   (is (= (m/bind (do-result-vector 10) vector-f)
@@ -105,6 +113,10 @@
 (def do-result-lazy-seq (partial m/do-result (lazy-seq [[nil]])))
 (def zero-val-lazy-seq (m/zero (lazy-seq [[nil]])))
 
+(deftest do-result-and-lazy-seq-factory-func-equiv
+  (is (= (do-result-lazy-seq [nil])
+         (lazy-seq [[nil]]))))
+
 (deftest first-law-lazy-seq
   (is (= (m/bind (do-result-lazy-seq 10) lazy-seq-f)
          (lazy-seq-f 10))))
@@ -147,6 +159,10 @@
 (def do-result-set (partial m/do-result (hash-set [nil])))
 (def zero-val-set (m/zero (hash-set [nil])))
 
+(deftest do-result-and-set-factory-func-equiv
+  (is (= (do-result-set [nil])
+         (hash-set [nil]))))
+
 (deftest first-law-set
   (is (= (m/bind (do-result-set 10) set-f)
          (set-f 10))))
@@ -182,6 +198,19 @@
 
 (def do-result-maybe (partial m/do-result (m/maybe [nil])))
 (def zero-val-maybe (m/zero (m/maybe [nil])))
+
+(deftest do-result-and-maybe-factory-func-equiv
+  (is (= @(do-result-maybe [nil])
+         @(m/maybe [nil]))))
+
+(deftest do-result-and-maybe-factory-func-not-equiv-for-nil
+  (is (not= @(do-result-maybe nil)
+            @(m/maybe nil))))
+
+(deftest zero-val-from-factory-func
+  (is (= m/maybe-zero-val
+         zero-val-maybe
+         (m/maybe nil))))
 
 (defn maybe-f [n]
   (m/maybe (inc n)))
@@ -249,6 +278,11 @@
 
 (def do-result-state (partial m/do-result (m/state [nil])))
 
+(deftest do-result-and-state-factory-func-equiv
+  (let [mv1 (do-result-state [nil])
+        mv2 (m/state [nil])]
+    (is (= (mv1 {}) (mv2 {})))))
+
 (defn state-f [n]
   (m/state (inc n)))
 
@@ -315,6 +349,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def do-result-cont (partial m/do-result (m/cont [nil])))
+
+(deftest do-result-and-cont-factory-func-equiv
+  (is (= @(do-result-cont [nil])
+         @(m/cont [nil]))))
 
 (defn cont-f [n]
   (m/cont (inc n)))
