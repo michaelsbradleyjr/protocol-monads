@@ -388,50 +388,50 @@
 
 (comment "The call-cc monad is not yet implemented.")
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  monads.core.WriterMonad
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def test-writer (m/writer #{}))
+
+(defn writer-f [n]
+  (test-writer (inc n)))
+
+(defn writer-g [n]
+  (test-writer (+ n 5)))
+
+(deftest first-law-writer
+  (is (= (deref (m/bind (test-writer 10) writer-f))
+         (deref (writer-f 10)))))
+
+(deftest second-law-writer
+  (is (= (deref (m/bind (test-writer 10) test-writer))
+         (deref (test-writer 10)))))
+
+(deftest third-law-writer
+  (is (= (deref (m/bind (m/bind (test-writer 3) writer-f) writer-g))
+         (deref (m/bind (test-writer 3)
+                        (fn [x]
+                          (m/bind (writer-f x) writer-g)))))))
+
+(deftest test-write
+  (is (= [nil #{:written}]
+         (deref (m/write test-writer :written)))))
+
+(deftest test-listen
+  (is (= [[nil #{:written}] #{:written}]
+         @(m/listen (m/write test-writer :written)))))
+
+(deftest test-censor
+  (is (= [nil #{:new-written}]
+         @(m/censor (constantly #{:new-written})
+                    (m/write test-writer :written)))))
+
 ;; The tests below have been disabled, and are in the process of being
 ;; reworked and re-enabled in light of monads.core/check-return-type
 (comment
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;
-  ;;  monads.core.WriterMonad
-  ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (def test-writer (m/writer #{}))
-
-  (defn writer-f [n]
-    (test-writer (inc n)))
-
-  (defn writer-g [n]
-    (test-writer (+ n 5)))
-
-  (deftest first-law-writer
-    (is (= (deref (m/bind (test-writer 10) writer-f))
-           (deref (writer-f 10)))))
-
-  (deftest second-law-writer
-    (is (= (deref (m/bind (test-writer 10) test-writer))
-           (deref (test-writer 10)))))
-
-  (deftest third-law-writer
-    (is (= (deref (m/bind (m/bind (test-writer 3) writer-f) writer-g))
-           (deref (m/bind (test-writer 3)
-                          (fn [x]
-                            (m/bind (writer-f x) writer-g)))))))
-
-  (deftest test-write
-    (is (= [nil #{:written}]
-           (deref (m/write test-writer :written)))))
-
-  (deftest test-listen
-    (is (= [[nil #{:written}] #{:written}]
-           @(m/listen (m/write test-writer :written)))))
-
-  (deftest test-censor
-    (is (= [nil #{:new-written}]
-           @(m/censor (constantly #{:new-written})
-                      (m/write test-writer :written)))))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
@@ -790,20 +790,20 @@
           writer-m (m/writer [])
           write-msg (fn [msg]
                       (WriterTransformer. hash-set
-                                           (hash-set ((m/writer [msg]) nil))
-                                           writer-m))
+                                          (hash-set ((m/writer [msg]) nil))
+                                          writer-m))
           listen-msgs (fn [mv]
                         (WriterTransformer. hash-set
-                                             (->> @mv
-                                                  (map #(m/listen %))
-                                                  set)
-                                             writer-m))
+                                            (->> @mv
+                                                 (map #(m/listen %))
+                                                 set)
+                                            writer-m))
           censor-msgs (fn [f mv]
                         (WriterTransformer. hash-set
-                                             (->> @mv
-                                                  (map #(m/censor f %))
-                                                  set)
-                                             writer-m))]
+                                            (->> @mv
+                                                 (map #(m/censor f %))
+                                                 set)
+                                            writer-m))]
 
       (is (= [nil [:msg1]] @(first @(write-msg :msg1))))
 
@@ -833,28 +833,28 @@
           writer-m (m/writer-t m/maybe [])
           write-msg (fn [msg]
                       (StateTransformer. writer-m
-                                          nil
-                                          ((m/state-t (m/writer-t m/maybe [msg])) nil)
-                                          (constantly (test-m nil))
-                                          nil))
+                                         nil
+                                         ((m/state-t (m/writer-t m/maybe [msg])) nil)
+                                         (constantly (test-m nil))
+                                         nil))
           listen-msgs (fn [mv]
                         (StateTransformer. writer-m
-                                            nil
-                                            (fn [s]
-                                              (let [[[_ s] msgs] @@@(mv s)]
-                                                ((m/writer-t m/maybe msgs) [msgs s])))
-                                            (fn [v]
-                                              (test-m v))
-                                            nil))
+                                           nil
+                                           (fn [s]
+                                             (let [[[_ s] msgs] @@@(mv s)]
+                                               ((m/writer-t m/maybe msgs) [msgs s])))
+                                           (fn [v]
+                                             (test-m v))
+                                           nil))
           censor-msgs (fn [f mv]
                         (StateTransformer. writer-m
-                                            nil
-                                            (fn [s]
-                                              (let [[[v s] msgs] @@@(mv s)]
-                                                ((m/writer-t m/maybe (f msgs)) [[v msgs] s])))
-                                            (fn [v]
-                                              (test-m v))
-                                            nil))]
+                                           nil
+                                           (fn [s]
+                                             (let [[[v s] msgs] @@@(mv s)]
+                                               ((m/writer-t m/maybe (f msgs)) [[v msgs] s])))
+                                           (fn [v]
+                                             (test-m v))
+                                           nil))]
       (is (= [[nil :state] [:msg]]
              @@@((write-msg :msg) :state)))
 
