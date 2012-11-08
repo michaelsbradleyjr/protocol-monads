@@ -38,6 +38,10 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def ^:private seq* clojure.core/seq)
+
+(def ^:private map* clojure.core/map)
+
 (def list clojure.core/list)
 
 (def vector clojure.core/vector)
@@ -63,9 +67,9 @@
   ([l ls]
      (lazy-seq
        (cond
-         (clojure.core/seq l) (cons (first l)
+         (seq* l) (cons (first l)
                                     (lazy-concat (rest l) ls))
-         (clojure.core/seq ls) (lazy-concat (first ls) (rest ls))
+         (seq* ls) (lazy-concat (first ls) (rest ls))
          :else (lazy-seq)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -89,13 +93,13 @@
          " specifies value "
          tw
          " "
-         (string/join ", " (clojure.core/map #(second (string/split (str %) #" ")) ts))
+         (string/join ", " (map* #(second (string/split (str %) #" ")) ts))
          ".")))
 
 (defn- check-return-type [mv f ts warn-on-mismatch throw-on-mismatch]
   (fn [v]
     (let [rv (f v)]
-      (if-not (clojure.core/seq ts)
+      (if-not (seq* ts)
         rv
         (let [rt (class rv)]
           (if (some #(= rt %) ts)
@@ -138,7 +142,7 @@
   (plus-step [mv mvs]
     (apply concat mv mvs))
   (plus-step* [mv mvs]
-    (apply concat mv (clojure.core/map #(%) mvs)))
+    (apply concat mv (map* #(%) mvs)))
 
   MonadDev
   (val-types [_]
@@ -174,7 +178,7 @@
   (plus-step [mv mvs]
     (apply concat mv mvs))
   (plus-step* [mv mvs]
-    (apply concat mv (clojure.core/map #(%) mvs)))
+    (apply concat mv (map* #(%) mvs)))
 
   MonadDev
   (val-types [_]
@@ -210,7 +214,7 @@
   (plus-step [mv mvs]
     (vec (apply concat mv mvs)))
   (plus-step* [mv mvs]
-    (vec (apply concat mv (clojure.core/map #(%) mvs))))
+    (vec (apply concat mv (map* #(%) mvs))))
 
   MonadDev
   (val-types [_]
@@ -245,7 +249,7 @@
   (plus-step [mv mvs]
     (lazy-concat mv mvs))
   (plus-step* [mv mvs]
-    (lazy-concat mv (clojure.core/map #(%) mvs)))
+    (lazy-concat mv (map* #(%) mvs)))
 
   MonadDev
   (val-types [_]
@@ -273,7 +277,7 @@
     #{v})
   (bind [mv f]
     (apply set/union
-           (clojure.core/map (wrap-check mv f) mv)))
+           (map* (wrap-check mv f) mv)))
 
   MonadZero
   (zero [_]
@@ -281,7 +285,7 @@
   (plus-step [mv mvs]
     (apply set/union mv mvs))
   (plus-step* [mv mvs]
-    (apply set/union mv (clojure.core/map #(%) mvs)))
+    (apply set/union mv (map* #(%) mvs)))
 
   MonadDev
   (val-types [_]
@@ -620,7 +624,7 @@
   "Lazy variant of plus. Implemented as a macro to avoid eager
   argument evaluation."
   [[mv & mvs]]
-  `(plus-step* ~mv (list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs))))
+  `(plus-step* ~mv (list ~@(map* (fn thunk [m] `(fn [] ~m)) mvs))))
 
 (defn- comprehend [f mvs]
   (let [mv (first mvs)
@@ -636,11 +640,11 @@
   "'Executes' the monadic values in 'mvs' and returns a sequence of the
    basic values contained in them."
   ([mvs]
-     (assert (clojure.core/seq mvs)
+     (assert (seq* mvs)
              "At least one monadic value is required by monads.core/seq")
      (seq (first mvs) mvs))
   ([mv-factory mvs]
-     (if (clojure.core/seq mvs)
+     (if (seq* mvs)
        (comprehend identity mvs)
        (mv-factory []))))
 
@@ -666,7 +670,7 @@
   "'Executes' the sequence of monadic values resulting from mapping
    f onto the values xs. f must return a monadic value."
   [f xs]
-  (seq (clojure.core/map f xs)))
+  (seq (map* f xs)))
 
 (defn chain
   "Chains together monadic computation steps that are each functions
@@ -703,7 +707,7 @@
   (bind [mv f]
     (let [v (deref mv)]
       (ListTransformer. m (bind v (fn [xs]
-                                    (if (clojure.core/seq xs)
+                                    (if (seq* xs)
                                       (->> xs
                                            (map (comp deref (wrap-check mv f)))
                                            (fmap (partial apply lazy-concat)))
@@ -715,7 +719,7 @@
     (ListTransformer.
      m (reduce (lift concat)
                (m '())
-               (clojure.core/map deref (cons mv mvs)))))
+               (map* deref (cons mv mvs)))))
 
   MonadDev
   (val-types [_]
@@ -748,7 +752,7 @@
   (bind [mv f]
     (let [v (deref mv)]
       (VectorTransformer. m (bind v (fn [xs]
-                                      (if (clojure.core/seq xs)
+                                      (if (seq* xs)
                                         (->> xs
                                              (map (comp deref (wrap-check mv f)))
                                              (fmap (partial apply lazy-concat)))
@@ -761,7 +765,7 @@
     (VectorTransformer.
      m (reduce (lift (comp vec concat))
                (m [])
-               (clojure.core/map deref (cons mv mvs)))))
+               (map* deref (cons mv mvs)))))
 
   MonadDev
   (val-types [_]
@@ -805,7 +809,7 @@
   (bind [mv f]
     (let [v (deref mv)]
       (SetTransformer. m (bind v (fn [xs]
-                                   (if (clojure.core/seq xs)
+                                   (if (seq* xs)
                                      (->> xs
                                           (map (comp deref (wrap-check mv f)))
                                           (fmap (partial apply lazy-concat)))
@@ -818,7 +822,7 @@
     (SetTransformer.
      m (reduce (lift set/union)
                (m #{})
-               (clojure.core/map deref (cons mv mvs)))))
+               (map* deref (cons mv mvs)))))
 
   MonadDev
   (val-types [_]
@@ -892,15 +896,14 @@
   clojure.lang.IFn
   (invoke [_ s]
     (cond
-      ;; Use of clojure.core/doall "enforces" the non-laziness of
-      ;; regular plus / plus-step. Otherwise you can end up with
-      ;; monadic computations that make use of plus / plus-step which
-      ;; sometimes are lazy enough and sometimes aren't (apparently
-      ;; owing to sequence chunking, per a conversation in IRC).  If
-      ;; laziness is desirable, then one should use plus* /
-      ;; plus-step*.
-      alts (plus-step ((first alts) s) (clojure.core/doall (clojure.core/map #(% s) (second alts))))
-      lzalts (plus-step* ((first lzalts) s) (clojure.core/map #(fn [] ((%) s)) (second lzalts)))
+      ;; Use of doall "enforces" the non-laziness of regular plus /
+      ;; plus-step. Otherwise you can end up with monadic computations
+      ;; that make use of plus / plus-step which sometimes are lazy
+      ;; enough and sometimes aren't (apparently owing to sequence
+      ;; chunking, per a conversation in IRC).  If laziness is
+      ;; desirable, then one should use plus* / plus-step*.
+      alts (plus-step ((first alts) s) (doall (map* #(% s) (second alts))))
+      lzalts (plus-step* ((first lzalts) s) (map* #(fn [] ((%) s)) (second lzalts)))
       f (bind (mv s)
               (fn [[v ss]]
                 ((f v) ss)))
@@ -974,7 +977,7 @@
       (WriterTransformer. m (zero v) writer-m)))
   (plus-step [mv mvs]
     (WriterTransformer.
-     m (plus (clojure.core/map deref (cons mv mvs)))
+     m (plus (map* deref (cons mv mvs)))
      writer-m))
 
   MonadDev
