@@ -587,14 +587,14 @@
 
 (defmacro do
   "Monad comprehension. Takes the name of a monadic value factory
-   function (like vector, hash-set, m/maybe), a vector of steps given as
+   function (like vector, hash-set, maybe), a vector of steps given as
    binding-form/monadic-expression pairs, and a result value specified
    by expr. The monadic-expression terms can use the binding variables
    of the previous steps.
 
-   If the monad contains a definition of m-zero, the step list can also
-   contain conditions of the form :when p, where the predicate p can
-   contain the binding variables from all previous steps.
+   If the monad contains a definition of monadic zero, the step list can
+   also contain conditions of the form :when p, where the predicate p
+   can contain the binding variables from all previous steps.
 
    A clause of the form :let [binding-form expr ...], where the bindings
    are given as a vector as for the use in let, establishes additional
@@ -677,8 +677,8 @@
 (defn chain
   "Chains together monadic computation steps that are each functions
    of one parameter. Each step is called with the result of the previous
-   step as its argument. (m-chain (step1 step2)) is equivalent to
-   (fn [x] (domonad [r1 (step1 x) r2 (step2 r1)] r2))."
+   step as its argument. (monads.core/chain (step1 step2)) is equivalent
+   to (fn [x] (monads.core/do [r1 (step1 x) r2 (step2 r1)] r2))."
   [steps]
   (fn [x]
     (let [mv ((first steps) x)
