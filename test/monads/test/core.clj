@@ -44,18 +44,18 @@
 (deftest test-lazy-concat-laziness
   (is (= clojure.lang.LazySeq
          (class (lazy-concat (m/lazy-seq* (/ 1 0)
-                                         (/ 1 0))
+                                          (/ 1 0))
                              (m/lazy-seq* (m/lazy-seq* (/ 1 0)
-                                                     (/ 1 0)
-                                                     (/ 1 0))))))))
+                                                       (/ 1 0)
+                                                       (/ 1 0))))))))
 
 (deftest test-lazy-concat-return
   (is (= (m/lazy-seq* (/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5))
          (lazy-concat (m/lazy-seq* (/ 1 1)
-                                  (/ 1 2))
+                                   (/ 1 2))
                       (m/lazy-seq* (m/lazy-seq* (/ 1 3)
-                                              (/ 1 4)
-                                              (/ 1 5)))))))
+                                                (/ 1 4)
+                                                (/ 1 5)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -171,7 +171,7 @@
 (deftest third-law-lazy-seq
   (is (= (m/bind (m/bind (m/lazy-seq* 4 9) lazy-seq-f) lazy-seq-g)
          (m/bind (m/lazy-seq* 4 9) (fn [x]
-                                    (m/bind (lazy-seq-f x) lazy-seq-g))))))
+                                     (m/bind (lazy-seq-f x) lazy-seq-g))))))
 
 (deftest zero-laws-lazy-seq
   (is (= (m/bind zero-val-lazy-seq lazy-seq-f)

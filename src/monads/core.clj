@@ -68,7 +68,7 @@
      (lazy-seq
        (cond
          (seq* l) (cons (first l)
-                                    (lazy-concat (rest l) ls))
+                        (lazy-concat (rest l) ls))
          (seq* ls) (lazy-concat (first ls) (rest ls))
          :else (lazy-seq)))))
 
