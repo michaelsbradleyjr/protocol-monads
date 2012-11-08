@@ -38,25 +38,19 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn list
-  [& vs]
-  (apply clojure.core/list vs))
+(def list clojure.core/list)
 
-(defn vector
-  [& vs]
-  (apply clojure.core/vector vs))
+(def vector clojure.core/vector)
 
-(defn vec
-  [vs]
-  (clojure.core/vec vs))
+(def vec clojure.core/vec)
 
-(defmacro lazy-seq
-  [& vs]
-  `(clojure.core/lazy-seq (clojure.core/list ~@vs)))
+(def #^{:macro true} lazy-seq #'clojure.core/lazy-seq)
 
-(defn hash-set
+(defmacro lazy-seq*
   [& vs]
-  (apply clojure.core/hash-set vs))
+  `(lazy-seq (list ~@vs)))
+
+(def hash-set clojure.core/hash-set)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -67,12 +61,12 @@
 (defn- lazy-concat
   ([l] l)
   ([l ls]
-     (clojure.core/lazy-seq
+     (lazy-seq
        (cond
          (clojure.core/seq l) (cons (first l)
                                     (lazy-concat (rest l) ls))
          (clojure.core/seq ls) (lazy-concat (first ls) (rest ls))
-         :else (clojure.core/lazy-seq)))))
+         :else (lazy-seq)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -134,13 +128,13 @@
 (extend-type clojure.lang.PersistentList
   Monad
   (do-result [_ v]
-    (clojure.core/list v))
+    (list v))
   (bind [mv f]
-    (apply clojure.core/list (mapcat (wrap-check mv f) mv)))
+    (apply list (mapcat (wrap-check mv f) mv)))
 
   MonadZero
   (zero [_]
-    (clojure.core/list))
+    (list))
   (plus-step [mv mvs]
     (apply concat mv mvs))
   (plus-step* [mv mvs]
@@ -154,7 +148,7 @@
     "list")
 
   MonadWriter
-  (writer-m-empty [_] (clojure.core/list))
+  (writer-m-empty [_] (list))
   (writer-m-add [c v] (conj c v))
   (writer-m-combine [c1 c2] (concat c1 c2)))
 
@@ -170,13 +164,13 @@
 (extend-type clojure.lang.PersistentList$EmptyList
   Monad
   (do-result [_ v]
-    (clojure.core/list v))
+    (list v))
   (bind [mv f]
-    (apply clojure.core/list (mapcat (wrap-check mv f) mv)))
+    (apply list (mapcat (wrap-check mv f) mv)))
 
   MonadZero
   (zero [_]
-    (clojure.core/list))
+    (list))
   (plus-step [mv mvs]
     (apply concat mv mvs))
   (plus-step* [mv mvs]
@@ -190,7 +184,7 @@
     "list")
 
   MonadWriter
-  (writer-m-empty [_] (clojure.core/list))
+  (writer-m-empty [_] (list))
   (writer-m-add [c v] (conj c v))
   (writer-m-combine [c1 c2] (concat c1 c2)))
 
@@ -208,15 +202,15 @@
   (do-result [_ v]
     [v])
   (bind [mv f]
-    (clojure.core/vec (mapcat (wrap-check mv f) mv)))
+    (vec (mapcat (wrap-check mv f) mv)))
 
   MonadZero
   (zero [_]
     [])
   (plus-step [mv mvs]
-    (clojure.core/vec (apply concat mv mvs)))
+    (vec (apply concat mv mvs)))
   (plus-step* [mv mvs]
-    (clojure.core/vec (apply concat mv (clojure.core/map #(%) mvs))))
+    (vec (apply concat mv (clojure.core/map #(%) mvs))))
 
   MonadDev
   (val-types [_]
@@ -227,7 +221,7 @@
   MonadWriter
   (writer-m-empty [_] [])
   (writer-m-add [c v] (conj c v))
-  (writer-m-combine [c1 c2] (clojure.core/vec (concat c1 c2))))
+  (writer-m-combine [c1 c2] (vec (concat c1 c2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -241,13 +235,13 @@
 (extend-type clojure.lang.LazySeq
   Monad
   (do-result [_ v]
-    (lazy-seq v))
+    (lazy-seq* v))
   (bind [mv f]
     (mapcat (wrap-check mv f) mv))
 
   MonadZero
   (zero [_]
-    (clojure.core/lazy-seq))
+    (lazy-seq))
   (plus-step [mv mvs]
     (lazy-concat mv mvs))
   (plus-step* [mv mvs]
@@ -260,9 +254,9 @@
     "lazy-seq")
 
   MonadWriter
-  (writer-m-empty [_] (clojure.core/lazy-seq))
+  (writer-m-empty [_] (lazy-seq))
   (writer-m-add [c v] (cons v c))
-  (writer-m-combine [c1 c2] (lazy-concat c1 (lazy-seq c2))))
+  (writer-m-combine [c1 c2] (lazy-concat c1 (lazy-seq* c2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -626,7 +620,7 @@
   "Lazy variant of plus. Implemented as a macro to avoid eager
   argument evaluation."
   [[mv & mvs]]
-  `(plus-step* ~mv (clojure.core/list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs))))
+  `(plus-step* ~mv (list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs))))
 
 (defn- comprehend [f mvs]
   (let [mv (first mvs)
@@ -705,15 +699,15 @@
 
   Monad
   (do-result [_ v]
-    (ListTransformer. m (m (clojure.core/list v))))
+    (ListTransformer. m (m (list v))))
   (bind [mv f]
     (let [v (deref mv)]
       (ListTransformer. m (bind v (fn [xs]
-                                     (if (clojure.core/seq xs)
-                                       (->> xs
-                                            (map (comp deref (wrap-check mv f)))
-                                            (fmap (partial apply lazy-concat)))
-                                       (m '())))))))
+                                    (if (clojure.core/seq xs)
+                                      (->> xs
+                                           (map (comp deref (wrap-check mv f)))
+                                           (fmap (partial apply lazy-concat)))
+                                      (m '())))))))
   MonadZero
   (zero [_]
     (ListTransformer. m (m '())))
@@ -732,7 +726,7 @@
 (defn list-t
   [m]
   (fn [v]
-    (ListTransformer. m (m (clojure.core/list v)))))
+    (ListTransformer. m (m (list v)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -750,22 +744,22 @@
 
   Monad
   (do-result [_ v]
-    (VectorTransformer. m (m (clojure.core/vector v))))
+    (VectorTransformer. m (m (vector v))))
   (bind [mv f]
     (let [v (deref mv)]
       (VectorTransformer. m (bind v (fn [xs]
-                                       (if (clojure.core/seq xs)
-                                         (->> xs
-                                              (map (comp deref (wrap-check mv f)))
-                                              (fmap (partial apply lazy-concat)))
-                                         (m [])))))))
+                                      (if (clojure.core/seq xs)
+                                        (->> xs
+                                             (map (comp deref (wrap-check mv f)))
+                                             (fmap (partial apply lazy-concat)))
+                                        (m [])))))))
 
   MonadZero
   (zero [_]
     (VectorTransformer. m (m [])))
   (plus-step [mv mvs]
     (VectorTransformer.
-     m (reduce (lift (comp clojure.core/vec concat))
+     m (reduce (lift (comp vec concat))
                (m [])
                (clojure.core/map deref (cons mv mvs)))))
 
@@ -778,7 +772,7 @@
 (defn vector-t
   [m]
   (fn [v]
-    (VectorTransformer. m (m (clojure.core/vector v)))))
+    (VectorTransformer. m (m (vector v)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -807,15 +801,15 @@
 
   Monad
   (do-result [_ v]
-    (SetTransformer. m (m (clojure.core/hash-set v))))
+    (SetTransformer. m (m (hash-set v))))
   (bind [mv f]
     (let [v (deref mv)]
       (SetTransformer. m (bind v (fn [xs]
-                                    (if (clojure.core/seq xs)
-                                      (->> xs
-                                           (map (comp deref (wrap-check mv f)))
-                                           (fmap (partial apply lazy-concat)))
-                                      (m #{})))))))
+                                   (if (clojure.core/seq xs)
+                                     (->> xs
+                                          (map (comp deref (wrap-check mv f)))
+                                          (fmap (partial apply lazy-concat)))
+                                     (m #{})))))))
 
   MonadZero
   (zero [_]
@@ -835,7 +829,7 @@
 (defn set-t
   [m]
   (fn [v]
-    (SetTransformer. m (m (clojure.core/hash-set v)))))
+    (SetTransformer. m (m (hash-set v)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -857,9 +851,9 @@
   (bind [mv f]
     (let [v (deref mv)]
       (MaybeTransformer. m (bind v (fn [x]
-                                      (if (= x maybe-zero-val)
-                                        (m maybe-zero-val)
-                                        (deref ((wrap-check mv f) (deref x)))))))))
+                                     (if (= x maybe-zero-val)
+                                       (m maybe-zero-val)
+                                       (deref ((wrap-check mv f) (deref x)))))))))
 
   MonadZero
   (zero [_]
@@ -923,15 +917,15 @@
   MonadZero
   (zero [_]
     (StateTransformer. m nil
-                        (fn [s] (zero (m [nil])))
-                        (fn [v]
-                          (StateTransformer. m v nil nil nil nil))
-                        nil
-                        nil))
+                       (fn [s] (zero (m [nil])))
+                       (fn [v]
+                         (StateTransformer. m v nil nil nil nil))
+                       nil
+                       nil))
   (plus-step [mv mvs]
-    (StateTransformer. m nil nil nil (clojure.core/list mv mvs) nil))
+    (StateTransformer. m nil nil nil (list mv mvs) nil))
   (plus-step* [mv mvs]
-    (StateTransformer. m nil nil nil nil (clojure.core/list mv mvs)))
+    (StateTransformer. m nil nil nil nil (list mv mvs)))
 
   MonadDev
   (val-types [_]

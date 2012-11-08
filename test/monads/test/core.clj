@@ -25,7 +25,8 @@
          (vec (list 1 2 3)))))
 
 (deftest monads-core-and-clojure-core-lazy-seq-factory-equiv
-  (is (= (m/lazy-seq 1 2 3)
+  (is (= (m/lazy-seq* 1 2 3)
+         (m/lazy-seq [1 2 3])
          (lazy-seq [1 2 3]))))
 
 (deftest monads-core-and-clojure-core-hash-set-factory-equiv
@@ -42,17 +43,17 @@
 
 (deftest test-lazy-concat-laziness
   (is (= clojure.lang.LazySeq
-         (class (lazy-concat (m/lazy-seq (/ 1 0)
+         (class (lazy-concat (m/lazy-seq* (/ 1 0)
                                          (/ 1 0))
-                             (m/lazy-seq (m/lazy-seq (/ 1 0)
+                             (m/lazy-seq* (m/lazy-seq* (/ 1 0)
                                                      (/ 1 0)
                                                      (/ 1 0))))))))
 
 (deftest test-lazy-concat-return
-  (is (= (m/lazy-seq (/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5))
-         (lazy-concat (m/lazy-seq (/ 1 1)
+  (is (= (m/lazy-seq* (/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5))
+         (lazy-concat (m/lazy-seq* (/ 1 1)
                                   (/ 1 2))
-                      (m/lazy-seq (m/lazy-seq (/ 1 3)
+                      (m/lazy-seq* (m/lazy-seq* (/ 1 3)
                                               (/ 1 4)
                                               (/ 1 5)))))))
 
@@ -147,17 +148,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defn lazy-seq-f [n]
-  (m/lazy-seq (inc n)))
+  (m/lazy-seq* (inc n)))
 
 (defn lazy-seq-g [n]
-  (m/lazy-seq (+ n 5)))
+  (m/lazy-seq* (+ n 5)))
 
-(def do-result-lazy-seq (partial m/do-result (m/lazy-seq [nil])))
-(def zero-val-lazy-seq (m/zero (m/lazy-seq [nil])))
+(def do-result-lazy-seq (partial m/do-result (m/lazy-seq* [nil])))
+(def zero-val-lazy-seq (m/zero (m/lazy-seq* [nil])))
 
 (deftest do-result-and-lazy-seq-factory-func-equiv
   (is (= (do-result-lazy-seq [nil])
-         (m/lazy-seq [nil]))))
+         (m/lazy-seq* [nil]))))
 
 (deftest first-law-lazy-seq
   (is (= (m/bind (do-result-lazy-seq 10) lazy-seq-f)
@@ -168,8 +169,8 @@
          (do-result-lazy-seq 10))))
 
 (deftest third-law-lazy-seq
-  (is (= (m/bind (m/bind (m/lazy-seq 4 9) lazy-seq-f) lazy-seq-g)
-         (m/bind (m/lazy-seq 4 9) (fn [x]
+  (is (= (m/bind (m/bind (m/lazy-seq* 4 9) lazy-seq-f) lazy-seq-g)
+         (m/bind (m/lazy-seq* 4 9) (fn [x]
                                     (m/bind (lazy-seq-f x) lazy-seq-g))))))
 
 (deftest zero-laws-lazy-seq
@@ -468,7 +469,7 @@
                  (fn [x]
                    (m/bind (range 3)
                            (fn [y]
-                             (m/lazy-seq (+ x y))))))
+                             (m/lazy-seq* (+ x y))))))
          (m/do lazy-seq
                [x (range 5)
                 y (range 3)]
@@ -481,7 +482,7 @@
                    (m/bind (range 3)
                            (fn [y]
                              (if (> x 1000)
-                               (m/lazy-seq (+ x y))
+                               (m/lazy-seq* (+ x y))
                                (m/zero (lazy-seq)))))))
          (m/do lazy-seq
                [x (range 5)
@@ -495,7 +496,7 @@
                    (let [z 100]
                      (m/bind (range 3)
                              (fn [y]
-                               (m/lazy-seq (+ x y z)))))))
+                               (m/lazy-seq* (+ x y z)))))))
          (m/do lazy-seq
                [x (range 5)
                 :let [z 100]
@@ -582,14 +583,14 @@
          (vector 5 6))))
 
 (deftest zero-laws-for-plus-lazy-seq
-  (is (= (m/plus [(m/lazy-seq 5 6) zero-val-lazy-seq])
-         (m/lazy-seq 5 6)))
-  (is (= (m/plus [zero-val-lazy-seq (m/lazy-seq 5 6)])
-         (m/lazy-seq 5 6)))
-  (is (= (m/plus* [(m/lazy-seq 5 6) zero-val-lazy-seq])
-         (m/lazy-seq 5 6)))
-  (is (= (m/plus* [zero-val-lazy-seq (m/lazy-seq 5 6)])
-         (m/lazy-seq 5 6))))
+  (is (= (m/plus [(m/lazy-seq* 5 6) zero-val-lazy-seq])
+         (m/lazy-seq* 5 6)))
+  (is (= (m/plus [zero-val-lazy-seq (m/lazy-seq* 5 6)])
+         (m/lazy-seq* 5 6)))
+  (is (= (m/plus* [(m/lazy-seq* 5 6) zero-val-lazy-seq])
+         (m/lazy-seq* 5 6)))
+  (is (= (m/plus* [zero-val-lazy-seq (m/lazy-seq* 5 6)])
+         (m/lazy-seq* 5 6))))
 
 (deftest zero-laws-for-plus-set
   (is (= (m/plus [(hash-set 5 6) zero-val-set])
@@ -808,7 +809,6 @@
                           [x (maybe-t-f 9)
                            y (maybe-t-g x)]
                           [x y])))))
-
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
