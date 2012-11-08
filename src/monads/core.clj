@@ -50,9 +50,9 @@
   [vs]
   (clojure.core/vec vs))
 
-(defn lazy-seq
+(defmacro lazy-seq
   [& vs]
-  (clojure.core/lazy-seq vs))
+  `(clojure.core/lazy-seq (clojure.core/list ~@vs)))
 
 (defn hash-set
   [& vs]
@@ -247,7 +247,7 @@
 
   MonadZero
   (zero [_]
-    (lazy-seq))
+    (clojure.core/lazy-seq))
   (plus-step [mv mvs]
     (lazy-concat mv mvs))
   (plus-step* [mv mvs]
@@ -260,7 +260,7 @@
     "lazy-seq")
 
   MonadWriter
-  (writer-m-empty [_] (clojure.core/list))
+  (writer-m-empty [_] (clojure.core/lazy-seq))
   (writer-m-add [c v] (conj c v))
   (writer-m-combine [c1 c2] (concat c1 c2)))
 
