@@ -262,7 +262,7 @@
   MonadWriter
   (writer-m-empty [_] (clojure.core/lazy-seq))
   (writer-m-add [c v] (cons v c))
-  (writer-m-combine [c1 c2] (lazy-concat c1 c2)))
+  (writer-m-combine [c1 c2] (lazy-concat c1 (lazy-seq c2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
