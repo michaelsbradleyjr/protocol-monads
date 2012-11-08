@@ -443,22 +443,22 @@
   (test-writer (+ n 5)))
 
 (deftest first-law-writer
-  (is (= (deref (m/bind (test-writer 10) writer-f))
-         (deref (writer-f 10)))))
+  (is (= @(m/bind (test-writer 10) writer-f)
+         @(writer-f 10))))
 
 (deftest second-law-writer
-  (is (= (deref (m/bind (test-writer 10) test-writer))
-         (deref (test-writer 10)))))
+  (is (= @(m/bind (test-writer 10) test-writer)
+         @(test-writer 10))))
 
 (deftest third-law-writer
-  (is (= (deref (m/bind (m/bind (test-writer 3) writer-f) writer-g))
-         (deref (m/bind (test-writer 3)
-                        (fn [x]
-                          (m/bind (writer-f x) writer-g)))))))
+  (is (=@(m/bind (m/bind (test-writer 3) writer-f) writer-g)
+        @(m/bind (test-writer 3)
+                 (fn [x]
+                   (m/bind (writer-f x) writer-g))))))
 
 (deftest test-write
   (is (= [nil #{:written}]
-         (deref (m/write test-writer :written)))))
+         @(m/write test-writer :written))))
 
 (deftest test-listen
   (is (= [[nil #{:written}] #{:written}]
@@ -469,41 +469,42 @@
          @(m/censor (constantly #{:new-written})
                     (m/write test-writer :written)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  Monad functions
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftest test-seq
+  (is (= [[3 :a] [3 :b] [5 :a] [5 :b]]
+         (m/seq [[3 5] [:a :b]])))
+  (is (= [[]]
+         (m/seq vector []))))
+
+(deftest test-lift
+  (let [lifted-+ (m/lift +)]
+    (is (= [6]
+           (apply lifted-+ (map vector (range 4)))))
+    (is (= [6 :state]
+           ((apply lifted-+ (map m/state (range 4))) :state)))))
+
+(deftest test-chain
+  (let [t (fn [x] (vector (inc x) (* 2 x)))
+        u (fn [x] (vector (dec x)))
+        st (fn [x] (m/state (inc x)))
+        su (fn [x] (m/state (* 2 x)))]
+    (is (= (map (fn [x] (m/do vector [y (t x) z (u y)] z)) (range 4))
+           (map (m/chain [t u]) (range 4))))
+    (is (= (m/do vector [x (vec (range 4)) y (t x) z (u y)] z)
+           ((m/chain [(comp vec range) t u]) 4)))
+    (is (= ((m/do m/state [x (st 8) y (su x)] y) :state)
+           (((m/chain [st su]) 8) :state)))))
+
+
 ;; The tests below have been disabled, and are in the process of being
 ;; reworked and re-enabled in light of monads.core/check-return-type
 ;; and other modifications to the protocol-monads library
 (comment
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;
-  ;;  Monad functions
-  ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (deftest test-seq
-    (is (= [[3 :a] [3 :b] [5 :a] [5 :b]]
-           (m/seq [[3 5] [:a :b]])))
-    (is (= [[]]
-           (m/seq vector []))))
-
-  (deftest test-lift
-    (let [lifted-+ (m/lift +)]
-      (is (= [6]
-             (apply lifted-+ (map vector (range 4)))))
-      (is (= [6 :state]
-             ((apply lifted-+ (map m/state (range 4))) :state)))))
-
-  (deftest test-chain
-    (let [t (fn [x] (vector (inc x) (* 2 x)))
-          u (fn [x] (vector (dec x)))
-          st (fn [x] (m/state (inc x)))
-          su (fn [x] (m/state (* 2 x)))]
-      (is (= (map (fn [x] (m/do vector [y (t x) z (u y)] z)) (range 4))
-             (map (m/chain [t u]) (range 4))))
-      (is (= (m/do vector [x (range 4) y (t x) z (u y)] z)
-             ((m/chain [range t u]) 4)))
-      (is (= ((m/do m/state [x (st 8) y (su x)] y) :state)
-             (((m/chain [st su]) 8) :state)))))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;

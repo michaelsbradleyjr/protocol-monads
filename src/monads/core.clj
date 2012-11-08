@@ -326,7 +326,7 @@
   (bind [mv f]
     (if (= mv maybe-zero-val)
       maybe-zero-val
-      ((wrap-check mv f) @mv)))
+      ((wrap-check mv f) (deref mv))))
 
   MonadZero
   (zero [_]
@@ -533,6 +533,10 @@
 ;; be used for storing the log data. Its empty value is passed as a
 ;; parameter.
 
+;; The comment above may not be accurate with respect to
+;; clojure.contrib.accumulators; probably need to adjust in light of
+;; protocol MonadWriter
+
 (deftype Writer [v accumulator]
   clojure.lang.IDeref
   (deref [_]
@@ -557,8 +561,8 @@
   (fn [v]
     (Writer. v accumulator)))
 
-(defn write [m-result val-to-write]
-  (let [[_ a] (deref (m-result nil))]
+(defn write [mv-factory val-to-write]
+  (let [[_ a] (deref (mv-factory nil))]
     (Writer. nil (writer-m-add a val-to-write))))
 
 (defn listen [mv]
