@@ -38,10 +38,6 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private seq* clojure.core/seq)
-
-(def ^:private map* clojure.core/map)
-
 (def list clojure.core/list)
 
 (def vector clojure.core/vector)
@@ -61,6 +57,10 @@
 ;;  Utility functions
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def ^:private seq* clojure.core/seq)
+
+(def ^:private map* clojure.core/map)
 
 (defn- lazy-concat
   ([l] l)
