@@ -44,7 +44,7 @@
 
 (def vec clojure.core/vec)
 
-(def #^{:macro true} lazy-seq #'clojure.core/lazy-seq)
+(def ^{:macro true} lazy-seq #'clojure.core/lazy-seq)
 
 (defmacro lazy-seq*
   [& vs]
@@ -106,6 +106,8 @@
             rv
             (cond
               (and warn-on-mismatch (not throw-on-mismatch))
+              ;; let is used in place of do, since standard do has
+              ;; been excluded from this namespace
               (let []
                 (println (mismatch-message mv rt ts))
                 rv)
@@ -579,7 +581,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  Monad functions
+;;  Monadic functions
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -624,7 +626,7 @@
   "Lazy variant of plus. Implemented as a macro to avoid eager
   argument evaluation."
   [[mv & mvs]]
-  `(plus-step* ~mv (list ~@(map* (fn thunk [m] `(fn [] ~m)) mvs))))
+  `(plus-step* ~mv (list ~@(map* (fn [m] `(fn thunk [] ~m)) mvs))))
 
 (defn- comprehend [f mvs]
   (let [mv (first mvs)

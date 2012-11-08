@@ -63,6 +63,8 @@
 
 (deftest test-lazy-concat-return
   (is (= (m/lazy-seq* (/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5))
+         (m/lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
+         (lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
          (lazy-concat (m/lazy-seq* (/ 1 1)
                                    (/ 1 2))
                       (m/lazy-seq* (m/lazy-seq* (/ 1 3)
@@ -472,8 +474,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;;  Monad functions
+;;  Monadic functions
 ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  monads.core/do
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest test-do-basic
@@ -515,30 +521,105 @@
                 y (range 3)]
                (+ x y z)))))
 
-(deftest test-plus
-  (is (= true true)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  monads.core/plus, monads.core/plus*
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-plus*-laziness
-  (is (= :test
-         @(m/plus* [(m/maybe :test)
+(deftest test-plus-list
+  (is (= (m/plus [(list 1) '() (list 2) (list 3) (list)])
+         (list 1 2 3))))
+
+(deftest test-plus*-list
+  (is (= (m/plus* [(list 1) '() (list 2) (list 3) (list)])
+         (list 1 2 3))))
+
+(deftest test-plus-list-empty
+  (is (= (m/plus [(list) (list 1) '() (list 2) (list 3) (list)])
+         (list 1 2 3))))
+
+(deftest test-plus*-list-empty
+  (is (= (m/plus* [(list) (list 1) '() (list 2) (list 3) (list)])
+         (list 1 2 3))))
+
+(deftest test-plus-vector
+  (is (= (m/plus [[1] [] [2] [3] []])
+         [1 2 3])))
+
+(deftest test-plus*-vector
+  (is (= (m/plus* [[1] [] [2] [3] []])
+         [1 2 3])))
+
+(deftest test-plus-lazy-seq
+  (is (= (m/plus [(m/lazy-seq* 1) (lazy-seq) (m/lazy-seq* 2) (m/lazy-seq* 3) (m/lazy-seq*)])
+         (m/lazy-seq* 1 2 3))))
+
+(deftest test-plus*-lazy-seq
+  (is (= (m/plus* [(m/lazy-seq* 1) (lazy-seq) (m/lazy-seq* 2) (m/lazy-seq* 3) (m/lazy-seq*)])
+         (m/lazy-seq* 1 2 3))))
+
+(deftest test-plus-hash-set
+  (is (= (m/plus [#{1} #{} #{2 3} #{4 5 6} #{}])
+         #{1 2 3 4 5 6})))
+
+(deftest test-plus*-hash-set
+  (is (= (m/plus* [#{1} #{} #{2 3} #{4 5 6} #{}])
+         #{1 2 3 4 5 6})))
+
+(deftest test-plus-maybe
+  (is (= @(m/plus [m/maybe-zero-val (m/maybe nil) (m/maybe 1) (m/maybe 2)])
+         @(m/maybe 1))))
+
+(deftest test-plus-maybe-not-lazy
+  (is (thrown-with-msg?
+        Exception #"Should be thrown"
+        @(m/plus [(m/maybe :test)
+                  (m/do m/maybe
+                        [_ (m/maybe 10)]
+                        (throw (Exception. "Should be thrown")))]))))
+
+(deftest test-plus*-maybe-zero-first
+  (is (= @(m/plus* [(m/maybe nil)
+                    (m/maybe :test)
                     (m/do m/maybe
                           [_ (m/maybe 10)
                            _ (m/maybe (/ 1 0))]
-                          (throw (Exception. "Should not be thrown")))]))))
+                          (throw (Exception. "Should not be thrown")))])
+         @(m/maybe :test))))
 
-(deftest test-plus*-return
-  (is (= true true)))
+(deftest test-plus*-maybe-not-zero-first
+  (is (= @(m/plus* [(m/maybe :test)
+                    (m/do m/maybe
+                          [_ (m/maybe 10)
+                           _ (m/maybe (/ 1 0))]
+                          (throw (Exception. "Should not be thrown")))])
+         @(m/maybe :test))))
+
+(comment "Tests for monads.core/plus and monads.core/plus* for the
+          various monad transformers are defined in the sections below
+          for their respective transformer.")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  monads.core/comprehend
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def comprehend (ns-resolve 'monads.core 'comprehend))
 
 (deftest test-comprehend
   (is (= true true)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  monads.core/seq
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (deftest test-seq
   (is (= [[3 :a] [3 :b] [5 :a] [5 :b]]
          (m/seq [[3 5] [:a :b]])))
   (is (= [[]]
          (m/seq vector []))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  monads.core/lift
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest test-lift
   (let [lifted-+ (m/lift +)]
@@ -547,14 +628,30 @@
     (is (= [6 :state]
            ((apply lifted-+ (map m/state (range 4))) :state)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  monads.core/join
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (deftest test-join
   (is (= true true)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  monads.core/fmap
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest test-fmap
   (is (= true true)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  monads.core/map
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (deftest test-map
   (is (= true true)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  monads.core/chain
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest test-chain
   (let [t (fn [x] (vector (inc x) (* 2 x)))
@@ -623,6 +720,9 @@
          @(m/maybe 6)))
   (is (= @(m/plus* [zero-val-maybe (m/maybe 6)])
          @(m/maybe 6))))
+
+(comment "Zero Laws tests for the various monad transformers are defined
+          in the sections below for their respective transformer.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
