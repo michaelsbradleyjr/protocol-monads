@@ -491,7 +491,52 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-do
+(deftest test-do-basic
+  (is (= (m/bind (range 5)
+                 (fn [x]
+                   (m/bind (range 3)
+                           (fn [y]
+                             (m/lazy-seq (+ x y))))))
+         (m/do lazy-seq
+               [x (range 5)
+                y (range 3)]
+               (+ x y)))))
+
+(deftest test-do-when
+  (is (= (m/zero (lazy-seq))
+         (m/bind (range 5)
+                 (fn [x]
+                   (m/bind (range 3)
+                           (fn [y]
+                             (if (> x 1000)
+                               (m/lazy-seq (+ x y))
+                               (m/zero (lazy-seq)))))))
+         (m/do lazy-seq
+               [x (range 5)
+                y (range 3)
+                :when (> x 1000)]
+               (+ x y)))))
+
+(deftest test-do-let
+  (is (= (m/bind (range 5)
+                 (fn [x]
+                   (let [z 100]
+                     (m/bind (range 3)
+                             (fn [y]
+                               (m/lazy-seq (+ x y z)))))))
+         (m/do lazy-seq
+               [x (range 5)
+                :let [z 100]
+                y (range 3)]
+               (+ x y z)))))
+
+(deftest test-plus
+  (is (= true true)))
+
+(deftest test-plus*-laziness
+  (is (= true true)))
+
+(deftest test-plus*-return
   (is (= true true)))
 
 (def comprehend (ns-resolve 'monads.core 'comprehend))

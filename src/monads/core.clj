@@ -585,15 +585,6 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(defn plus [[mv & mvs]]
-  (plus-step mv mvs))
-
-(defmacro plus*
-  "Lazy variant of plus. Implemented as a macro to avoid eager
-  argument evaluation."
-  [[mv & mvs]]
-  `(plus-step* ~mv (clojure.core/list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs))))
-
 (defmacro do
   "Monad comprehension. Takes the name of a monadic value factory
    function (like vector, hash-set, m/maybe), a vector of steps given as
@@ -627,6 +618,15 @@
                                                                      ~expr))))
                                   `(monads.core/do-result (~mv-factory [nil]) ~expr)
                                   (reverse steps))))))
+
+(defn plus [[mv & mvs]]
+  (plus-step mv mvs))
+
+(defmacro plus*
+  "Lazy variant of plus. Implemented as a macro to avoid eager
+  argument evaluation."
+  [[mv & mvs]]
+  `(plus-step* ~mv (clojure.core/list ~@(clojure.core/map (fn thunk [m] `(fn [] ~m)) mvs))))
 
 (defn- comprehend [f mvs]
   (let [mv (first mvs)
