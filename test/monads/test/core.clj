@@ -39,7 +39,19 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def seq* (ns-resolve 'monads.core 'seq*))
+
+(def map* (ns-resolve 'monads.core 'map*))
+
 (def lazy-concat (ns-resolve 'monads.core 'lazy-concat))
+
+(deftest monads-core-seq*-and-clojure-core-seq-equiv
+  (is (= (seq* (list 1 2 3))
+         (seq (list 1 2 3)))))
+
+(deftest monads-core-map*-and-clojure-core-map-equiv
+  (is (= (map* identity [1 2 3])
+         (map identity [1 2 3]))))
 
 (deftest test-lazy-concat-laziness
   (is (= clojure.lang.LazySeq
