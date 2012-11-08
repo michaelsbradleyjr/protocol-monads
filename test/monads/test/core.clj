@@ -38,7 +38,23 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(comment "Need test for monads.core/lazy-concat.")
+(def lazy-concat (ns-resolve 'monads.core 'lazy-concat))
+
+(deftest test-lazy-concat-laziness
+  (is (= clojure.lang.LazySeq
+         (class (lazy-concat (m/lazy-seq (/ 1 0)
+                                         (/ 1 0))
+                             (m/lazy-seq (m/lazy-seq (/ 1 0)
+                                                     (/ 1 0)
+                                                     (/ 1 0))))))))
+
+(deftest test-lazy-concat-return
+  (is (= (m/lazy-seq (/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5))
+         (lazy-concat (m/lazy-seq (/ 1 1)
+                                  (/ 1 2))
+                      (m/lazy-seq (m/lazy-seq (/ 1 3)
+                                              (/ 1 4)
+                                              (/ 1 5)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -475,6 +491,14 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(deftest test-do
+  (is (= true true)))
+
+(def comprehend (ns-resolve 'monads.core 'comprehend))
+
+(deftest test-comprehend
+  (is (= true true)))
+
 (deftest test-seq
   (is (= [[3 :a] [3 :b] [5 :a] [5 :b]]
          (m/seq [[3 5] [:a :b]])))
@@ -487,6 +511,15 @@
            (apply lifted-+ (map vector (range 4)))))
     (is (= [6 :state]
            ((apply lifted-+ (map m/state (range 4))) :state)))))
+
+(deftest test-join
+  (is (= true true)))
+
+(deftest test-fmap
+  (is (= true true)))
+
+(deftest test-map
+  (is (= true true)))
 
 (deftest test-chain
   (let [t (fn [x] (vector (inc x) (* 2 x)))
