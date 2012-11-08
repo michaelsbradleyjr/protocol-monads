@@ -88,19 +88,15 @@
          (m/bind '(4 9) (fn [x]
                           (m/bind (list-f x) list-g))))))
 
-(deftest zero-law-list
+(deftest zero-laws-list
   (is (= (m/bind zero-val-list list-f)
          zero-val-list))
   (is (= (m/bind (do-result-list 4) (constantly zero-val-list))
-         zero-val-list))
-  (is (= (m/plus [(list 5 6) zero-val-list])
-         (list 5 6)))
-  (is (= (m/plus [zero-val-list (list 5 6)])
-         (list 5 6)))
-  (is (= (m/plus* [(list 5 6) zero-val-list])
-         (list 5 6)))
-  (is (= (m/plus* [zero-val-list (list 5 6)])
-         (list 5 6))))
+         zero-val-list)))
+
+(comment "Zero Laws for monads.core/plus and monads.core/plus* are
+          defined in a section below the tests for those monad
+          functions")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -134,19 +130,15 @@
          (m/bind [4 9] (fn [x]
                          (m/bind (vector-f x) vector-g))))))
 
-(deftest zero-law-vector
+(deftest zero-laws-vector
   (is (= (m/bind zero-val-vector vector-f)
          zero-val-vector))
   (is (= (m/bind (do-result-vector 4) (constantly zero-val-vector))
-         zero-val-vector))
-  (is (= (m/plus [(vector 5 6) zero-val-vector])
-         (vector 5 6)))
-  (is (= (m/plus [zero-val-vector (vector 5 6)])
-         (vector 5 6)))
-  (is (= (m/plus* [(vector 5 6) zero-val-vector])
-         (vector 5 6)))
-  (is (= (m/plus* [zero-val-vector (vector 5 6)])
-         (vector 5 6))))
+         zero-val-vector)))
+
+(comment "Zero Laws for monads.core/plus and monads.core/plus* are
+          defined in a section below the tests for those monad
+          functions")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -180,19 +172,15 @@
          (m/bind (m/lazy-seq 4 9) (fn [x]
                                     (m/bind (lazy-seq-f x) lazy-seq-g))))))
 
-(deftest zero-law-lazy-seq
+(deftest zero-laws-lazy-seq
   (is (= (m/bind zero-val-lazy-seq lazy-seq-f)
          zero-val-lazy-seq))
   (is (= (m/bind (do-result-lazy-seq 4) (constantly zero-val-lazy-seq))
-         zero-val-lazy-seq))
-  (is (= (m/plus [(m/lazy-seq 5 6) zero-val-lazy-seq])
-         (m/lazy-seq 5 6)))
-  (is (= (m/plus [zero-val-lazy-seq (m/lazy-seq 5 6)])
-         (m/lazy-seq 5 6)))
-  (is (= (m/plus* [(m/lazy-seq 5 6) zero-val-lazy-seq])
-         (m/lazy-seq 5 6)))
-  (is (= (m/plus* [zero-val-lazy-seq (m/lazy-seq 5 6)])
-         (m/lazy-seq 5 6))))
+         zero-val-lazy-seq)))
+
+(comment "Zero Laws for monads.core/plus and monads.core/plus* are
+          defined in a section below the tests for those monad
+          functions")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -226,19 +214,15 @@
          (m/bind #{4 9} (fn [x]
                           (m/bind (set-f x) set-g))))))
 
-(deftest zero-law-set
+(deftest zero-laws-set
   (is (= (m/bind zero-val-set set-f)
          zero-val-set))
   (is (= (m/bind (do-result-set 4) (constantly zero-val-set))
-         zero-val-set))
-  (is (= (m/plus [(hash-set 5 6) zero-val-set])
-         (hash-set 5 6)))
-  (is (= (m/plus [zero-val-set (hash-set 5 6)])
-         (hash-set 5 6)))
-  (is (= (m/plus* [(hash-set 5 6) zero-val-set])
-         (hash-set 5 6)))
-  (is (= (m/plus* [zero-val-set (hash-set 5 6)])
-         (hash-set 5 6))))
+         zero-val-set)))
+
+(comment "Zero Laws for monads.core/plus and monads.core/plus* are
+          defined in a section below the tests for those monad
+          functions")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -298,27 +282,15 @@
   (is (= @(m/bind (do-result-maybe nil) do-result-maybe)
          @(do-result-maybe nil))))
 
-(deftest zero-law-maybe
+(deftest zero-laws-maybe
   (is (= (m/bind zero-val-maybe maybe-f)
          zero-val-maybe))
   (is (= (m/bind (do-result-maybe 4) (constantly zero-val-maybe))
-         zero-val-maybe))
-  (is (= @(m/plus [(m/maybe 6) zero-val-maybe])
-         @(m/maybe 6)))
-  (is (= @(m/plus [zero-val-maybe (m/maybe 6)])
-         @(m/maybe 6)))
-  (is (= @(m/plus* [(m/maybe 6) zero-val-maybe])
-         @(m/maybe 6)))
-  (is (= @(m/plus* [zero-val-maybe (m/maybe 6)])
-         @(m/maybe 6))))
+         zero-val-maybe)))
 
-(deftest lazy-maybe-plus*
-  (is (= :test
-         @(m/plus* [(m/maybe :test)
-                    (m/do m/maybe
-                          [_ (m/maybe 10)
-                           _ (m/maybe (/ 1 0))]
-                          (throw (Exception. "Should not be thrown")))]))))
+(comment "Zero Laws for monads.core/plus and monads.core/plus* are
+          defined in a section below the tests for those monad
+          functions")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -534,7 +506,12 @@
   (is (= true true)))
 
 (deftest test-plus*-laziness
-  (is (= true true)))
+  (is (= :test
+         @(m/plus* [(m/maybe :test)
+                    (m/do m/maybe
+                          [_ (m/maybe 10)
+                           _ (m/maybe (/ 1 0))]
+                          (throw (Exception. "Should not be thrown")))]))))
 
 (deftest test-plus*-return
   (is (= true true)))
@@ -579,6 +556,62 @@
            (((m/chain [st su]) 8) :state)))))
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  Monad Zero Laws for monads.core/plus and monads.core/plus*
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftest zero-laws-for-plus-list
+  (is (= (m/plus [(list 5 6) zero-val-list])
+         (list 5 6)))
+  (is (= (m/plus [zero-val-list (list 5 6)])
+         (list 5 6)))
+  (is (= (m/plus* [(list 5 6) zero-val-list])
+         (list 5 6)))
+  (is (= (m/plus* [zero-val-list (list 5 6)])
+         (list 5 6))))
+
+(deftest zero-laws-for-plus-vector
+  (is (= (m/plus [(vector 5 6) zero-val-vector])
+         (vector 5 6)))
+  (is (= (m/plus [zero-val-vector (vector 5 6)])
+         (vector 5 6)))
+  (is (= (m/plus* [(vector 5 6) zero-val-vector])
+         (vector 5 6)))
+  (is (= (m/plus* [zero-val-vector (vector 5 6)])
+         (vector 5 6))))
+
+(deftest zero-laws-for-plus-lazy-seq
+  (is (= (m/plus [(m/lazy-seq 5 6) zero-val-lazy-seq])
+         (m/lazy-seq 5 6)))
+  (is (= (m/plus [zero-val-lazy-seq (m/lazy-seq 5 6)])
+         (m/lazy-seq 5 6)))
+  (is (= (m/plus* [(m/lazy-seq 5 6) zero-val-lazy-seq])
+         (m/lazy-seq 5 6)))
+  (is (= (m/plus* [zero-val-lazy-seq (m/lazy-seq 5 6)])
+         (m/lazy-seq 5 6))))
+
+(deftest zero-laws-for-plus-set
+  (is (= (m/plus [(hash-set 5 6) zero-val-set])
+         (hash-set 5 6)))
+  (is (= (m/plus [zero-val-set (hash-set 5 6)])
+         (hash-set 5 6)))
+  (is (= (m/plus* [(hash-set 5 6) zero-val-set])
+         (hash-set 5 6)))
+  (is (= (m/plus* [zero-val-set (hash-set 5 6)])
+         (hash-set 5 6))))
+
+(deftest zero-laws-for-plus-maybe
+  (is (= @(m/plus [(m/maybe 6) zero-val-maybe])
+         @(m/maybe 6)))
+  (is (= @(m/plus [zero-val-maybe (m/maybe 6)])
+         @(m/maybe 6)))
+  (is (= @(m/plus* [(m/maybe 6) zero-val-maybe])
+         @(m/maybe 6)))
+  (is (= @(m/plus* [zero-val-maybe (m/maybe 6)])
+         @(m/maybe 6))))
+
 ;; The tests below have been disabled, and are in the process of being
 ;; reworked and re-enabled in light of monads.core/check-return-type
 ;; and other modifications to the protocol-monads library
@@ -611,7 +644,7 @@
                     (fn [x]
                       (m/bind (list-t-f x) list-t-g))))))
 
-  (deftest zero-law-list-t
+  (deftest zero-laws-list-t
     (is (= #{'()} @(m/zero (set-list nil))))
     (is (= @(m/bind (m/zero (set-list nil)) list-t-f)
            @(m/zero (set-list nil))))
@@ -656,7 +689,7 @@
                     (fn [x]
                       (m/bind (vector-t-f x) vector-t-g))))))
 
-  (deftest zero-law-vector-t
+  (deftest zero-laws-vector-t
     (is (= #{[]} @(m/zero (set-vect nil))))
     (is (= @(m/bind (m/zero (set-vect nil)) vector-t-f)
            @(m/zero (set-vect nil))))
@@ -709,7 +742,7 @@
                     (fn [x]
                       (m/bind (set-t-f x) set-t-g))))))
 
-  (deftest zero-law-set-t
+  (deftest zero-laws-set-t
     (is (= [#{}] @(m/zero (vect-set nil))))
     (is (= @(m/bind (m/zero (vect-set nil)) set-t-f)
            @(m/zero (vect-set nil))))
@@ -754,7 +787,7 @@
                             (fn [x]
                               (m/bind (maybe-t-f x) maybe-t-g)))))))
 
-  (deftest zero-law-maybe-t
+  (deftest zero-laws-maybe-t
     (is (= m/maybe-zero-val (first @ (m/zero (vect-maybe nil)))))
     (is (= (first @(m/bind (m/zero (vect-maybe nil)) maybe-t-f))
            (first @(m/zero (vect-maybe nil)))))
@@ -803,7 +836,7 @@
                         (m/bind (state-t-f x) state-t-g)))]
       (is (= (mv1 :state-t) (mv2 :state-t)))))
 
-  (deftest zero-law-state-t
+  (deftest zero-laws-state-t
     (is (= [] ((m/zero (vect-state nil)) :state)))
     (is (= ((m/bind (m/zero (vect-state nil)) state-t-f) :state)
            []))
@@ -896,7 +929,7 @@
                             (fn [x]
                               (m/bind (writer-t-f x) writer-t-g)))))))
 
-  (deftest zero-law-writer-t
+  (deftest zero-laws-writer-t
     (is (= #{} @(m/zero (vect-writer nil))))
     (is (= @(m/bind (m/zero (vect-writer nil)) writer-t-f)
            @(m/zero (vect-writer nil))))
