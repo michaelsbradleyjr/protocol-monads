@@ -261,8 +261,8 @@
 
   MonadWriter
   (writer-m-empty [_] (clojure.core/lazy-seq))
-  (writer-m-add [c v] (conj c v))
-  (writer-m-combine [c1 c2] (concat c1 c2)))
+  (writer-m-add [c v] (cons v c))
+  (writer-m-combine [c1 c2] (lazy-concat c1 c2)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -276,7 +276,7 @@
 (extend-type clojure.lang.PersistentHashSet
   Monad
   (do-result [_ v]
-    (clojure.core/hash-set v))
+    #{v})
   (bind [mv f]
     (apply set/union
            (clojure.core/map (wrap-check mv f) mv)))
