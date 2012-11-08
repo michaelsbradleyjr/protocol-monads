@@ -269,7 +269,7 @@
 ;; factory function is not used to generate the monadic value passed
 ;; as the first argument to m/bind, since m/maybe implements
 ;; "convenience logic" which short-circuits nil to maybe-zero-val. The
-;; procol method do-result, as implemented for class maybe-monad does
+;; procol method do-result, as implemented for class Maybe, does
 ;; not short-circuit.
 (deftest first-law-maybe-nil
   (is (= @(m/bind (do-result-maybe nil) (comp m/maybe not))
