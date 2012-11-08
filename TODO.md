@@ -8,4 +8,4 @@ In the same spirit as the return type checker, `plus` / `plus*` should optionall
 
 ### Should there be lazy "star versions" of `comprehend`, `seq`, `chain`?
 
-Need to determine whether those monadic functions are "lazy enough" or whether lazy versions should be implemented in a manner similar to `plus*` lazy variant of `plus`.
+Need to determine whether those monadic functions are "lazy enough" or whether lazy versions should be implemented in a manner similar to the `plus*` lazy variant of `plus`.
