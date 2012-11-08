@@ -632,8 +632,29 @@
 ;;  monads.core/join
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-join
-  (is (= true true)))
+(deftest test-join-list
+  (is (= (list 1)
+         (m/join (list (list 1))))))
+
+(deftest test-join-vector
+  (is (= [1]
+         (m/join [[1]]))))
+
+(deftest test-join-lazy-seq
+  (is (= (m/lazy-seq* 1)
+         (m/join (m/lazy-seq* (m/lazy-seq* 1))))))
+
+(deftest test-join-hash-set
+  (is (= (hash-set 1)
+         (m/join (hash-set (hash-set 1))))))
+
+(deftest test-join-maybe
+  (is (= @(m/maybe 1)
+         @(m/join (m/maybe (m/maybe 1))))))
+
+(deftest test-join-state
+  (is (= ((m/state 1) :state)
+         ((m/join (m/state (m/state 1))) :state))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/fmap
