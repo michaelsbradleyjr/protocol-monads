@@ -615,7 +615,7 @@
 ;;
 ;;  The tests below have been disabled, and are in the process of being
 ;;  reworked and re-enabled in light of monads.core/check-return-type
-;;  and other modifications to the protocol-monads library
+;;  and other modifications to the protocol-monads library.
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
