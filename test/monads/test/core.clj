@@ -555,7 +555,6 @@
     (is (= ((m/do m/state [x (st 8) y (su x)] y) :state)
            (((m/chain [st su]) 8) :state)))))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;;  Monad Zero Laws for monads.core/plus and monads.core/plus*
@@ -612,9 +611,14 @@
   (is (= @(m/plus* [zero-val-maybe (m/maybe 6)])
          @(m/maybe 6))))
 
-;; The tests below have been disabled, and are in the process of being
-;; reworked and re-enabled in light of monads.core/check-return-type
-;; and other modifications to the protocol-monads library
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  The tests below have been disabled, and are in the process of being
+;;  reworked and re-enabled in light of monads.core/check-return-type
+;;  and other modifications to the protocol-monads library
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
 (comment
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
