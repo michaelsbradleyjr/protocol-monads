@@ -599,17 +599,35 @@
                [x (list 1 2)
                 y (list 3 4)
                 z (list 5 6)]
-               (vec (map inc
-                         [x y z])))
+               (apply list (map inc
+                                [x y z])))
          (m/comprehend
-          (partial map inc)
+          #(apply list ((partial map inc) %))
           [(list 1 2) (list 3 4) (list 5 6)]))))
 
-(deftest test-comprehend-list-return-type
+(deftest test-comprehend-list-return-type-outer
   (is (= clojure.lang.PersistentList
          (class (m/comprehend
-                 (partial map inc)
+                 #(apply list ((partial map inc) %))
                  [(list 1 2) (list 3 4) (list 5 6)])))))
+
+(deftest test-comprehend-list-return-type-inner
+  (is (= clojure.lang.PersistentList
+         (class (first (m/comprehend
+                        #(apply list ((partial map inc) %))
+                        [(list 1 2) (list 3 4) (list 5 6)]))))))
+
+(deftest test-comprehend-vector-return-type-outer
+  (is (= clojure.lang.PersistentVector
+         (class (m/comprehend
+                 #(vec ((partial map inc) %))
+                 [[1 2] [3 4] [5 6]])))))
+
+(deftest test-comprehend-vector-return-type-inner
+  (is (= clojure.lang.PersistentVector
+         (class (first (m/comprehend
+                        #(vec ((partial map inc) %))
+                        [[1 2] [3 4] [5 6]]))))))
 
 (deftest test-comprehend-state
   (is (= ((m/do m/state
@@ -620,19 +638,28 @@
                           [x y z])))
           :state)
          ((m/comprehend
-           (partial map inc)
+           #(vec ((partial map inc) %))
            [(m/state 1) (m/state 2) (m/state 3)])
           :state))))
 
-(deftest test-comprehend-state-return-type
+(deftest test-comprehend-state-return-type-outer
   (is (= monads.core.State
          (class (m/comprehend
-                 (partial map inc)
+                 #(vec ((partial map inc) %))
                  [(m/state 1) (m/state 2) (m/state 3)])))))
+
+(deftest test-comprehend-state-return-type-inner
+  (is (= clojure.lang.PersistentVector
+         (class (first ((m/comprehend
+                         #(vec ((partial map inc) %))
+                         [(m/state 1) (m/state 2) (m/state 3)])
+                        :state))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/seq
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; need test that tests the exception path for seq
 
 (deftest test-seq
   (is (= [[3 :a] [3 :b] [5 :a] [5 :b]]

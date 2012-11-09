@@ -142,9 +142,9 @@
   (zero [_]
     (list))
   (plus-step [mv mvs]
-    (apply concat mv mvs))
+    (apply list (apply concat mv mvs)))
   (plus-step* [mv mvs]
-    (apply concat mv (map* #(%) mvs)))
+    (apply list (apply concat mv (map* #(%) mvs))))
 
   MonadDev
   (val-types [_]
@@ -178,9 +178,9 @@
   (zero [_]
     (list))
   (plus-step [mv mvs]
-    (apply concat mv mvs))
+    (apply list (apply concat mv mvs)))
   (plus-step* [mv mvs]
-    (apply concat mv (map* #(%) mvs)))
+    (apply list (apply concat mv (map* #(%) mvs))))
 
   MonadDev
   (val-types [_]
