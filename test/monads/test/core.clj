@@ -594,7 +594,7 @@
 ;;  monads.core/comprehend
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def comprehend-list-ret
+(def comprehend-list
   (m/comprehend
    #(apply list ((partial map inc) %))
    [(list 1 2) (list 3 4) (list 5 6)]))
@@ -606,28 +606,27 @@
                 z (list 5 6)]
                (apply list (map inc
                                 [x y z])))
-         comprehend-list-ret)))
-
-(deftest test-comprehend-list-return-type-outer
+         comprehend-list))
   (is (= clojure.lang.PersistentList
-         (class comprehend-list-ret))))
-
-(deftest test-comprehend-list-return-type-inner
+         (class comprehend-list)))
   (is (= clojure.lang.PersistentList
-         (class (first comprehend-list-ret)))))
+         (class (first comprehend-list)))))
 
-(def comprehend-vector-ret
+(def comprehend-vector
   (m/comprehend
    #(vec ((partial map inc) %))
    [[1 2] [3 4] [5 6]]))
 
-(deftest test-comprehend-vector-return-type-outer
+(deftest test-comprehend-vector
   (is (= clojure.lang.PersistentVector
-         (class comprehend-vector-ret))))
+         (class comprehend-vector)))
+  (is (= clojure.lang.PersistentVector
+         (class (first comprehend-vector)))))
 
-(deftest test-comprehend-vector-return-type-inner
-  (is (= clojure.lang.PersistentVector
-         (class (first comprehend-vector-ret)))))
+(def comprehend-state
+  (m/comprehend
+   #(vec ((partial map inc) %))
+   [(m/state 1) (m/state 2) (m/state 3)]))
 
 (deftest test-comprehend-state
   (is (= ((m/do m/state
@@ -637,57 +636,38 @@
                 (vec (map inc
                           [x y z])))
           :state)
-         ((m/comprehend
-           #(vec ((partial map inc) %))
-           [(m/state 1) (m/state 2) (m/state 3)])
-          :state))))
-
-(def comprehend-state-ret
-  (m/comprehend
-   #(vec ((partial map inc) %))
-   [(m/state 1) (m/state 2) (m/state 3)]))
-
-(deftest test-comprehend-state-return-type-outer
+         (comprehend-state
+          :state)))
   (is (= monads.core.State
-         (class comprehend-state-ret))))
-
-(deftest test-comprehend-state-return-type-inner
+         (class comprehend-state)))
   (is (= clojure.lang.PersistentVector
-         (class (first (comprehend-state-ret :state))))))
+         (class (first (comprehend-state :state))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/seq
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def seq-lazy-ret
+(def seq-lazy-seq
   (m/seq [(m/lazy-seq* 3 5) (m/lazy-seq* :a :b)]))
 
 (deftest test-seq-lazy-seq
   (is (= (m/lazy-seq* (list 3 :a) (list 3 :b) (list 5 :a) (list 5 :b))
-         seq-lazy-ret)))
-
-(deftest test-seq-lazy-seq-return-type-outer
+         seq-lazy-seq))
   (is (= clojure.lang.LazySeq
-         (class seq-lazy-ret))))
-
-(deftest test-seq-lazy-seq-return-type-inner
+         (class seq-lazy-seq)))
   (is (= clojure.lang.PersistentList
-         (class (first seq-lazy-ret)))))
+         (class (first seq-lazy-seq)))))
 
-(def seq-hash-set-ret
+(def seq-hash-set-empty
   (m/seq hash-set []))
 
 (deftest test-seq-hash-set-empty
   (is (= #{(list)}
-         seq-hash-set-ret)))
-
-(deftest test-seq-hash-set-empty-return-type-outer
+         seq-hash-set-empty))
   (is (= clojure.lang.PersistentHashSet
-         (class seq-hash-set-ret))))
-
-(deftest test-seq-hash-set-empty-return-type-inner
+         (class seq-hash-set-empty)))
   (is (= clojure.lang.PersistentList$EmptyList
-         (class (first seq-hash-set-ret)))))
+         (class (first seq-hash-set-empty)))))
 
 (deftest test-seq-throws-on-empty-without-factory
   (is (thrown-with-msg?
@@ -721,27 +701,17 @@
 ;;  monads.core/join
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-join-list
+(deftest test-join
   (is (= (list 1)
-         (m/join (list (list 1))))))
-
-(deftest test-join-vector
+         (m/join (list (list 1)))))
   (is (= [1]
-         (m/join [[1]]))))
-
-(deftest test-join-lazy-seq
+         (m/join [[1]])))
   (is (= (m/lazy-seq* 1)
-         (m/join (m/lazy-seq* (m/lazy-seq* 1))))))
-
-(deftest test-join-hash-set
+         (m/join (m/lazy-seq* (m/lazy-seq* 1)))))
   (is (= (hash-set 1)
-         (m/join (hash-set (hash-set 1))))))
-
-(deftest test-join-maybe
+         (m/join (hash-set (hash-set 1)))))
   (is (= @(m/maybe 1)
-         @(m/join (m/maybe (m/maybe 1))))))
-
-(deftest test-join-state
+         @(m/join (m/maybe (m/maybe 1)))))
   (is (= ((m/state 1) :state)
          ((m/join (m/state (m/state 1))) :state))))
 
