@@ -594,85 +594,77 @@
 ;;  monads.core/comprehend
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def do-list
-  (m/do list
-        [x (list 1 2)
-         y (list 3 4)
-         z (list 5 6)]
-        (apply list (map inc
-                         [x y z]))))
-
-(def comprehend-list
-  (m/comprehend
-   #(apply list ((partial map inc) %))
-   [(list 1 2) (list 3 4) (list 5 6)]))
-
 (deftest test-comprehend-list
-  (is (= do-list
-         comprehend-list))
-  (is (= clojure.lang.PersistentList
-         (class do-list)
-         (class comprehend-list)))
-  (is (= clojure.lang.PersistentList
-         (class (first do-list))
-         (class (first comprehend-list)))))
-
-(def comprehend-vector
-  (m/comprehend
-   #(vec ((partial map inc) %))
-   [[1 2] [3 4] [5 6]]))
+  (let [do-list
+        (m/do list
+              [x (list 1 2)
+               y (list 3 4)
+               z (list 5 6)]
+              (apply list (map inc
+                               [x y z])))
+        comprehend-list
+        (m/comprehend
+         #(apply list ((partial map inc) %))
+         [(list 1 2) (list 3 4) (list 5 6)])]
+    (is (= do-list
+           comprehend-list))
+    (is (= clojure.lang.PersistentList
+           (class do-list)
+           (class comprehend-list)))
+    (is (= clojure.lang.PersistentList
+           (class (first do-list))
+           (class (first comprehend-list))))))
 
 (deftest test-comprehend-vector
-  (is (= clojure.lang.PersistentVector
-         (class comprehend-vector)))
-  (is (= clojure.lang.PersistentVector
-         (class (first comprehend-vector)))))
-
-(def comprehend-state
-  (m/comprehend
-   #(vec ((partial map inc) %))
-   [(m/state 1) (m/state 2) (m/state 3)]))
+  (let [comprehend-vector
+        (m/comprehend
+         #(vec ((partial map inc) %))
+         [[1 2] [3 4] [5 6]])]
+    (is (= clojure.lang.PersistentVector
+           (class comprehend-vector)))
+    (is (= clojure.lang.PersistentVector
+           (class (first comprehend-vector))))))
 
 (deftest test-comprehend-state
-  (is (= ((m/do m/state
-                [x (m/state 1)
-                 y (m/state 2)
-                 z (m/state 3)]
-                (vec (map inc
-                          [x y z])))
-          :state)
-         (comprehend-state
-          :state)))
-  (is (= monads.core.State
-         (class comprehend-state)))
-  (is (= clojure.lang.PersistentVector
-         (class (first (comprehend-state :state))))))
+  (let [comprehend-state
+        (m/comprehend
+         #(vec ((partial map inc) %))
+         [(m/state 1) (m/state 2) (m/state 3)])]
+    (is (= ((m/do m/state
+                  [x (m/state 1)
+                   y (m/state 2)
+                   z (m/state 3)]
+                  (vec (map inc
+                            [x y z])))
+            :state)
+           (comprehend-state
+            :state)))
+    (is (= monads.core.State
+           (class comprehend-state)))
+    (is (= clojure.lang.PersistentVector
+           (class (first (comprehend-state :state)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/seq
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def seq-lazy-seq
-  (m/seq [(m/lazy-seq* 3 5) (m/lazy-seq* :a :b)]))
-
 (deftest test-seq-lazy-seq
-  (is (= (m/lazy-seq* (list 3 :a) (list 3 :b) (list 5 :a) (list 5 :b))
-         seq-lazy-seq))
-  (is (= clojure.lang.LazySeq
-         (class seq-lazy-seq)))
-  (is (= clojure.lang.PersistentList
-         (class (first seq-lazy-seq)))))
-
-(def seq-hash-set-empty
-  (m/seq hash-set []))
+  (let [seq-lazy-seq (m/seq [(m/lazy-seq* 3 5) (m/lazy-seq* :a :b)])]
+    (is (= (m/lazy-seq* (list 3 :a) (list 3 :b) (list 5 :a) (list 5 :b))
+           seq-lazy-seq))
+    (is (= clojure.lang.LazySeq
+           (class seq-lazy-seq)))
+    (is (= clojure.lang.PersistentList
+           (class (first seq-lazy-seq))))))
 
 (deftest test-seq-hash-set-empty
-  (is (= #{(list)}
-         seq-hash-set-empty))
-  (is (= clojure.lang.PersistentHashSet
-         (class seq-hash-set-empty)))
-  (is (= clojure.lang.PersistentList$EmptyList
-         (class (first seq-hash-set-empty)))))
+  (let [seq-hash-set-empty (m/seq hash-set [])]
+    (is (= #{(list)}
+           seq-hash-set-empty))
+    (is (= clojure.lang.PersistentHashSet
+           (class seq-hash-set-empty)))
+    (is (= clojure.lang.PersistentList$EmptyList
+           (class (first seq-hash-set-empty))))))
 
 (deftest test-seq-throws-on-empty-without-factory
   (is (thrown-with-msg?
@@ -742,7 +734,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest test-map
-  (is (= true true)))
+  (let [map-vec (m/map #(vector % (inc %)) (list 1 3 5))]
+    (is (= (m/seq (map #(vector % (inc %)) (list 1 3 5)))
+           map-vec))
+    (is (= clojure.lang.PersistentVector
+           (class map-vec)))
+    (is (= clojure.lang.PersistentList
+           (class (first map-vec))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/chain
