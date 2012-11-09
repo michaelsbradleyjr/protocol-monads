@@ -644,11 +644,11 @@
   ([mvs]
      ;; let is used in place of do, since standard do has been
      ;; excluded from this namespace
-     (assert (seq* mvs)
-             (string/join " "
-                          ["At least one monadic value is required"
-                           "by monads.core/seq when no monadic value"
-                           "factory function has been specified."]))
+     (assert
+      (seq* mvs)
+      (str
+       "At least one monadic value is required by monads.core/seq when "
+       "no monadic value factory function has been specified."))
      (seq (first mvs) mvs))
   ([mv-factory mvs]
      (if (seq* mvs)
