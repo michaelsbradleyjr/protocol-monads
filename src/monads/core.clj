@@ -129,7 +129,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Monad describing multi-valued computations, i.e. computations that
-;; can yield multiple values as lists.
+;; can yield multiple values as a list of those values.
 
 (extend-type clojure.lang.PersistentList
   Monad
@@ -165,7 +165,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Monad describing multi-valued computations, i.e. computations that
-;; can yield multiple values as lists.
+;; can yield multiple values as a list of those values.
 
 (extend-type clojure.lang.PersistentList$EmptyList
   Monad
@@ -201,7 +201,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Monad describing multi-valued computations, i.e. computations that
-;; can yield multiple values as vectors.
+;; can yield multiple values as vectors of those values.
 
 (extend-type clojure.lang.PersistentVector
   Monad
@@ -236,7 +236,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Monad describing multi-valued computations, i.e. computations that
-;; can yield multiple values as lazy sequences.
+;; can yield multiple values as lazy sequences of those values.
 
 (extend-type clojure.lang.LazySeq
   Monad
@@ -271,7 +271,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Monad describing multi-valued computations, i.e. computations that
-;; can yield multiple values as sets.
+;; can yield multiple values as sets of those values.
 
 (extend-type clojure.lang.PersistentHashSet
   Monad
@@ -535,7 +535,7 @@
 
 ;; The comment above may not be accurate with respect to
 ;; clojure.contrib.accumulators; probably need to adjust in light of
-;; protocol MonadWriter
+;; protocol MonadWriter.
 
 (deftype Writer [v accumulator]
   clojure.lang.IDeref
@@ -604,7 +604,7 @@
     ;; The "dummy value" [nil] is used in several expressions below to
     ;; couple calls to bind, zero and do-result to a particular
     ;; protocol-monad, as determined by the return type of the monadic
-    ;; value factory functin
+    ;; value factory function.
     `(monads.core/bind (~mv-factory [nil])
                        (fn [_#]
                          ~(reduce (fn [expr [sym mv]]
@@ -624,7 +624,10 @@
 
 (defmacro plus*
   "Lazy variant of plus. Implemented as a macro to avoid eager
-  argument evaluation."
+  argument evaluation. Takes one argument, a sequence of monadic values,
+  which must be expressed as a vector literal. Each member of the
+  argument-sequence is wrapped in a thunk, which is later evaluated by
+  protocol method mondas.core/plus-step*."
   [[mv & mvs]]
   `(plus-step* ~mv (list ~@(map* (fn [m] `(fn thunk [] ~m)) mvs))))
 
@@ -643,7 +646,7 @@
    basic values contained in them."
   ([mvs]
      ;; let is used in place of do, since standard do has been
-     ;; excluded from this namespace
+     ;; excluded from this namespace.
      (assert
       (seq* mvs)
       (str
@@ -849,7 +852,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Monad transformer that transforms a monad m into a monad in which
-;; the base values can be invalid (represented by :nothing).
+;; the base values can be invalid (represented by maybe-zero-val).
 
 (deftype MaybeTransformer [m v]
   clojure.lang.IDeref
@@ -895,9 +898,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monad transformer that transforms a monad m into a monad of
-;; stateful computations that have the base monad type as their
-;; result.
+;; Monad transformer that transforms a monad m into a monad of stateful
+;; computations that have the base monad type as their result.
 
 (deftype StateTransformer [m v mv f alts lzalts]
   clojure.lang.IFn
@@ -907,8 +909,8 @@
       ;; plus-step. Otherwise you can end up with monadic computations
       ;; that make use of plus / plus-step which sometimes are lazy
       ;; enough and sometimes aren't (apparently owing to sequence
-      ;; chunking, per a conversation in IRC).  If laziness is
-      ;; desirable, then one should use plus* / plus-step*.
+      ;; chunking).  If laziness is desirable, then one should use
+      ;; plus* / plus-step*.
       alts (plus-step ((first alts) s) (doall (map* #(% s) (second alts))))
       lzalts (plus-step* ((first lzalts) s) (map* #(fn [] ((%) s)) (second lzalts)))
       f (bind (mv s)
