@@ -695,7 +695,12 @@
     (is (= [6]
            (apply lifted-+ (map vector (range 4)))))
     (is (= [6 :state]
-           ((apply lifted-+ (map m/state (range 4))) :state)))))
+           ((apply lifted-+ (map m/state (range 4))) :state))))
+  (let [lifted-list (m/lift list)]
+    (is (= [(list 0 1 2 3)]
+           (apply lifted-list (map vector (range 4)))))
+    (is (= [(list 0 1 2 3) :state]
+           ((apply lifted-list (map m/state (range 4))) :state)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/join
