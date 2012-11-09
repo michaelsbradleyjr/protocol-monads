@@ -58,11 +58,11 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private seq* clojure.core/seq)
+(def seq* clojure.core/seq)
 
-(def ^:private map* clojure.core/map)
+(def map* clojure.core/map)
 
-(defn- lazy-concat
+(defn lazy-concat
   ([l] l)
   ([l ls]
      (lazy-seq
@@ -628,7 +628,7 @@
   [[mv & mvs]]
   `(plus-step* ~mv (list ~@(map* (fn [m] `(fn thunk [] ~m)) mvs))))
 
-(defn- comprehend [f mvs]
+(defn comprehend [f mvs]
   (let [mv (first mvs)
         rest-steps (reduce (fn [steps mv]
                              (fn [acc x]
@@ -638,17 +638,17 @@
                            (reverse (rest mvs)))]
     (bind mv (partial rest-steps []))))
 
-(defn seq
+(defmacro seq
   "'Executes' the monadic values in 'mvs' and returns a sequence of the
    basic values contained in them."
   ([mvs]
-     (assert (seq* mvs)
-             "At least one monadic value is required by monads.core/seq")
-     (seq (first mvs) mvs))
+     `(assert (seq* ~mvs)
+              "At least one monadic value is required by monads.core/seq")
+     `(seq (first ~mvs) ~mvs))
   ([mv-factory mvs]
-     (if (seq* mvs)
-       (comprehend identity mvs)
-       (mv-factory []))))
+     `(if (seq* ~mvs)
+        (comprehend identity ~mvs)
+        (do-result (~mv-factory [nil]) []))))
 
 (defn lift
   "Converts a function f to a function of monadic arguments

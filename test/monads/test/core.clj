@@ -39,23 +39,17 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def seq* (ns-resolve 'monads.core 'seq*))
-
-(def map* (ns-resolve 'monads.core 'map*))
-
-(def lazy-concat (ns-resolve 'monads.core 'lazy-concat))
-
 (deftest monads-core-seq*-and-clojure-core-seq-equiv
-  (is (= (seq* (list 1 2 3))
+  (is (= (m/seq* (list 1 2 3))
          (seq (list 1 2 3)))))
 
 (deftest monads-core-map*-and-clojure-core-map-equiv
-  (is (= (map* identity [1 2 3])
+  (is (= (m/map* identity [1 2 3])
          (map identity [1 2 3]))))
 
 (deftest test-lazy-concat-laziness
   (is (= clojure.lang.LazySeq
-         (class (lazy-concat (m/lazy-seq* (/ 1 0)
+         (class (m/lazy-concat (m/lazy-seq* (/ 1 0)
                                           (/ 1 0))
                              (m/lazy-seq* (m/lazy-seq* (/ 1 0)
                                                        (/ 1 0)
@@ -65,7 +59,7 @@
   (is (= (m/lazy-seq* (/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5))
          (m/lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
          (lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
-         (lazy-concat (m/lazy-seq* (/ 1 1)
+         (m/lazy-concat (m/lazy-seq* (/ 1 1)
                                    (/ 1 2))
                       (m/lazy-seq* (m/lazy-seq* (/ 1 3)
                                                 (/ 1 4)
@@ -477,8 +471,6 @@
 ;;  Monadic functions
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/do
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -602,10 +594,9 @@
 ;;  monads.core/comprehend
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def comprehend (ns-resolve 'monads.core 'comprehend))
-
 (deftest test-comprehend
-  (is (= true true)))
+  (is (= ()
+         ())))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/seq
