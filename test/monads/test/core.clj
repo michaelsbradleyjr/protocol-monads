@@ -823,6 +823,51 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+;;  monads.core.ListTransformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def set-list (m/list-t hash-set))
+(defn list-t-f [n]
+  (set-list (inc n)))
+
+(defn list-t-g [n]
+  (set-list (+ n 5)))
+
+(deftest first-law-list-t
+  (is (= @(m/bind (set-list 10) list-t-f)
+         @(list-t-f 10))))
+
+(deftest second-law-list-t
+  (is (= @(m/bind (set-list 10) set-list)
+         @(set-list 10))))
+
+(deftest third-law-list-t
+  (is (= @(m/bind (m/bind (set-list 4) list-t-f) list-t-g)
+         @(m/bind (set-list 4)
+                  (fn [x]
+                    (m/bind (list-t-f x) list-t-g))))))
+
+(deftest zero-laws-list-t
+  (is (= #{'()} @(m/zero (set-list nil))))
+  (is (= @(m/bind (m/zero (set-list nil)) list-t-f)
+         @(m/zero (set-list nil))))
+  (is (= @(m/bind (set-list 4) (constantly (m/zero (set-list nil))))
+         @(m/zero (set-list nil))))
+  (is (= @(m/plus [(set-list 4) (m/zero (set-list nil))])
+         @(set-list 4)))
+  (is (= @(m/plus [(m/zero (set-list nil)) (set-list 4)])
+         @(set-list 4))))
+
+(deftest do-list-t
+  (is (= #{(list [10 15])}
+         @(m/do set-list
+                [x (list-t-f 9)
+                 y (list-t-g x)]
+                [x y]))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 ;;  The tests below have been disabled, and are in the process of being
 ;;  reworked and re-enabled in light of monads.core/check-return-type
 ;;  and other modifications to the protocol-monads library.
@@ -830,51 +875,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;
-  ;;  monads.core.ListTransformer
-  ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (def set-list (m/list-t hash-set))
-  (defn list-t-f [n]
-    (set-list (inc n)))
-
-  (defn list-t-g [n]
-    (set-list (+ n 5)))
-
-  (deftest first-law-list-t
-    (is (= @(m/bind (set-list 10) list-t-f)
-           @(list-t-f 10))))
-
-  (deftest second-law-list-t
-    (is (= @(m/bind (set-list 10) set-list)
-           @(set-list 10))))
-
-  (deftest third-law-list-t
-    (is (= @(m/bind (m/bind (set-list 4) list-t-f) list-t-g)
-           @(m/bind (set-list 4)
-                    (fn [x]
-                      (m/bind (list-t-f x) list-t-g))))))
-
-  (deftest zero-laws-list-t
-    (is (= #{'()} @(m/zero (set-list nil))))
-    (is (= @(m/bind (m/zero (set-list nil)) list-t-f)
-           @(m/zero (set-list nil))))
-    (is (= @(m/bind (set-list 4) (constantly (m/zero (set-list nil))))
-           @(m/zero (set-list nil))))
-    (is (= @(m/plus [(set-list 4) (m/zero (set-list nil))])
-           @(set-list 4)))
-    (is (= @(m/plus [(m/zero (set-list nil)) (set-list 4)])
-           @(set-list 4))))
-
-  (deftest do-list-t
-    (is (= #{(list [10 15])}
-           @(m/do set-list
-                  [x (list-t-f 9)
-                   y (list-t-g x)]
-                  [x y]))))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
