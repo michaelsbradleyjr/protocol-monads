@@ -626,22 +626,26 @@
            (class (first comprehend-vector))))))
 
 (deftest test-comprehend-state
-  (let [comprehend-state
+  (let [do-state
+        (m/do m/state
+              [x (m/state 1)
+               y (m/state 2)
+               z (m/state 3)]
+              (vec (map inc
+                        [x y z])))
+        comprehend-state
         (m/comprehend
          #(vec ((partial map inc) %))
          [(m/state 1) (m/state 2) (m/state 3)])]
-    (is (= ((m/do m/state
-                  [x (m/state 1)
-                   y (m/state 2)
-                   z (m/state 3)]
-                  (vec (map inc
-                            [x y z])))
+    (is (= (do-state
             :state)
            (comprehend-state
             :state)))
     (is (= monads.core.State
+           (class do-state)
            (class comprehend-state)))
     (is (= clojure.lang.PersistentVector
+           (class (first (do-state :state)))
            (class (first (comprehend-state :state)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
