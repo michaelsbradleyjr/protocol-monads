@@ -50,20 +50,20 @@
 (deftest test-lazy-concat-laziness
   (is (= clojure.lang.LazySeq
          (class (m/lazy-concat (m/lazy-seq* (/ 1 0)
-                                          (/ 1 0))
-                             (m/lazy-seq* (m/lazy-seq* (/ 1 0)
-                                                       (/ 1 0)
-                                                       (/ 1 0))))))))
+                                            (/ 1 0))
+                               (m/lazy-seq* (m/lazy-seq* (/ 1 0)
+                                                         (/ 1 0)
+                                                         (/ 1 0))))))))
 
 (deftest test-lazy-concat-return
   (is (= (m/lazy-seq* (/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5))
          (m/lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
          (lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
          (m/lazy-concat (m/lazy-seq* (/ 1 1)
-                                   (/ 1 2))
-                      (m/lazy-seq* (m/lazy-seq* (/ 1 3)
-                                                (/ 1 4)
-                                                (/ 1 5)))))))
+                                     (/ 1 2))
+                        (m/lazy-seq* (m/lazy-seq* (/ 1 3)
+                                                  (/ 1 4)
+                                                  (/ 1 5)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -605,6 +605,12 @@
           (partial map inc)
           [(list 1 2) (list 3 4) (list 5 6)]))))
 
+(deftest test-comprehend-list-return-type
+  (is (= clojure.lang.PersistentList
+         (class (m/comprehend
+                 (partial map inc)
+                 [(list 1 2) (list 3 4) (list 5 6)])))))
+
 (deftest test-comprehend-state
   (is (= ((m/do m/state
                 [x (m/state 1)
@@ -617,6 +623,12 @@
            (partial map inc)
            [(m/state 1) (m/state 2) (m/state 3)])
           :state))))
+
+(deftest test-comprehend-state-return-type
+  (is (= monads.core.State
+         (class (m/comprehend
+                 (partial map inc)
+                 [(m/state 1) (m/state 2) (m/state 3)])))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/seq
