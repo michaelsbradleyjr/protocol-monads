@@ -638,23 +638,22 @@
                            (reverse (rest mvs)))]
     (bind mv (partial rest-steps []))))
 
-(defmacro seq
+(defn seq
   "'Executes' the monadic values in 'mvs' and returns a sequence of the
    basic values contained in them."
   ([mvs]
      ;; let is used in place of do, since standard do has been
      ;; excluded from this namespace
-     `(let []
-        (assert (seq* ~mvs)
-                (string/join " "
-                             ["At least one monadic value is required"
-                              "by monads.core/seq when no monadic value"
-                              "factory function has been specified."]))
-        (seq (first ~mvs) ~mvs)))
+     (assert (seq* mvs)
+             (string/join " "
+                          ["At least one monadic value is required"
+                           "by monads.core/seq when no monadic value"
+                           "factory function has been specified."]))
+     (seq (first mvs) mvs))
   ([mv-factory mvs]
-     `(if (seq* ~mvs)
-        (comprehend identity ~mvs)
-        (do-result (~mv-factory [nil]) []))))
+     (if (seq* mvs)
+       (comprehend (partial apply list) mvs)
+       (do-result (mv-factory [nil]) (list)))))
 
 (defn lift
   "Converts a function f to a function of monadic arguments

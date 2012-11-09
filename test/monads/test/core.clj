@@ -594,6 +594,11 @@
 ;;  monads.core/comprehend
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def comprehend-list-ret
+  (m/comprehend
+   #(apply list ((partial map inc) %))
+   [(list 1 2) (list 3 4) (list 5 6)]))
+
 (deftest test-comprehend-list
   (is (= (m/do list
                [x (list 1 2)
@@ -601,33 +606,28 @@
                 z (list 5 6)]
                (apply list (map inc
                                 [x y z])))
-         (m/comprehend
-          #(apply list ((partial map inc) %))
-          [(list 1 2) (list 3 4) (list 5 6)]))))
+         comprehend-list-ret)))
 
 (deftest test-comprehend-list-return-type-outer
   (is (= clojure.lang.PersistentList
-         (class (m/comprehend
-                 #(apply list ((partial map inc) %))
-                 [(list 1 2) (list 3 4) (list 5 6)])))))
+         (class comprehend-list-ret))))
 
 (deftest test-comprehend-list-return-type-inner
   (is (= clojure.lang.PersistentList
-         (class (first (m/comprehend
-                        #(apply list ((partial map inc) %))
-                        [(list 1 2) (list 3 4) (list 5 6)]))))))
+         (class (first comprehend-list-ret)))))
+
+(def comprehend-vector-ret
+  (m/comprehend
+   #(vec ((partial map inc) %))
+   [[1 2] [3 4] [5 6]]))
 
 (deftest test-comprehend-vector-return-type-outer
   (is (= clojure.lang.PersistentVector
-         (class (m/comprehend
-                 #(vec ((partial map inc) %))
-                 [[1 2] [3 4] [5 6]])))))
+         (class comprehend-vector-ret))))
 
 (deftest test-comprehend-vector-return-type-inner
   (is (= clojure.lang.PersistentVector
-         (class (first (m/comprehend
-                        #(vec ((partial map inc) %))
-                        [[1 2] [3 4] [5 6]]))))))
+         (class (first comprehend-vector-ret)))))
 
 (deftest test-comprehend-state
   (is (= ((m/do m/state
@@ -642,30 +642,69 @@
            [(m/state 1) (m/state 2) (m/state 3)])
           :state))))
 
+(def comprehend-state-ret
+  (m/comprehend
+   #(vec ((partial map inc) %))
+   [(m/state 1) (m/state 2) (m/state 3)]))
+
 (deftest test-comprehend-state-return-type-outer
   (is (= monads.core.State
-         (class (m/comprehend
-                 #(vec ((partial map inc) %))
-                 [(m/state 1) (m/state 2) (m/state 3)])))))
+         (class comprehend-state-ret))))
 
 (deftest test-comprehend-state-return-type-inner
   (is (= clojure.lang.PersistentVector
-         (class (first ((m/comprehend
-                         #(vec ((partial map inc) %))
-                         [(m/state 1) (m/state 2) (m/state 3)])
-                        :state))))))
+         (class (first (comprehend-state-ret :state))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/seq
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; need test that tests the exception path for seq
+(def seq-lazy-ret
+  (m/seq [(m/lazy-seq* 3 5) (m/lazy-seq* :a :b)]))
 
-(deftest test-seq
-  (is (= [[3 :a] [3 :b] [5 :a] [5 :b]]
-         (m/seq [[3 5] [:a :b]])))
-  (is (= [[]]
-         (m/seq vector []))))
+(deftest test-seq-lazy-seq
+  (is (= (m/lazy-seq* (list 3 :a) (list 3 :b) (list 5 :a) (list 5 :b))
+         seq-lazy-ret)))
+
+(deftest test-seq-lazy-seq-return-type-outer
+  (is (= clojure.lang.LazySeq
+         (class seq-lazy-ret))))
+
+(deftest test-seq-lazy-seq-return-type-inner
+  (is (= clojure.lang.PersistentList
+         (class (first seq-lazy-ret)))))
+
+(def seq-hash-set-ret
+  (m/seq hash-set []))
+
+(deftest test-seq-hash-set-empty
+  (is (= #{(list)}
+         seq-hash-set-ret)))
+
+(deftest test-seq-hash-set-empty-return-type-outer
+  (is (= clojure.lang.PersistentHashSet
+         (class seq-hash-set-ret))))
+
+(deftest test-seq-hash-set-empty-return-type-inner
+  (is (= clojure.lang.PersistentList$EmptyList
+         (class (first seq-hash-set-ret)))))
+
+(deftest test-seq-throws-on-empty-without-factory
+  (is (thrown-with-msg?
+        AssertionError #"At least one monadic value is required.*"
+        (m/seq []))))
+
+(comment
+
+  "The following will throw runtime excpetions since
+   clojure.core/lazy-seq, monads.core/lazy-seq and
+   monads.core/lazy-seq* are macros."
+
+  (m/seq lazy-seq [])
+  (m/seq m/lazy-seq [])
+  (m/seq m/lazy-seq* [])
+
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/lift
