@@ -725,7 +725,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest test-fmap
-  (is (= true true)))
+  (is (= (list 6)
+         (m/fmap inc (list 5))))
+  (is (= @(m/maybe 6)
+         @(m/fmap inc (m/maybe 5))))
+  (is (= @(m/maybe nil)
+         @(m/fmap inc m/maybe-zero-val))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/map
