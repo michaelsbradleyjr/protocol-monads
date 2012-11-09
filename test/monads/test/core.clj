@@ -594,9 +594,29 @@
 ;;  monads.core/comprehend
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-comprehend
-  (is (= ()
-         ())))
+(deftest test-comprehend-list
+  (is (= (m/do list
+               [x (list 1 2)
+                y (list 3 4)
+                z (list 5 6)]
+               (vec (map inc
+                         [x y z])))
+         (m/comprehend
+          (partial map inc)
+          [(list 1 2) (list 3 4) (list 5 6)]))))
+
+(deftest test-comprehend-state
+  (is (= ((m/do m/state
+                [x (m/state 1)
+                 y (m/state 2)
+                 z (m/state 3)]
+                (vec (map inc
+                          [x y z])))
+          :state)
+         ((m/comprehend
+           (partial map inc)
+           [(m/state 1) (m/state 2) (m/state 3)])
+          :state))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/seq

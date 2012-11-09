@@ -642,9 +642,15 @@
   "'Executes' the monadic values in 'mvs' and returns a sequence of the
    basic values contained in them."
   ([mvs]
-     `(assert (seq* ~mvs)
-              "At least one monadic value is required by monads.core/seq")
-     `(seq (first ~mvs) ~mvs))
+     ;; let is used in place of do, since standard do has been
+     ;; excluded from this namespace
+     `(let []
+        (assert (seq* ~mvs)
+                (string/join " "
+                             ["At least one monadic value is required"
+                              "by monads.core/seq when no monadic value"
+                              "factory function has been specified."]))
+        (seq (first ~mvs) ~mvs)))
   ([mv-factory mvs]
      `(if (seq* ~mvs)
         (comprehend identity ~mvs)
