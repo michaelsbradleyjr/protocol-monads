@@ -594,22 +594,27 @@
 ;;  monads.core/comprehend
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(def do-list
+  (m/do list
+        [x (list 1 2)
+         y (list 3 4)
+         z (list 5 6)]
+        (apply list (map inc
+                         [x y z]))))
+
 (def comprehend-list
   (m/comprehend
    #(apply list ((partial map inc) %))
    [(list 1 2) (list 3 4) (list 5 6)]))
 
 (deftest test-comprehend-list
-  (is (= (m/do list
-               [x (list 1 2)
-                y (list 3 4)
-                z (list 5 6)]
-               (apply list (map inc
-                                [x y z])))
+  (is (= do-list
          comprehend-list))
   (is (= clojure.lang.PersistentList
+         (class do-list)
          (class comprehend-list)))
   (is (= clojure.lang.PersistentList
+         (class (first do-list))
          (class (first comprehend-list)))))
 
 (def comprehend-vector
