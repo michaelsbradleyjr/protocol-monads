@@ -6,6 +6,10 @@ This library needs a license. EPLv1 is probably the way to go, since that seems 
 
 In the same spirit as the return type checker, `plus` / `plus*` should optionally check whether the type of the first monadic value is the same type as the rest of the monadic values. The implementation is probably proper to `plus-step` and `plus-step*`, rather than `plus` and `plus*` *per se*. 
 
+### Tests for monadic function return and monadic plus type checking
+
+Need a small battery of tests demonstrating that exceptions are thrown as expected (i.e. for various mismatch scenarios) when type checking is activated.
+
 ### Should there be lazy "star versions" of `comprehend`, `seq`, `chain`?
 
 Need to determine whether those monadic functions are "lazy enough" or whether lazy versions should be implemented in a manner similar to the `plus*` lazy variant of `plus`.
