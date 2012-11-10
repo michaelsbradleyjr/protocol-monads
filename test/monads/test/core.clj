@@ -901,44 +901,73 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def set-vect (m/vector-t hash-set))
-(defn vector-t-f [n]
-  (set-vect (inc n)))
+(def set-vec (m/vector-t hash-set))
 
-(defn vector-t-g [n]
-  (set-vect (+ n 5)))
+(def do-result-set-vec (partial m/do-result (set-vec [nil])))
+(def zero-val-set-vec (m/zero (set-vec [nil])))
+
+(defn vector-t-f [& ns]
+  (apply set-vec (map inc ns)))
+
+(defn vector-t-g [& ns]
+  (apply set-vec (map #(+ % 5) ns)))
 
 (deftest first-law-vector-t
-  (is (= @(m/bind (set-vect 10) vector-t-f)
+  (is (= @(m/bind (do-result-set-vec 10) vector-t-f)
          @(vector-t-f 10))))
 
+(deftest first-law-vector-factory
+  (is (= @(m/bind (set-vec 10 11 12) vector-t-f)
+         @(vector-t-f 10 11 12))))
+
 (deftest second-law-vector-t
-  (is (= @(m/bind (set-vect 10) set-vect)
-         @(set-vect 10))))
+  (is (= @(m/bind (do-result-set-vec 10) do-result-set-vec)
+         @(set-vec 10))))
+
+(deftest second-law-vector-t-factory
+  (is (= @(m/bind (set-vec 10 11 12) set-vec)
+         @(set-vec 10 11 12))))
 
 (deftest third-law-vector-t
-  (is (= @(m/bind (m/bind (set-vect 4) vector-t-f) vector-t-g)
-         @(m/bind (set-vect 4)
+  (is (= @(m/bind (m/bind (set-vec 4 5 6) vector-t-f) vector-t-g)
+         @(m/bind (set-vec 4 5 6)
                   (fn [x]
                     (m/bind (vector-t-f x) vector-t-g))))))
 
+(deftest plus-vector-t
+  (let [plus-vector-t @(m/plus [(set-vec 1 2) (set-vec) (set-vec 3 4)])]
+    (is (= #{[1 2 3 4]}
+           plus-vector-t))
+    (is (= clojure.lang.PersistentHashSet
+           (class plus-vector-t)))
+    (is (= clojure.lang.PersistentVector
+           (class (first plus-vector-t))))))
+
 (deftest zero-laws-vector-t
-  (is (= #{[]} @(m/zero (set-vect nil))))
-  (is (= @(m/bind (m/zero (set-vect nil)) vector-t-f)
-         @(m/zero (set-vect nil))))
-  (is (= @(m/bind (set-vect 4) (constantly (m/zero (set-vect nil))))
-         @(m/zero (set-vect nil))))
-  (is (= @(m/plus [(set-vect 4) (m/zero (set-vect nil))])
-         @(set-vect 4)))
-  (is (= @(m/plus [(m/zero (set-vect nil)) (set-vect 4)])
-         @(set-vect 4))))
+  (is (= #{[]} @zero-val-set-vec))
+  (is (= @(m/bind zero-val-set-vec vector-t-f)
+         @zero-val-set-vec))
+  (is (= @(m/bind (set-vec 4 5 6) (constantly zero-val-set-vec))
+         @zero-val-set-vec))
+  (is (= @(m/plus [(set-vec 4 5 6) zero-val-set-vec])
+         @(set-vec 4 5 6)))
+  (is (= @(m/plus [zero-val-set-vec (set-vec 4 5 6)])
+         @(set-vec 4 5 6))))
 
 (deftest do-vector-t
-  (is (= #{(vector [10 15])}
-         @(m/do set-vect
-                [x (vector-t-f 9)
-                 y (vector-t-g x)]
-                [x y]))))
+  (let [do-vector-t
+        @(m/do set-vec
+               [x (vector-t-f 9 8 7)
+                y (vector-t-g x)]
+               (list x y))]
+    (is (= #{[(list 10 15) (list 9 14) (list 8 13)]}
+           do-vector-t))
+    (is (= clojure.lang.PersistentHashSet
+           (class do-vector-t)))
+    (is (= clojure.lang.PersistentVector
+           (class (first do-vector-t))))
+    (is (= clojure.lang.PersistentList
+           (class (first (first do-vector-t)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

@@ -752,31 +752,31 @@
 ;; Monad transformer that transforms a monad m into a monad in which
 ;; the base values are vectors.
 
-(deftype VectorTransformer [m v]
+(deftype VectorTransformer [do-result-m v]
   clojure.lang.IDeref
   (deref [_]
     v)
 
   Monad
   (do-result [_ v]
-    (VectorTransformer. m (m (vector v))))
+    (VectorTransformer. do-result-m (do-result-m [v])))
   (bind [mv f]
     (let [v (deref mv)]
-      (VectorTransformer. m (bind v (fn [xs]
-                                      (if (seq* xs)
-                                        (->> xs
-                                             (map (comp deref (wrap-check mv f)))
-                                             (fmap (partial apply lazy-concat)))
-                                        (m [])))))))
+      (VectorTransformer. do-result-m (bind v (fn [xs]
+                                                (if (seq* xs)
+                                                  (->> xs
+                                                       (map (comp deref (wrap-check mv f)))
+                                                       (fmap plus))
+                                                  (do-result-m [])))))))
 
   MonadZero
   (zero [_]
-    (VectorTransformer. m (m [])))
+    (VectorTransformer. do-result-m (do-result-m [])))
   (plus-step [mv mvs]
     (VectorTransformer.
-     m (reduce (lift (comp vec concat))
-               (m [])
-               (map* deref (cons mv mvs)))))
+     do-result-m (apply
+                  (lift (fn [& vs] (plus vs)))
+                  (map* deref (cons mv mvs)))))
 
   MonadDev
   (val-types [_]
@@ -785,9 +785,12 @@
     "vector-t"))
 
 (defn vector-t
-  [m]
-  (fn [v]
-    (VectorTransformer. m (m (vector v)))))
+  [mv-factory]
+  (let [do-result-m (partial do-result (mv-factory [nil]))]
+    (fn [& vs]
+      (VectorTransformer. do-result-m (do-result-m (vec vs))))))
+
+(def vec-t vector-t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
