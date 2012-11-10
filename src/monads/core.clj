@@ -720,16 +720,16 @@
                                               (if (seq* xs)
                                                 (->> xs
                                                      (map (comp deref (wrap-check mv f)))
-                                                     (fmap #(apply list ((partial apply concat) %))))
+                                                     (fmap plus))
                                                 (do-result-m (list))))))))
   MonadZero
   (zero [_]
     (ListTransformer. do-result-m (do-result-m (list))))
   (plus-step [mv mvs]
     (ListTransformer.
-     do-result-m (reduce (lift (fn [& vs] (apply list (apply concat vs))))
-                         (do-result-m (list))
-                         (map* deref (cons mv mvs)))))
+     do-result-m (apply
+                  (lift (fn [& vs] (plus vs)))
+                  (map* deref (cons mv mvs)))))
 
   MonadDev
   (val-types [_]
