@@ -23,3 +23,11 @@ See: [https://gist.github.com/4050049](https://gist.github.com/4050049) [https:/
 ### Transformers need implementations for `plus-step*`
 
 Need to implement `plus-step*` for each monad transformer.
+
+### Use sentinel `::lazy-seq` to indicate `lazy-seq` as monadic value factory function
+
+At present, it's not possible to do `(set-t lazy-seq)` since `lazy-seq` (and `monads.core/lazy-seq*`, `monads.core/lazy-seq`) is a macro. However, it should be possible to do something like `(def lazy ::lazy-seq)` in `monads.core`, and then have some logic in the transformer factories that checks whether the `mv-factory` argument equals `monads.core/lazy` and setup `do-result-m` to use `monads.core/lazy-seq*`.
+
+### Should transformer factories perform `nil` -> `maybe-zero-val` short-circuit when `mv-factory` is `monads.core/maybe`?
+
+This seems like a reasonable thing to do, as it provides parity with the `monads.core/maybe` factory function, but it's not entirely clear whether that's the "correct" thing to do.
