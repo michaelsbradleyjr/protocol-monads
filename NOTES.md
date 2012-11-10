@@ -15,3 +15,7 @@ Need to determine whether those monadic functions are "lazy enough" or whether l
 This is the way the algo.monads handles the ambiguity for certain transformers, whereas protocol-monads is presently hardwired to use the "inner" `plus-step` / `plus-step*` for the `list`, `vector` and `hash-set` transformers.
 
 See: [https://gist.github.com/4050049](https://gist.github.com/4050049) [https://gist.github.com/4050099](https://gist.github.com/4050099).
+
+### Transformers need implementations for `plus-step*`
+
+Need to implement `plus-step*` for each monad transformer.
