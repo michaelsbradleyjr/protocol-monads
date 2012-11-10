@@ -1045,6 +1045,80 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+;;  monads.core.SetTransformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def vec-set (m/set-t vector))
+
+(def do-result-vec-set (partial m/do-result (vec-set [nil])))
+(def zero-val-vec-set (m/zero (vec-set [nil])))
+
+(defn set-t-f [& ns]
+  (apply vec-set (map inc ns)))
+
+(defn set-t-g [& ns]
+  (apply vec-set (map #(+ % 5) ns)))
+
+(deftest first-law-set-t
+  (is (= @(m/bind (do-result-vec-set 10) set-t-f)
+         @(set-t-f 10))))
+
+(deftest first-law-vector-factory
+  (is (= @(m/bind (vec-set 10 11 12) set-t-f)
+         @(set-t-f 10 11 12))))
+
+(deftest second-law-set-t
+  (is (= @(m/bind (do-result-vec-set 10) do-result-vec-set)
+         @(vec-set 10))))
+
+(deftest second-law-set-t-factory
+  (is (= @(m/bind (vec-set 10 11 12) vec-set)
+         @(vec-set 10 11 12))))
+
+(deftest third-law-set-t
+  (is (= @(m/bind (m/bind (vec-set 4 5 6) set-t-f) set-t-g)
+         @(m/bind (vec-set 4 5 6)
+                  (fn [x]
+                    (m/bind (set-t-f x) set-t-g))))))
+
+(deftest plus-set-t
+  (let [plus-set-t @(m/plus [(vec-set 1 2) (vec-set 1 2) (vec-set) (vec-set 2 3 4) (vec-set 2 3 4)])]
+    (is (= [#{1 2 3 4}]
+           plus-set-t))
+    (is (= clojure.lang.PersistentVector
+           (class plus-set-t)))
+    (is (= clojure.lang.PersistentHashSet
+           (class (first plus-set-t))))))
+
+(deftest zero-laws-set-t
+  (is (= [#{}] @zero-val-vec-set))
+  (is (= @(m/bind zero-val-vec-set set-t-f)
+         @zero-val-vec-set))
+  (is (= @(m/bind (vec-set 4 5 6) (constantly zero-val-vec-set))
+         @zero-val-vec-set))
+  (is (= @(m/plus [(vec-set 4 5 6) zero-val-vec-set])
+         @(vec-set 4 5 6)))
+  (is (= @(m/plus [zero-val-vec-set (vec-set 4 5 6)])
+         @(vec-set 4 5 6))))
+
+(deftest do-set-t
+  (let [do-set-t
+        @(m/do vec-set
+               [x (set-t-f 9 8 7)
+                y (set-t-g x)]
+               (list x y))]
+    (is (= [#{(list 10 15) (list 9 14) (list 8 13)}]
+           do-set-t))
+    (is (= clojure.lang.PersistentVector
+           (class do-set-t)))
+    (is (= clojure.lang.PersistentHashSet
+           (class (first do-set-t))))
+    (is (= clojure.lang.PersistentList
+           (class (first (first do-set-t)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 ;;  The tests below have been disabled, and are in the process of being
 ;;  reworked and re-enabled in light of monads.core/check-return-type
 ;;  and other modifications to the protocol-monads library.
@@ -1052,51 +1126,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;
-  ;;  monads.core.SetTransformer
-  ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (def vect-set (m/set-t vector))
-  (defn set-t-f [n]
-    (vect-set (inc n)))
-
-  (defn set-t-g [n]
-    (vect-set (+ n 5)))
-
-  (deftest first-law-set-t
-    (is (= @(m/bind (vect-set 10) set-t-f)
-           @(set-t-f 10))))
-
-  (deftest second-law-set-t
-    (is (= @(m/bind (vect-set 10) vect-set)
-           @(vect-set 10))))
-
-  (deftest third-law-set-t
-    (is (= @(m/bind (m/bind (vect-set 4) set-t-f) set-t-g)
-           @(m/bind (vect-set 4)
-                    (fn [x]
-                      (m/bind (set-t-f x) set-t-g))))))
-
-  (deftest zero-laws-set-t
-    (is (= [#{}] @(m/zero (vect-set nil))))
-    (is (= @(m/bind (m/zero (vect-set nil)) set-t-f)
-           @(m/zero (vect-set nil))))
-    (is (= @(m/bind (vect-set 4) (constantly (m/zero (vect-set nil))))
-           @(m/zero (vect-set nil))))
-    (is (= @(m/plus [(vect-set 4) (m/zero (vect-set nil))])
-           @(vect-set 4)))
-    (is (= @(m/plus [(m/zero (vect-set nil)) (vect-set 4)])
-           @(vect-set 4))))
-
-  (deftest do-set-t
-    (is (= [(hash-set [10 15])]
-           @(m/do vect-set
-                  [x (set-t-f 9)
-                   y (set-t-g x)]
-                  [x y]))))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;

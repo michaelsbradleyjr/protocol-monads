@@ -703,7 +703,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monad transformer that transforms a monad m into a monad in which
+;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are lists.
 
 (deftype ListTransformer [do-result-m v]
@@ -749,7 +749,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monad transformer that transforms a monad m into a monad in which
+;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are vectors.
 
 (deftype VectorTransformer [do-result-m v]
@@ -798,7 +798,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monad transformer that transforms a monad m into a monad in which
+;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are lazy sequences.
 
 (deftype LazySeqTransformer [do-result-m v]
@@ -812,11 +812,11 @@
   (bind [mv f]
     (let [v (deref mv)]
       (LazySeqTransformer. do-result-m (bind v (fn [xs]
-                                                (if (seq* xs)
-                                                  (->> xs
-                                                       (map (comp deref (wrap-check mv f)))
-                                                       (fmap plus))
-                                                  (do-result-m (lazy-seq))))))))
+                                                 (if (seq* xs)
+                                                   (->> xs
+                                                        (map (comp deref (wrap-check mv f)))
+                                                        (fmap plus))
+                                                   (do-result-m (lazy-seq))))))))
 
   MonadZero
   (zero [_]
@@ -847,34 +847,34 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monad transformer that transforms a monad m into a monad in which
+;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are sets.
 
-(deftype SetTransformer [m v]
+(deftype SetTransformer [do-result-m v]
   clojure.lang.IDeref
   (deref [_]
     v)
 
   Monad
   (do-result [_ v]
-    (SetTransformer. m (m (hash-set v))))
+    (SetTransformer. do-result-m (do-result-m #{v})))
   (bind [mv f]
     (let [v (deref mv)]
-      (SetTransformer. m (bind v (fn [xs]
-                                   (if (seq* xs)
-                                     (->> xs
-                                          (map (comp deref (wrap-check mv f)))
-                                          (fmap (partial apply lazy-concat)))
-                                     (m #{})))))))
+      (SetTransformer. do-result-m (bind v (fn [xs]
+                                             (if (seq* xs)
+                                               (->> xs
+                                                    (map (comp deref (wrap-check mv f)))
+                                                    (fmap plus))
+                                               (do-result-m #{})))))))
 
   MonadZero
   (zero [_]
-    (SetTransformer. m (m #{})))
+    (SetTransformer. do-result-m (do-result-m #{})))
   (plus-step [mv mvs]
     (SetTransformer.
-     m (reduce (lift set/union)
-               (m #{})
-               (map* deref (cons mv mvs)))))
+     do-result-m (apply
+                  (lift (fn [& vs] (plus vs)))
+                  (map* deref (cons mv mvs)))))
 
   MonadDev
   (val-types [_]
@@ -883,9 +883,12 @@
     "set-t"))
 
 (defn set-t
-  [m]
-  (fn [v]
-    (SetTransformer. m (m (hash-set v)))))
+  [mv-factory]
+  (let [do-result-m (partial do-result (mv-factory [nil]))]
+    (fn [& vs]
+      (SetTransformer. do-result-m (do-result-m (apply hash-set vs))))))
+
+(def hash-set-t set-t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -893,7 +896,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monad transformer that transforms a monad m into a monad in which
+;; Monad transformer that transforms a monad into a monad in which
 ;; the base values can be invalid (represented by maybe-zero-val).
 
 (deftype MaybeTransformer [m v]
@@ -940,7 +943,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monad transformer that transforms a monad m into a monad of stateful
+;; Monad transformer that transforms a monad into a monad of stateful
 ;; computations that have the base monad type as their result.
 
 (deftype StateTransformer [m v mv f alts lzalts]
