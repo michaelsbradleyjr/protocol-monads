@@ -47,7 +47,7 @@
   (is (= (m/map* identity [1 2 3])
          (map identity [1 2 3]))))
 
-(deftest test-lazy-concat-laziness
+(deftest lazy-concat-laziness
   (is (= clojure.lang.LazySeq
          (class (m/lazy-concat (m/lazy-seq* (/ 1 0)
                                             (/ 1 0))
@@ -55,7 +55,7 @@
                                                          (/ 1 0)
                                                          (/ 1 0))))))))
 
-(deftest test-lazy-concat-return
+(deftest lazy-concat-return
   (is (= (m/lazy-seq* (/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5))
          (m/lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
          (lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
@@ -337,23 +337,23 @@
                       (m/bind (state-f x) state-g)))]
     (is (= (mv1 :state) (mv2 :state)))))
 
-(deftest test-update-state
+(deftest update-state
   (is (= [:state :new-state]
          ((m/update-state (constantly :new-state)) :state))))
 
-(deftest test-get-val
+(deftest get-val
   (is (= [17 {:a 17}]
          ((m/get-val :a) {:a 17}))))
 
-(deftest test-set-val
+(deftest set-val
   (is (= [17 {:a 12}]
          ((m/set-val :a 12) {:a 17}))))
 
-(deftest test-update-val
+(deftest update-val
   (is (= [5 {:a 19}]
          ((m/update-val :a + 14) {:a 5}))))
 
-(deftest test-get-in-val
+(deftest get-in-val
   (let [state {:a {:b 1} :c {:d {:e 2}}}]
     (are [expected args] (is (= expected ((apply m/get-in-val args) state)))
          [1 state]      [[:a :b]]
@@ -362,11 +362,11 @@
          [2 state]      [[:c :d :e]]
          [{:b 1} state] [[:a]])))
 
-(deftest test-assoc-in-val
+(deftest assoc-in-val
   (is (= [nil {:a {:b {:c 9}}}]
          ((m/assoc-in-val [:a :b :c] 9) {}))))
 
-(deftest test-update-in-val
+(deftest update-in-val
   (are [expected in-state path args] (is (= expected
                                             ((apply m/update-in-val path args) in-state)))
        [2 {:a {:b 4}}]      {:a {:b 2}}  [:a :b]  [* 2]
@@ -453,15 +453,15 @@
                  (fn [x]
                    (m/bind (writer-f x) writer-g))))))
 
-(deftest test-write
+(deftest write
   (is (= [nil #{:written}]
          @(m/write test-writer :written))))
 
-(deftest test-listen
+(deftest listen
   (is (= [[nil #{:written}] #{:written}]
          @(m/listen (m/write test-writer :written)))))
 
-(deftest test-censor
+(deftest censor
   (is (= [nil #{:new-written}]
          @(m/censor (constantly #{:new-written})
                     (m/write test-writer :written)))))
@@ -474,7 +474,7 @@
 ;;  monads.core/do
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-do-basic
+(deftest do-basic
   (is (= (m/bind (range 5)
                  (fn [x]
                    (m/bind (range 3)
@@ -485,7 +485,7 @@
                 y (range 3)]
                (+ x y)))))
 
-(deftest test-do-when
+(deftest do-when
   (is (= (m/zero (lazy-seq))
          (m/bind (range 5)
                  (fn [x]
@@ -500,7 +500,7 @@
                 :when (> x 1000)]
                (+ x y)))))
 
-(deftest test-do-let
+(deftest do-let
   (is (= (m/bind (range 5)
                  (fn [x]
                    (let [z 100]
@@ -517,51 +517,51 @@
 ;;  monads.core/plus, monads.core/plus*
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-plus-list
+(deftest plus-list
   (is (= (m/plus [(list 1) '() (list 2) (list 3) (list)])
          (list 1 2 3))))
 
-(deftest test-plus*-list
+(deftest plus*-list
   (is (= (m/plus* [(list 1) '() (list 2) (list 3) (list)])
          (list 1 2 3))))
 
-(deftest test-plus-list-empty
+(deftest plus-list-empty
   (is (= (m/plus [(list) (list 1) '() (list 2) (list 3) (list)])
          (list 1 2 3))))
 
-(deftest test-plus*-list-empty
+(deftest plus*-list-empty
   (is (= (m/plus* [(list) (list 1) '() (list 2) (list 3) (list)])
          (list 1 2 3))))
 
-(deftest test-plus-vector
+(deftest plus-vector
   (is (= (m/plus [[1] [] [2] [3] []])
          [1 2 3])))
 
-(deftest test-plus*-vector
+(deftest plus*-vector
   (is (= (m/plus* [[1] [] [2] [3] []])
          [1 2 3])))
 
-(deftest test-plus-lazy-seq
+(deftest plus-lazy-seq
   (is (= (m/plus [(m/lazy-seq* 1) (lazy-seq) (m/lazy-seq* 2) (m/lazy-seq* 3) (m/lazy-seq*)])
          (m/lazy-seq* 1 2 3))))
 
-(deftest test-plus*-lazy-seq
+(deftest plus*-lazy-seq
   (is (= (m/plus* [(m/lazy-seq* 1) (lazy-seq) (m/lazy-seq* 2) (m/lazy-seq* 3) (m/lazy-seq*)])
          (m/lazy-seq* 1 2 3))))
 
-(deftest test-plus-hash-set
+(deftest plus-hash-set
   (is (= (m/plus [#{1} #{} #{2 3} #{4 5 6} #{}])
          #{1 2 3 4 5 6})))
 
-(deftest test-plus*-hash-set
+(deftest plus*-hash-set
   (is (= (m/plus* [#{1} #{} #{2 3} #{4 5 6} #{}])
          #{1 2 3 4 5 6})))
 
-(deftest test-plus-maybe
+(deftest plus-maybe
   (is (= @(m/plus [m/maybe-zero-val (m/maybe nil) (m/maybe 1) (m/maybe 2)])
          @(m/maybe 1))))
 
-(deftest test-plus-maybe-not-lazy
+(deftest plus-maybe-not-lazy
   (is (thrown-with-msg?
         Exception #"Should be thrown"
         @(m/plus [(m/maybe :test)
@@ -569,7 +569,7 @@
                         [_ (m/maybe 10)]
                         (throw (Exception. "Should be thrown")))]))))
 
-(deftest test-plus*-maybe-zero-first
+(deftest plus*-maybe-zero-first
   (is (= @(m/plus* [(m/maybe nil)
                     (m/maybe :test)
                     (m/do m/maybe
@@ -578,7 +578,7 @@
                           (throw (Exception. "Should not be thrown")))])
          @(m/maybe :test))))
 
-(deftest test-plus*-maybe-not-zero-first
+(deftest plus*-maybe-not-zero-first
   (is (= @(m/plus* [(m/maybe :test)
                     (m/do m/maybe
                           [_ (m/maybe 10)
@@ -594,7 +594,7 @@
 ;;  monads.core/comprehend
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-comprehend-list
+(deftest comprehend-list
   (let [do-list
         (m/do list
               [x (list 1 2)
@@ -615,7 +615,7 @@
            (class (first do-list))
            (class (first comprehend-list))))))
 
-(deftest test-comprehend-vector
+(deftest comprehend-vector
   (let [comprehend-vector
         (m/comprehend
          #(vec ((partial map inc) %))
@@ -625,7 +625,7 @@
     (is (= clojure.lang.PersistentVector
            (class (first comprehend-vector))))))
 
-(deftest test-comprehend-state
+(deftest comprehend-state
   (let [do-state
         (m/do m/state
               [x (m/state 1)
@@ -652,7 +652,7 @@
 ;;  monads.core/seq
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-seq-lazy-seq
+(deftest seq-lazy-seq
   (let [seq-lazy-seq (m/seq [(m/lazy-seq* 3 5) (m/lazy-seq* :a :b)])]
     (is (= (m/lazy-seq* (list 3 :a) (list 3 :b) (list 5 :a) (list 5 :b))
            seq-lazy-seq))
@@ -661,7 +661,7 @@
     (is (= clojure.lang.PersistentList
            (class (first seq-lazy-seq))))))
 
-(deftest test-seq-hash-set-empty
+(deftest seq-hash-set-empty
   (let [seq-hash-set-empty (m/seq hash-set [])]
     (is (= #{(list)}
            seq-hash-set-empty))
@@ -670,7 +670,7 @@
     (is (= clojure.lang.PersistentList$EmptyList
            (class (first seq-hash-set-empty))))))
 
-(deftest test-seq-throws-on-empty-without-factory
+(deftest seq-throws-on-empty-without-factory
   (is (thrown-with-msg?
         AssertionError #"At least one monadic value is required.*"
         (m/seq []))))
@@ -691,7 +691,7 @@
 ;;  monads.core/lift
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-lift
+(deftest monadic-lift
   (let [lifted-+ (m/lift +)]
     (is (= [6]
            (apply lifted-+ (map vector (range 4)))))
@@ -707,7 +707,7 @@
 ;;  monads.core/join
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-join
+(deftest monadic-join
   (is (= (list 1)
          (m/join (list (list 1)))))
   (is (= [1]
@@ -725,7 +725,7 @@
 ;;  monads.core/fmap
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-fmap
+(deftest monadic-fmap
   (is (= (list 6)
          (m/fmap inc (list 5))))
   (is (= @(m/maybe 6)
@@ -737,7 +737,7 @@
 ;;  monads.core/map
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-map
+(deftest monadic-map
   (let [map-vec (m/map #(vector % (inc %)) (list 1 3 5))]
     (is (= (m/seq (map #(vector % (inc %)) (list 1 3 5)))
            map-vec))
@@ -750,7 +750,7 @@
 ;;  monads.core/chain
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest test-chain
+(deftest monadic-chain
   (let [t (fn [x] (vector (inc x) (* 2 x)))
         u (fn [x] (vector (dec x)))
         st (fn [x] (m/state (inc x)))
@@ -860,6 +860,15 @@
                   (fn [x]
                     (m/bind (list-t-f x) list-t-g))))))
 
+(deftest plus-list-t
+  (let [plus-list-t @(m/plus [(set-list 1 2) (set-list) (set-list 3 4)])]
+    (is (= #{(list 1 2 3 4)}
+           plus-list-t))
+    (is (= clojure.lang.PersistentHashSet
+           (class plus-list-t)))
+    (is (= clojure.lang.PersistentList
+           (class (first plus-list-t))))))
+
 (deftest zero-laws-list-t
   (is (= #{(list)} @zero-val-set-list))
   (is (= @(m/bind zero-val-set-list list-t-f)
@@ -872,11 +881,19 @@
          @(set-list 4 5 6))))
 
 (deftest do-list-t
-  (is (= #{(list [10 15] [9 14] [8 13])}
-         @(m/do set-list
-                [x (list-t-f 9 8 7)
-                 y (list-t-g x)]
-                [x y]))))
+  (let [do-list-t
+        @(m/do set-list
+               [x (list-t-f 9 8 7)
+                y (list-t-g x)]
+               [x y])]
+    (is (= #{(list [10 15] [9 14] [8 13])}
+           do-list-t))
+    (is (= clojure.lang.PersistentHashSet
+           (class do-list-t)))
+    (is (= clojure.lang.PersistentList
+           (class (first do-list-t))))
+    (is (= clojure.lang.PersistentVector
+           (class (first (first do-list-t)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
