@@ -948,8 +948,12 @@
 
 (defn state-t
   [m]
-  (fn [v]
-    (StateTransformer. m v nil nil nil nil)))
+  (if (= m maybe)
+    (fn [v]
+      (let [v (if (nil? v) maybe-zero-val v)]
+        (StateTransformer. m v nil nil nil nil)))
+    (fn [v]
+      (StateTransformer. m v nil nil nil nil))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
