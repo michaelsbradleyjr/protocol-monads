@@ -801,7 +801,45 @@
 ;; Monad transformer that transforms a monad m into a monad in which
 ;; the base values are lazy sequences.
 
-(comment "LazySeqTransformer is not yet implemented." )
+(deftype LazySeqTransformer [do-result-m v]
+  clojure.lang.IDeref
+  (deref [_]
+    v)
+
+  Monad
+  (do-result [_ v]
+    (LazySeqTransformer. do-result-m (do-result-m (lazy-seq* v))))
+  (bind [mv f]
+    (let [v (deref mv)]
+      (LazySeqTransformer. do-result-m (bind v (fn [xs]
+                                                (if (seq* xs)
+                                                  (->> xs
+                                                       (map (comp deref (wrap-check mv f)))
+                                                       (fmap plus))
+                                                  (do-result-m (lazy-seq))))))))
+
+  MonadZero
+  (zero [_]
+    (LazySeqTransformer. do-result-m (do-result-m (lazy-seq))))
+  (plus-step [mv mvs]
+    (LazySeqTransformer.
+     do-result-m (apply
+                  (lift (fn [& vs] (plus vs)))
+                  (map* deref (cons mv mvs)))))
+
+  MonadDev
+  (val-types [_]
+    [LazySeqTransformer])
+  (name-monad [_]
+    "lazy-seq-t"))
+
+(defn lazy-seq-t
+  [mv-factory]
+  (let [do-result-m (partial do-result (mv-factory [nil]))]
+    (fn [& vs]
+      (LazySeqTransformer. do-result-m (do-result-m (lazy-seq vs))))))
+
+(def lazy-t lazy-seq-t)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

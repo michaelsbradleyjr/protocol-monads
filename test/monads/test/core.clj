@@ -975,7 +975,73 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(comment "monads.core.LazySeqTransformer is not yet implemented.")
+(def set-lazy-seq (m/lazy-seq-t hash-set))
+
+(def do-result-set-lazy-seq (partial m/do-result (set-lazy-seq [nil])))
+(def zero-val-set-lazy-seq (m/zero (set-lazy-seq [nil])))
+
+(defn lazy-seq-t-f [& ns]
+  (apply set-lazy-seq (map inc ns)))
+
+(defn lazy-seq-t-g [& ns]
+  (apply set-lazy-seq (map #(+ % 5) ns)))
+
+(deftest first-law-lazy-seq-t
+  (is (= @(m/bind (do-result-set-lazy-seq 10) lazy-seq-t-f)
+         @(lazy-seq-t-f 10))))
+
+(deftest first-law-lazy-seq-t-factory
+  (is (= @(m/bind (set-lazy-seq 10 11 12) lazy-seq-t-f)
+         @(lazy-seq-t-f 10 11 12))))
+
+(deftest second-law-lazy-seq-t
+  (is (= @(m/bind (do-result-set-lazy-seq 10) do-result-set-lazy-seq)
+         @(do-result-set-lazy-seq 10))))
+
+(deftest second-law-lazy-seq-t-factory
+  (is (= @(m/bind (set-lazy-seq 10 11 12) set-lazy-seq)
+         @(set-lazy-seq 10 11 12))))
+
+(deftest third-law-lazy-seq-t
+  (is (= @(m/bind (m/bind (set-lazy-seq 4 5 6) lazy-seq-t-f) lazy-seq-t-g)
+         @(m/bind (set-lazy-seq 4 5 6)
+                  (fn [x]
+                    (m/bind (lazy-seq-t-f x) lazy-seq-t-g))))))
+
+(deftest plus-lazy-seq-t
+  (let [plus-lazy-seq-t @(m/plus [(set-lazy-seq 1 2) (set-lazy-seq) (set-lazy-seq 3 4)])]
+    (is (= #{(m/lazy-seq* 1 2 3 4)}
+           plus-lazy-seq-t))
+    (is (= clojure.lang.PersistentHashSet
+           (class plus-lazy-seq-t)))
+    (is (= clojure.lang.LazySeq
+           (class (first plus-lazy-seq-t))))))
+
+(deftest zero-laws-lazy-seq-t
+  (is (= #{(lazy-seq)} @zero-val-set-lazy-seq))
+  (is (= @(m/bind zero-val-set-lazy-seq lazy-seq-t-f)
+         @zero-val-set-lazy-seq))
+  (is (= @(m/bind (set-lazy-seq 4 5 6) (constantly zero-val-set-lazy-seq))
+         @zero-val-set-lazy-seq))
+  (is (= @(m/plus [(set-lazy-seq 4 5 6) zero-val-set-lazy-seq])
+         @(set-lazy-seq 4 5 6)))
+  (is (= @(m/plus [zero-val-set-lazy-seq (set-lazy-seq 4 5 6)])
+         @(set-lazy-seq 4 5 6))))
+
+(deftest do-lazy-seq-t
+  (let [do-lazy-seq-t
+        @(m/do set-lazy-seq
+               [x (lazy-seq-t-f 9 8 7)
+                y (lazy-seq-t-g x)]
+               [x y])]
+    (is (= #{(list [10 15] [9 14] [8 13])}
+           do-lazy-seq-t))
+    (is (= clojure.lang.PersistentHashSet
+           (class do-lazy-seq-t)))
+    (is (= clojure.lang.LazySeq
+           (class (first do-lazy-seq-t))))
+    (is (= clojure.lang.PersistentVector
+           (class (first (first do-lazy-seq-t)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
