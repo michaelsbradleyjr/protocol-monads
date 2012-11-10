@@ -1119,6 +1119,51 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+;;  monads.core.MaybeTransformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def vect-maybe (m/maybe-t vector))
+(defn maybe-t-f [n]
+  (vect-maybe (inc n)))
+
+(defn maybe-t-g [n]
+  (vect-maybe (+ n 5)))
+
+(deftest first-law-maybe-t
+  (is (= @(first @(m/bind (vect-maybe 10) maybe-t-f))
+         @(first @(maybe-t-f 10)))))
+
+(deftest second-law-maybe-t
+  (is (= @(first @(m/bind (vect-maybe 10) vect-maybe))
+         @(first @(vect-maybe 10)))))
+
+(deftest third-law-maybe-t
+  (is (= @(first @(m/bind (m/bind (vect-maybe 4) maybe-t-f) maybe-t-g))
+         @(first @(m/bind (vect-maybe 4)
+                          (fn [x]
+                            (m/bind (maybe-t-f x) maybe-t-g)))))))
+
+(deftest zero-laws-maybe-t
+  (is (= m/maybe-zero-val (first @ (m/zero (vect-maybe nil)))))
+  (is (= (first @(m/bind (m/zero (vect-maybe nil)) maybe-t-f))
+         (first @(m/zero (vect-maybe nil)))))
+  (is (= (first @(m/bind (vect-maybe 4) (constantly (m/zero (vect-maybe nil)))))
+         (first @(m/zero (vect-maybe nil)))))
+  (is (= @(first @(m/plus [(vect-maybe 4) (m/zero (vect-maybe nil))]))
+         @(first @(vect-maybe 4))))
+  (is (= @(first @(m/plus [(m/zero (vect-maybe nil)) (vect-maybe 4)]))
+         @(first @(vect-maybe 4)))))
+
+(deftest do-maybe-t
+  (is (= [10 15]
+         @(first @(m/do vect-maybe
+                        [x (maybe-t-f 9)
+                         y (maybe-t-g x)]
+                        [x y])))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 ;;  The tests below have been disabled, and are in the process of being
 ;;  reworked and re-enabled in light of monads.core/check-return-type
 ;;  and other modifications to the protocol-monads library.
@@ -1126,51 +1171,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;
-  ;;  monads.core.MaybeTransformer
-  ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (def vect-maybe (m/maybe-t vector))
-  (defn maybe-t-f [n]
-    (vect-maybe (inc n)))
-
-  (defn maybe-t-g [n]
-    (vect-maybe (+ n 5)))
-
-  (deftest first-law-maybe-t
-    (is (= @(first @(m/bind (vect-maybe 10) maybe-t-f))
-           @(first @(maybe-t-f 10)))))
-
-  (deftest second-law-maybe-t
-    (is (= @(first @(m/bind (vect-maybe 10) vect-maybe))
-           @(first @(vect-maybe 10)))))
-
-  (deftest third-law-maybe-t
-    (is (= @(first @(m/bind (m/bind (vect-maybe 4) maybe-t-f) maybe-t-g))
-           @(first @(m/bind (vect-maybe 4)
-                            (fn [x]
-                              (m/bind (maybe-t-f x) maybe-t-g)))))))
-
-  (deftest zero-laws-maybe-t
-    (is (= m/maybe-zero-val (first @ (m/zero (vect-maybe nil)))))
-    (is (= (first @(m/bind (m/zero (vect-maybe nil)) maybe-t-f))
-           (first @(m/zero (vect-maybe nil)))))
-    (is (= (first @(m/bind (vect-maybe 4) (constantly (m/zero (vect-maybe nil)))))
-           (first @(m/zero (vect-maybe nil)))))
-    (is (= @(first @(m/plus [(vect-maybe 4) (m/zero (vect-maybe nil))]))
-           @(first @(vect-maybe 4))))
-    (is (= @(first @(m/plus [(m/zero (vect-maybe nil)) (vect-maybe 4)]))
-           @(first @(vect-maybe 4)))))
-
-  (deftest do-maybe-t
-    (is (= [10 15]
-           @(first @(m/do vect-maybe
-                          [x (maybe-t-f 9)
-                           y (maybe-t-g x)]
-                          [x y])))))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
