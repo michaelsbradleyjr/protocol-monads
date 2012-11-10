@@ -897,6 +897,52 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
+;;  monads.core.VectorTransformer
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def set-vect (m/vector-t hash-set))
+(defn vector-t-f [n]
+  (set-vect (inc n)))
+
+(defn vector-t-g [n]
+  (set-vect (+ n 5)))
+
+(deftest first-law-vector-t
+  (is (= @(m/bind (set-vect 10) vector-t-f)
+         @(vector-t-f 10))))
+
+(deftest second-law-vector-t
+  (is (= @(m/bind (set-vect 10) set-vect)
+         @(set-vect 10))))
+
+(deftest third-law-vector-t
+  (is (= @(m/bind (m/bind (set-vect 4) vector-t-f) vector-t-g)
+         @(m/bind (set-vect 4)
+                  (fn [x]
+                    (m/bind (vector-t-f x) vector-t-g))))))
+
+(deftest zero-laws-vector-t
+  (is (= #{[]} @(m/zero (set-vect nil))))
+  (is (= @(m/bind (m/zero (set-vect nil)) vector-t-f)
+         @(m/zero (set-vect nil))))
+  (is (= @(m/bind (set-vect 4) (constantly (m/zero (set-vect nil))))
+         @(m/zero (set-vect nil))))
+  (is (= @(m/plus [(set-vect 4) (m/zero (set-vect nil))])
+         @(set-vect 4)))
+  (is (= @(m/plus [(m/zero (set-vect nil)) (set-vect 4)])
+         @(set-vect 4))))
+
+(deftest do-vector-t
+  (is (= #{(vector [10 15])}
+         @(m/do set-vect
+                [x (vector-t-f 9)
+                 y (vector-t-g x)]
+                [x y]))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
 ;;  The tests below have been disabled, and are in the process of being
 ;;  reworked and re-enabled in light of monads.core/check-return-type
 ;;  and other modifications to the protocol-monads library.
@@ -904,51 +950,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (comment
-
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-  ;;
-  ;;  monads.core.VectorTransformer
-  ;;
-  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-  (def set-vect (m/vector-t hash-set))
-  (defn vector-t-f [n]
-    (set-vect (inc n)))
-
-  (defn vector-t-g [n]
-    (set-vect (+ n 5)))
-
-  (deftest first-law-vector-t
-    (is (= @(m/bind (set-vect 10) vector-t-f)
-           @(vector-t-f 10))))
-
-  (deftest second-law-vector-t
-    (is (= @(m/bind (set-vect 10) set-vect)
-           @(set-vect 10))))
-
-  (deftest third-law-vector-t
-    (is (= @(m/bind (m/bind (set-vect 4) vector-t-f) vector-t-g)
-           @(m/bind (set-vect 4)
-                    (fn [x]
-                      (m/bind (vector-t-f x) vector-t-g))))))
-
-  (deftest zero-laws-vector-t
-    (is (= #{[]} @(m/zero (set-vect nil))))
-    (is (= @(m/bind (m/zero (set-vect nil)) vector-t-f)
-           @(m/zero (set-vect nil))))
-    (is (= @(m/bind (set-vect 4) (constantly (m/zero (set-vect nil))))
-           @(m/zero (set-vect nil))))
-    (is (= @(m/plus [(set-vect 4) (m/zero (set-vect nil))])
-           @(set-vect 4)))
-    (is (= @(m/plus [(m/zero (set-vect nil)) (set-vect 4)])
-           @(set-vect 4))))
-
-  (deftest do-vector-t
-    (is (= #{(vector [10 15])}
-           @(m/do set-vect
-                  [x (vector-t-f 9)
-                   y (vector-t-g x)]
-                  [x y]))))
 
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
   ;;
