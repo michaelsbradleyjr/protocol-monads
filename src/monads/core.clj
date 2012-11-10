@@ -706,30 +706,30 @@
 ;; Monad transformer that transforms a monad m into a monad in which
 ;; the base values are lists.
 
-(deftype ListTransformer [m v]
+(deftype ListTransformer [do-result-m v]
   clojure.lang.IDeref
   (deref [_]
     v)
 
   Monad
   (do-result [_ v]
-    (ListTransformer. m (m (list v))))
+    (ListTransformer. do-result-m (do-result-m (list v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (ListTransformer. m (bind v (fn [xs]
-                                    (if (seq* xs)
-                                      (->> xs
-                                           (map (comp deref (wrap-check mv f)))
-                                           (fmap (partial apply lazy-concat)))
-                                      (m '())))))))
+      (ListTransformer. do-result-m (bind v (fn [xs]
+                                              (if (seq* xs)
+                                                (->> xs
+                                                     (map (comp deref (wrap-check mv f)))
+                                                     (fmap #(apply list ((partial apply concat) %))))
+                                                (do-result-m (list))))))))
   MonadZero
   (zero [_]
-    (ListTransformer. m (m '())))
+    (ListTransformer. do-result-m (do-result-m (list))))
   (plus-step [mv mvs]
     (ListTransformer.
-     m (reduce (lift concat)
-               (m '())
-               (map* deref (cons mv mvs)))))
+     do-result-m (reduce (lift (fn [& vs] (apply list (apply concat vs))))
+                         (do-result-m (list))
+                         (map* deref (cons mv mvs)))))
 
   MonadDev
   (val-types [_]
@@ -738,9 +738,10 @@
     "list-t"))
 
 (defn list-t
-  [m]
-  (fn [v]
-    (ListTransformer. m (m (list v)))))
+  [mv-factory]
+  (let [do-result-m (partial do-result (mv-factory [nil]))]
+    (fn [& vs]
+      (ListTransformer. do-result-m (do-result-m (apply list vs))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -947,12 +948,8 @@
 
 (defn state-t
   [m]
-  (if (= m maybe)
-    (fn [v]
-      (let [v (if (nil? v) maybe-zero-val v)]
-        (StateTransformer. m v nil nil nil nil)))
-    (fn [v]
-      (StateTransformer. m v nil nil nil nil))))
+  (fn [v]
+    (StateTransformer. m v nil nil nil nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

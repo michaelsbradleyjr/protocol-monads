@@ -828,41 +828,53 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def set-list (m/list-t hash-set))
-(defn list-t-f [n]
-  (set-list (inc n)))
 
-(defn list-t-g [n]
-  (set-list (+ n 5)))
+(def do-result-set-list (partial m/do-result (set-list [nil])))
+(def zero-val-set-list (m/zero (set-list [nil])))
+
+(defn list-t-f [& ns]
+  (apply set-list (map inc ns)))
+
+(defn list-t-g [& ns]
+  (apply set-list (map #(+ % 5) ns)))
 
 (deftest first-law-list-t
-  (is (= @(m/bind (set-list 10) list-t-f)
+  (is (= @(m/bind (do-result-set-list 10) list-t-f)
          @(list-t-f 10))))
 
+(deftest first-law-list-t-factory
+  (is (= @(m/bind (set-list 10 11 12) list-t-f)
+         @(list-t-f 10 11 12))))
+
 (deftest second-law-list-t
-  (is (= @(m/bind (set-list 10) set-list)
-         @(set-list 10))))
+  (is (= @(m/bind (do-result-set-list 10) do-result-set-list)
+         @(do-result-set-list 10))))
+
+(deftest second-law-list-t-factory
+  (is (= @(m/bind (set-list 10 11 12) set-list)
+         @(set-list 10 11 12))))
 
 (deftest third-law-list-t
-  (is (= @(m/bind (m/bind (set-list 4) list-t-f) list-t-g)
-         @(m/bind (set-list 4)
+  (is (= @(m/bind (m/bind (set-list 4 5 6) list-t-f) list-t-g)
+         @(m/bind (set-list 4 5 6)
                   (fn [x]
                     (m/bind (list-t-f x) list-t-g))))))
 
 (deftest zero-laws-list-t
-  (is (= #{'()} @(m/zero (set-list nil))))
-  (is (= @(m/bind (m/zero (set-list nil)) list-t-f)
-         @(m/zero (set-list nil))))
-  (is (= @(m/bind (set-list 4) (constantly (m/zero (set-list nil))))
-         @(m/zero (set-list nil))))
-  (is (= @(m/plus [(set-list 4) (m/zero (set-list nil))])
-         @(set-list 4)))
-  (is (= @(m/plus [(m/zero (set-list nil)) (set-list 4)])
-         @(set-list 4))))
+  (is (= #{(list)} @zero-val-set-list))
+  (is (= @(m/bind zero-val-set-list list-t-f)
+         @zero-val-set-list))
+  (is (= @(m/bind (set-list 4 5 6) (constantly zero-val-set-list))
+         @zero-val-set-list))
+  (is (= @(m/plus [(set-list 4 5 6) zero-val-set-list])
+         @(set-list 4 5 6)))
+  (is (= @(m/plus [zero-val-set-list (set-list 4 5 6)])
+         @(set-list 4 5 6))))
 
 (deftest do-list-t
-  (is (= #{(list [10 15])}
+  (is (= #{(list [10 15] [9 14] [8 13])}
          @(m/do set-list
-                [x (list-t-f 9)
+                [x (list-t-f 9 8 7)
                  y (list-t-g x)]
                 [x y]))))
 
