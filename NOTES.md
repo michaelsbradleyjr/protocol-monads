@@ -42,7 +42,7 @@ The docstrings were uniformly moved into comments under the banners for the mona
 
 There is enough repetition and uniformity among the various `extend-type` and `deftype` operations which define the macros and transformers such that it seems feasible to consider a generalization whereby the monads and transformers would be defined with usage of `proxy`, some additional macros, and `hash-map` formatting conventions (basically, a DSL for defining protocol-monads).
 
-Such an implementation would cut allow for higher reuse of protocol method implementations, etc. and would also be more conducive to user-defined protocol-monads and transformers.
+Such an implementation would allow for higher reuse of protocol method implementations, etc. and would also be more conducive to user-defined protocol-monads and transformers.
 
 So the motivation is sound, but the idea is fairly speculative (would have to make an attempt and see how it goes); also, the implications for performance aren't clear at this time.
 
