@@ -1024,7 +1024,19 @@
   [mv-factory]
   (let [do-result-m (partial do-result (mv-factory [nil]))]
     (fn [& vs]
-      (MaybeTransformer. do-result-m (apply mv-factory (map* #(maybe %) vs))))))
+      (MaybeTransformer. do-result-m
+                         (apply mv-factory
+                                (or (seq*
+                                     (reduce (fn [acc v]
+                                               (concat
+                                                acc
+                                                (let [v (maybe v)]
+                                                  (if-not (= v maybe-zero-val)
+                                                    [v]
+                                                    []))))
+                                             []
+                                             vs))
+                                    [maybe-zero-val]))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
