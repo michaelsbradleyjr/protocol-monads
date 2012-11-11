@@ -1113,12 +1113,12 @@
 
 (deftype WriterTransformer [m mv writer-m]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str StateTransformer))
+  (hasheq [this] (bit-xor (hash (str WriterTransformer))
                           (.hashCode this)))
   (hashCode [this] (bit-xor (hash m)
                             (hash mv)
                             (hash writer-m)))
-  (equals [this that] (and (= StateTransformer (class that))
+  (equals [this that] (and (= WriterTransformer (class that))
                            (and (= (.m that) m)
                                 (= (.mv that) mv)
                                 (= (.writer-m that) writer-m))))
