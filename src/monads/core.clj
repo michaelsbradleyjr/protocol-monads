@@ -899,32 +899,32 @@
 ;; Monad transformer that transforms a monad into a monad in which
 ;; the base values can be invalid (represented by maybe-zero-val).
 
-(deftype MaybeTransformer [m v]
+(deftype MaybeTransformer [do-result-m v]
   clojure.lang.IDeref
   (deref [_]
     v)
 
   Monad
   (do-result [_ v]
-    (MaybeTransformer. m (m (maybe v))))
+    (MaybeTransformer. do-result-m (do-result-m (maybe v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (MaybeTransformer. m (bind v (fn [x]
+      (MaybeTransformer. do-result-m (bind v (fn [x]
                                      (if (= x maybe-zero-val)
-                                       (m maybe-zero-val)
+                                       (do-result-m maybe-zero-val)
                                        (deref ((wrap-check mv f) (deref x)))))))))
 
   MonadZero
   (zero [_]
-    (MaybeTransformer. m (m maybe-zero-val)))
+    (MaybeTransformer. do-result-m (do-result-m maybe-zero-val)))
   (plus-step [mv mvs]
     (MaybeTransformer.
-     m (bind (deref mv)
+     do-result-m (bind (deref mv)
              (fn [x]
                (cond
-                 (and (= x maybe-zero-val) (empty? mvs)) (m maybe-zero-val)
+                 (and (= x maybe-zero-val) (empty? mvs)) (do-result-m maybe-zero-val)
                  (= x maybe-zero-val) (deref (plus mvs))
-                 :else (m x))))))
+                 :else (do-result-m x))))))
 
   MonadDev
   (val-types [_]
@@ -933,9 +933,10 @@
     "maybe-t"))
 
 (defn maybe-t
-  [m]
-  (fn [v]
-    (MaybeTransformer. m (m (maybe v)))))
+  [mv-factory]
+  (let [do-result-m (partial do-result (mv-factory [nil]))]
+    (fn [v]
+      (MaybeTransformer. do-result-m (do-result-m (maybe v))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
