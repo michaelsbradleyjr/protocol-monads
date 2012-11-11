@@ -58,7 +58,7 @@ Also stored in a branch of my fork: [roman-master-with-if-then-else](https://git
 
 ### Port all the examples from algo.monads
 
-The porting work was begun, but then put on hold while additional changes were being made to the library. The
+The porting work was begun, but then put on hold while additional changes were being made to the library. The examples should be basically the same, but some adapted or additional ones should focus on the implications of optional type checking.
 
 ### Need a write-up documenting my changes
 
