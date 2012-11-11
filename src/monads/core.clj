@@ -906,13 +906,13 @@
 
   Monad
   (do-result [_ v]
-    (MaybeTransformer. do-result-m (do-result-m (maybe v))))
+    (MaybeTransformer. do-result-m (do-result-m (Maybe. v))))
   (bind [mv f]
     (let [v (deref mv)]
       (MaybeTransformer. do-result-m (bind v (fn [x]
-                                     (if (= x maybe-zero-val)
-                                       (do-result-m maybe-zero-val)
-                                       (deref ((wrap-check mv f) (deref x)))))))))
+                                               (if (= x maybe-zero-val)
+                                                 (do-result-m maybe-zero-val)
+                                                 (deref ((wrap-check mv f) (deref x)))))))))
 
   MonadZero
   (zero [_]
@@ -920,11 +920,16 @@
   (plus-step [mv mvs]
     (MaybeTransformer.
      do-result-m (bind (deref mv)
-             (fn [x]
-               (cond
-                 (and (= x maybe-zero-val) (empty? mvs)) (do-result-m maybe-zero-val)
-                 (= x maybe-zero-val) (deref (plus mvs))
-                 :else (do-result-m x))))))
+                       (fn [x]
+                         (cond
+                           (and (= x maybe-zero-val) (empty? mvs))
+                           (do-result-m maybe-zero-val)
+
+                           (= x maybe-zero-val)
+                           (deref (plus mvs))
+
+                           :else
+                           (do-result-m x))))))
 
   MonadDev
   (val-types [_]
