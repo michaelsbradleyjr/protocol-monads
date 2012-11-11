@@ -940,8 +940,8 @@
 (defn maybe-t
   [mv-factory]
   (let [do-result-m (partial do-result (mv-factory [nil]))]
-    (fn [v]
-      (MaybeTransformer. do-result-m (do-result-m (maybe v))))))
+    (fn [& vs]
+      (MaybeTransformer. do-result-m (apply mv-factory (map* #(maybe %) vs))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
