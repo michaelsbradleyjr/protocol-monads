@@ -315,7 +315,7 @@
 
 (declare maybe-zero-val)
 
-(deftype Maybe [v]
+(defrecord Maybe [v]
   clojure.lang.IDeref
   (deref [_]
     v)
@@ -371,7 +371,7 @@
 ;; Monad describing stateful computations. The monadic values have the
 ;; structure (fn [old-state] [result new-state]).
 
-(deftype State [v mv f]
+(defrecord State [v mv f]
   clojure.lang.IFn
   (invoke [_ s]
     (if f
@@ -472,7 +472,7 @@
 ;; representing the continuation of the computation, to which they
 ;; pass their result.
 
-(deftype Continuation [v mv f]
+(defrecord Continuation [v mv f]
   clojure.lang.IDeref
   (deref [mv]
     (mv identity))
@@ -537,7 +537,7 @@
 ;; clojure.contrib.accumulators; probably need to adjust in light of
 ;; protocol MonadWriter.
 
-(deftype Writer [v accumulator]
+(defrecord Writer [v accumulator]
   clojure.lang.IDeref
   (deref [_]
     [v accumulator])
@@ -706,7 +706,7 @@
 ;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are lists.
 
-(deftype ListTransformer [do-result-m v]
+(defrecord ListTransformer [do-result-m v]
   clojure.lang.IDeref
   (deref [_]
     v)
@@ -752,7 +752,7 @@
 ;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are vectors.
 
-(deftype VectorTransformer [do-result-m v]
+(defrecord VectorTransformer [do-result-m v]
   clojure.lang.IDeref
   (deref [_]
     v)
@@ -801,7 +801,7 @@
 ;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are lazy sequences.
 
-(deftype LazySeqTransformer [do-result-m v]
+(defrecord LazySeqTransformer [do-result-m v]
   clojure.lang.IDeref
   (deref [_]
     v)
@@ -850,7 +850,7 @@
 ;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are sets.
 
-(deftype SetTransformer [do-result-m v]
+(defrecord SetTransformer [do-result-m v]
   clojure.lang.IDeref
   (deref [_]
     v)
@@ -899,7 +899,7 @@
 ;; Monad transformer that transforms a monad into a monad in which
 ;; the base values can be invalid (represented by maybe-zero-val).
 
-(deftype MaybeTransformer [do-result-m v]
+(defrecord MaybeTransformer [do-result-m v]
   clojure.lang.IDeref
   (deref [_]
     v)
@@ -952,7 +952,7 @@
 ;; Monad transformer that transforms a monad into a monad of stateful
 ;; computations that have the base monad type as their result.
 
-(deftype StateTransformer [m v mv f alts lzalts]
+(defrecord StateTransformer [m v mv f alts lzalts]
   clojure.lang.IFn
   (invoke [_ s]
     (cond
@@ -1011,7 +1011,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype WriterTransformer [m mv writer-m]
+(defrecord WriterTransformer [m mv writer-m]
   clojure.lang.IDeref
   (deref [_]
     mv)
