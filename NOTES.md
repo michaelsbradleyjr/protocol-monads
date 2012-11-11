@@ -31,3 +31,23 @@ At present, it's not possible to do `(set-t lazy-seq)` since `lazy-seq` (and `mo
 ### Should transformer factories perform `nil` -> `maybe-zero-val` short-circuit when `mv-factory` is `monads.core/maybe`?
 
 This seems like a reasonable thing to do, as it provides parity with the `monads.core/maybe` factory function, but it's not entirely clear whether that's the "correct" thing to do.
+
+### Duplicate monad and transformer description-comments in docstrings for the factory functions
+
+The docstrings were uniformly moved into comments under the banners for the monads and transformers, but there should also be proper docstrings for the various factory functions. The "aliases" for the factory functions for `list`, `hash-set`, `vec`, `vector` and `lazy-seq`, could be similarly augmented docstrings by way of manually constructed metadata maps.
+
+### Generalization using proxy classes and macros and maps?
+
+There is enough repetition and uniformity among the various `extend-type` and `deftype` operations which define the macros and transformers such that it seems feasible to consider a generalization whereby the monads and transformers would be defined with usage of `proxy`, some additional macros, and `hash-map` formatting conventions (basically, a DSL for defining protocol-monads).
+
+Such an implementation would cut allow for higher reuse of protocol method implementations, etc. and would also be more conducive to user-defined protocol-monads and transformers.
+
+So the motivation is sound, but the idea is fairly speculative (would have to make an attempt and see how it goes); also, the implications for performance aren't clear at this time.
+
+### `monads.core/do` macro should be adapted to provide more helpful exceptions
+
+Per Jim's suggestion. See: [Clojure: Debugging Println, __LINE_NUMBER__ and __FILE_NAME__](http://stackoverflow.com/questions/10957257/clojure-debugging-println-line-number-and-file-name).
+
+### Support `if-then-else` syntax/logic per the work of Roman Gonzalez
+
+See: [Adding if-then-else statement for monadic environments](https://github.com/roman/protocol-monads/commit/9b708792e4679dcfc2b2345c2750458620fa720a).
