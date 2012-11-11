@@ -1,6 +1,6 @@
 ### License needed
 
-This library needs a license. EPLv1 is probably the way to go, since that seems to be the common license for most open source Clojure libraries and is the license for Clojure itself.
+This library needs a license. [EPLv1](http://opensource.org/licenses/eclipse-1.0.php) is probably the way to go, since that seems to be the common license for most open source Clojure libraries and is the license for Clojure itself.
 
 ### Optional type mismatch checking for `plus` and `plus*`
 
@@ -28,7 +28,7 @@ Need to implement `plus-step*` for each monad transformer.
 
 ### Use sentinel `::lazy-seq` to indicate `lazy-seq` as monadic value factory function
 
-At present, it's not possible to do `(set-t lazy-seq)` since `lazy-seq` (and `monads.core/lazy-seq*`, `monads.core/lazy-seq`) is a macro. However, it should be possible to do something like `(def lazy ::lazy-seq)` in `monads.core`, and then have some logic in the transformer factories that checks whether the `mv-factory` argument equals `monads.core/lazy` and setup `do-result-m` to use `monads.core/lazy-seq*`.
+At present, it's not possible to do `(set-t lazy-seq)` or similar since `lazy-seq` (and `monads.core/lazy-seq*`, `monads.core/lazy-seq`) is a macro. However, it should be possible to do something like `(def lazy ::lazy-seq)` in `monads.core`, and then have some logic in the transformer factories that checks whether the `mv-factory` argument equals `monads.core/lazy` and setup `do-result-m` to use `monads.core/lazy-seq*`.
 
 ### Should transformer factories perform `nil` -> `maybe-zero-val` short-circuit when `mv-factory` is `monads.core/maybe`?
 
@@ -36,7 +36,7 @@ This seems like a reasonable thing to do, as it provides parity with the `monads
 
 ### Duplicate monad and transformer description-comments in docstrings for the factory functions
 
-The docstrings were uniformly moved into comments under the banners for the monads and transformers, but there should also be proper docstrings for the various factory functions. The "aliases" for the factory functions for `list`, `hash-set`, `vec`, `vector` and `lazy-seq`, could be similarly augmented docstrings by way of manually constructed metadata maps.
+The docstrings were uniformly moved into comments under the banners for the monads and transformers, but there should also be proper docstrings for the various factory functions. The "aliases" for the factory functions for `list`, `hash-set`, `vec`, `vector` and `lazy-seq` could be similarly augmented with docstrings by way of manually constructed metadata maps.
 
 ### Generalization using proxy classes and macros and maps?
 
