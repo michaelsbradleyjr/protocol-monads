@@ -53,3 +53,35 @@ Per Jim's suggestion. See: [Clojure: Debugging Println, __LINE_NUMBER__ and __FI
 ### Support `if-then-else` syntax/logic per the work of Roman Gonzalez
 
 See: [Adding if-then-else statement for monadic environments](https://github.com/roman/protocol-monads/commit/9b708792e4679dcfc2b2345c2750458620fa720a).
+
+Also stored in a branch of my fork: [roman-master-with-if-then-else](https://github.com/michaelsbradleyjr/protocol-monads/tree/roman-master-with-if-then-else).
+
+### Port all the examples from algo.monads
+
+The porting work was begun, but then put on hold while additional changes were being made to the library. The
+
+### Need a write-up documenting my changes
+
+Put together a gist documenting my changes to the original library, and my motivations for those changes. Submit an issue for Jim's repo linking to the gist as a prelude to making a pull request.
+
+### Remove algo.monads dependency when done porting examples
+
+algo.monads was setup as a dependency to make it easier to play with and adapt the examples from algo.monads, but it should be removed at some point.
+
+### Need a branch for the purpose of publishing my fork on Clojars
+
+The branch would have an `project.clj` suited to publishing my fork on Clojars.
+
+### Additional monads and transfomers
+
+There has already been a suggestion-request for the [Reader monad](http://hackage.haskell.org/packages/archive/mtl/1.1.0.2/doc/html/Control-Monad-Reader.html) in the `#clojure` IRC channel on Freenode.
+
+Additional monads and transformers can be looked at and ported as time allows and need arises. Hopefully, some motivated users of the library can contribute such additions.
+
+### Documentation
+
+Web-based documentation for the library's API needs to be generated, i.e. in the usual manner with [autodoc(http://tomfaulhaber.github.com/autodoc/) or something similar.
+
+It would also be good to develop a "manual" or "tutorial" which walks through all the examples while giving further guidance and insights as to the library's usage.
+
+Another document is envisioned, which would run along similar lines to Jim Duey's and Konrad Hinsen's monad tutorials, but couched in terms which demonstrate how the protocol-monads library is built up from the basic monad concepts (`bind`, `result`, `do`, `plus`, etc.) realized in terms of Java/Clojure types and Clojure's protocols.
