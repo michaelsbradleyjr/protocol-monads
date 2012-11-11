@@ -70,7 +70,7 @@ algo.monads was setup as a dependency to make it easier to play with and adapt t
 
 ### Need a branch for the purpose of publishing my fork on Clojars
 
-The branch would have an `project.clj` suited to publishing my fork on Clojars.
+The branch would have a `project.clj` suited to publishing my fork on Clojars.
 
 ### Additional monads and transfomers
 
