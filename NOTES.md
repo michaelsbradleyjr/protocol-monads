@@ -80,7 +80,7 @@ Additional monads and transformers can be looked at and ported as time allows an
 
 ### Documentation
 
-Web-based documentation for the library's API needs to be generated, i.e. in the usual manner with [autodoc(http://tomfaulhaber.github.com/autodoc/) or something similar.
+Web-based documentation for the library's API needs to be generated, i.e. in the usual manner with [autodoc](http://tomfaulhaber.github.com/autodoc/) or something similar.
 
 It would also be good to develop a "manual" or "tutorial" which walks through all the examples while giving further guidance and insights as to the library's usage.
 
