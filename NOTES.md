@@ -84,4 +84,4 @@ Web-based documentation for the library's API needs to be generated, i.e. in the
 
 It would also be good to develop a "manual" or "tutorial" which walks through all the examples while giving further guidance and insights as to the library's usage.
 
-Another document is envisioned, which would run along similar lines to Jim Duey's and Konrad Hinsen's monad tutorials, but couched in terms which demonstrate how the protocol-monads library is built up from the basic monad concepts (`bind`, `result`, `do`, `plus`, etc.) realized in terms of Java/Clojure types and Clojure's protocols.
+Another document is envisioned, which would run along similar lines to Jim Duey's and Konrad Hinsen's monad tutorials, but couched in terms which demonstrate how the protocol-monads library is built up from the basic monad concepts (`bind`, `result`, `do`, `plus`, etc.) and by leveraging Java/Clojure types and Clojure's protocols.
