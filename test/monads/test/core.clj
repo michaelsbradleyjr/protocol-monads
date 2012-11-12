@@ -352,6 +352,8 @@
     (is (= (mv1 :state) (mv2 :state)))))
 
 (deftest update-state
+  (is (= (m/update-state identity) (m/update-state identity)))
+  (is (not= (m/update-state identity) (m/update-state inc)))
   (is (= [:state :new-state]
          ((m/update-state (constantly :new-state)) :state))))
 

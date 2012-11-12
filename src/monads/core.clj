@@ -432,7 +432,8 @@
       (hash f))
     (equals [this that]
       (and (= (class this) (class that))
-           (= (.f that) f)))
+           (= (.hashCode this)
+              (.hashCode that))))
 
     clojure.lang.IFn
     (invoke [_ s]
