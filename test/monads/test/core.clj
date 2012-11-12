@@ -257,7 +257,7 @@
   (is (not= @(do-result-maybe nil)
             @(m/maybe nil))))
 
-(deftest zero-val-from-factory-func
+(deftest zero-val-from-maybe-factory-func
   (is (= m/maybe-zero-val
          zero-val-maybe
          (m/maybe nil))))
@@ -285,8 +285,8 @@
 ;; factory function is not used to generate the monadic value passed
 ;; as the first argument to m/bind, since m/maybe implements
 ;; "convenience logic" which short-circuits nil to maybe-zero-val. The
-;; procol method do-result, as implemented for class Maybe, does
-;; not short-circuit.
+;; protocol method do-result, as implemented for class Maybe, does not
+;; short-circuit.
 (deftest first-law-maybe-nil
   (is (= @(m/bind (do-result-maybe nil) (comp m/maybe not))
          @((comp m/maybe not) nil))))
@@ -1227,6 +1227,21 @@
 (def do-result-vec-maybe (partial m/do-result (vec-maybe [nil])))
 (def zero-val-vec-maybe (m/zero (vec-maybe [nil])))
 
+(deftest do-result-and-maybe-t-factory-func-equiv
+  (is (= @(do-result-vec-maybe [nil])
+         @(vec-maybe [nil]))))
+
+(deftest do-result-and-maybe-t-factory-func-not-equiv-for-nil
+  (is (not= @(do-result-vec-maybe nil)
+            @(vec-maybe nil))))
+
+(deftest zero-val-from-maybe-t-factory-func
+  (is (= [m/maybe-zero-val]
+         @zero-val-vec-maybe
+         @(vec-maybe nil)
+         @(vec-maybe nil nil nil)
+         @(vec-maybe))))
+
 (defn maybe-t-f [& ns]
   (apply vec-maybe (map #(when % (inc %)) ns)))
 
@@ -1254,6 +1269,23 @@
          @(first @(m/bind (vec-maybe 4 nil 5)
                           (fn [x]
                             (m/bind (maybe-t-f x) maybe-t-g)))))))
+
+;; Special cases -- ensure we're handling them correctly. The
+;; vec-maybe factory function (returned by m/maybe-t) is not used to
+;; generate the monadic value passed as the first argument to m/bind,
+;; since m/maybe-t implements "convenience logic" which short-circuits
+;; nil to maybe-zero-val. The protocol method do-result, as implemented
+;; for class MaybeTransformer, does not short-circuit.
+(deftest first-law-maybe-t-nil
+  (is (= @(m/bind (do-result-vec-maybe nil) (comp vec-maybe not))
+         @((comp vec-maybe not) nil))))
+
+;; For the same reasons given in the previous comment, vec-maybe is
+;; not used as the monadic function for this test, nor to generate the
+;; monadic value passed as the first argument to m/bind.
+(deftest second-law-maybe-t-nil
+  (is (= @(m/bind (do-result-vec-maybe nil) do-result-vec-maybe)
+         @(do-result-vec-maybe nil))))
 
 (deftest plus-maybe-t
   (let [plus-maybe-t @(m/plus [(vec-maybe 1 2) (vec-maybe) (vec-maybe 3 4)])]
