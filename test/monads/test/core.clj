@@ -1264,16 +1264,16 @@
     (is (= monads.core.Maybe
            (class (first plus-maybe-t))))))
 
-#_(deftest zero-laws-maybe-t
+(deftest zero-laws-maybe-t
   (is (= [m/maybe-zero-val] @zero-val-vec-maybe))
   (is (= @(m/bind zero-val-vec-maybe list-t-f)
          @zero-val-vec-maybe))
-  (is (= @(m/bind (vec-maybe 4 5 6) (constantly zero-val-vec-maybe))
+  (is (= @(m/bind (vec-maybe 4 5 nil) (constantly zero-val-vec-maybe))
          @zero-val-vec-maybe))
-  (is (= @(m/plus [(vec-maybe 4 5 6) zero-val-vec-maybe])
-         @(vec-maybe 4 5 6)))
-  (is (= @(m/plus [zero-val-vec-maybe (vec-maybe 4 5 6)])
-         @(vec-maybe 4 5 6))))
+  (is (= @(m/plus [(vec-maybe 4 5 nil) zero-val-vec-maybe])
+         @(vec-maybe 4 5 nil)))
+  (is (= @(m/plus [zero-val-vec-maybe (vec-maybe 4 nil 5)])
+         @(vec-maybe 4 nil 5))))
 
 (deftest do-maybe-t
   (is (= @zero-val-vec-maybe

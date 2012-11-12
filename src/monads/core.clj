@@ -1074,10 +1074,17 @@
     (MaybeTransformer. do-result-m (do-result-m (Maybe. v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (MaybeTransformer. do-result-m (bind v (fn [x]
-                                               (if (= x maybe-zero-val)
-                                                 (do-result-m maybe-zero-val)
-                                                 (deref ((wrap-check mv f) (deref x)))))))))
+      (MaybeTransformer. do-result-m
+                         (let [bres (bind v (fn [x]
+                                              (if (= x maybe-zero-val)
+                                                (do-result-m maybe-zero-val)
+                                                (deref ((wrap-check mv f) (deref x))))))]
+                           (if-not (coll? bres)
+                             bres
+                             (let [filt (filter #(not= % maybe-zero-val) bres)]
+                               (if (seq* filt)
+                                 (into (zero bres) filt)
+                                 (do-result-m maybe-zero-val))))))))
 
   MonadZero
   (zero [_]
