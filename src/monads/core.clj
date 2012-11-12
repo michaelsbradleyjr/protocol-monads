@@ -317,11 +317,14 @@
 
 (deftype Maybe [v]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str Maybe))
-                          (.hashCode this)))
-  (hashCode [this] (hash v))
-  (equals [this that] (and (= Maybe (class that))
-                           (= (.v that) v)))
+  (hasheq [this]
+    (bit-xor (hash (str Maybe))
+             (.hashCode this)))
+  (hashCode [this]
+    (hash v))
+  (equals [this that]
+    (and (= Maybe (class that))
+         (= (.v that) v)))
 
   clojure.lang.IDeref
   (deref [_]
@@ -380,15 +383,18 @@
 
 (deftype State [v mv f]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str State))
-                          (.hashCode this)))
-  (hashCode [this] (bit-xor (hash v)
-                            (hash mv)
-                            (hash f)))
-  (equals [this that] (and (= State (class that))
-                           (and (= (.v that) v)
-                                (= (.mv that) mv)
-                                (= (.f that) f))))
+  (hasheq [this]
+    (bit-xor (hash (str State))
+             (.hashCode this)))
+  (hashCode [this]
+    (bit-xor (hash v)
+             (hash mv)
+             (hash f)))
+  (equals [this that]
+    (and (= State (class that))
+         (and (= (.v that) v)
+              (= (.mv that) mv)
+              (= (.f that) f))))
 
   clojure.lang.IFn
   (invoke [_ s]
@@ -492,15 +498,18 @@
 
 (deftype Continuation [v mv f]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str Continuation))
-                          (.hashCode this)))
-  (hashCode [this] (bit-xor (hash v)
-                            (hash mv)
-                            (hash f)))
-  (equals [this that] (and (= Continuation (class that))
-                           (and (= (.v that) v)
-                                (= (.mv that) mv)
-                                (= (.f that) f))))
+  (hasheq [this]
+    (bit-xor (hash (str Continuation))
+             (.hashCode this)))
+  (hashCode [this]
+    (bit-xor (hash v)
+             (hash mv)
+             (hash f)))
+  (equals [this that]
+    (and (= Continuation (class that))
+         (and (= (.v that) v)
+              (= (.mv that) mv)
+              (= (.f that) f))))
 
   clojure.lang.IDeref
   (deref [mv]
@@ -568,13 +577,16 @@
 
 (deftype Writer [v accumulator]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str Writer))
-                          (.hashCode this)))
-  (hashCode [this] (bit-xor (hash v)
-                            (hash accumulator)))
-  (equals [this that] (and (= Writer (class that))
-                           (and (= (.v that) v)
-                                (= (.accumulator that) accumulator))))
+  (hasheq [this]
+    (bit-xor (hash (str Writer))
+             (.hashCode this)))
+  (hashCode [this]
+    (bit-xor (hash v)
+             (hash accumulator)))
+  (equals [this that]
+    (and (= Writer (class that))
+         (and (= (.v that) v)
+              (= (.accumulator that) accumulator))))
 
   clojure.lang.IDeref
   (deref [_]
@@ -746,13 +758,16 @@
 
 (deftype ListTransformer [do-result-m v]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str ListTransformer))
-                          (.hashCode this)))
-  (hashCode [this] (bit-xor (hash do-result-m)
-                            (hash v)))
-  (equals [this that] (and (= ListTransformer (class that))
-                           (and (= (.do-result-m that) do-result-m)
-                                (= (.v that) v))))
+  (hasheq [this]
+    (bit-xor (hash (str ListTransformer))
+             (.hashCode this)))
+  (hashCode [this]
+    (bit-xor (hash do-result-m)
+             (hash v)))
+  (equals [this that]
+    (and (= ListTransformer (class that))
+         (and (= (.do-result-m that) do-result-m)
+              (= (.v that) v))))
 
   clojure.lang.IDeref
   (deref [_]
@@ -810,13 +825,16 @@
 
 (deftype VectorTransformer [do-result-m v]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str VectorTransformer))
-                          (.hashCode this)))
-  (hashCode [this] (bit-xor (hash do-result-m)
-                            (hash v)))
-  (equals [this that] (and (= VectorTransformer (class that))
-                           (and (= (.do-result-m that) do-result-m)
-                                (= (.v that) v))))
+  (hasheq [this]
+    (bit-xor (hash (str VectorTransformer))
+             (.hashCode this)))
+  (hashCode [this]
+    (bit-xor (hash do-result-m)
+             (hash v)))
+  (equals [this that]
+    (and (= VectorTransformer (class that))
+         (and (= (.do-result-m that) do-result-m)
+              (= (.v that) v))))
 
   clojure.lang.IDeref
   (deref [_]
@@ -877,13 +895,16 @@
 
 (deftype LazySeqTransformer [do-result-m v]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str LazySeqTransformer))
-                          (.hashCode this)))
-  (hashCode [this] (bit-xor (hash do-result-m)
-                            (hash v)))
-  (equals [this that] (and (= LazySeqTransformer (class that))
-                           (and (= (.do-result-m that) do-result-m)
-                                (= (.v that) v))))
+  (hasheq [this]
+    (bit-xor (hash (str LazySeqTransformer))
+             (.hashCode this)))
+  (hashCode [this]
+    (bit-xor (hash do-result-m)
+             (hash v)))
+  (equals [this that]
+    (and (= LazySeqTransformer (class that))
+         (and (= (.do-result-m that) do-result-m)
+              (= (.v that) v))))
 
   clojure.lang.IDeref
   (deref [_]
@@ -944,13 +965,16 @@
 
 (deftype SetTransformer [do-result-m v]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str SetTransformer))
-                          (.hashCode this)))
-  (hashCode [this] (bit-xor (hash do-result-m)
-                            (hash v)))
-  (equals [this that] (and (= SetTransformer (class that))
-                           (and (= (.do-result-m that) do-result-m)
-                                (= (.v that) v))))
+  (hasheq [this]
+    (bit-xor (hash (str SetTransformer))
+             (.hashCode this)))
+  (hashCode [this]
+    (bit-xor (hash do-result-m)
+             (hash v)))
+  (equals [this that]
+    (and (= SetTransformer (class that))
+         (and (= (.do-result-m that) do-result-m)
+              (= (.v that) v))))
 
   clojure.lang.IDeref
   (deref [_]
@@ -1011,13 +1035,16 @@
 
 (deftype MaybeTransformer [do-result-m v]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str MaybeTransformer))
-                          (.hashCode this)))
-  (hashCode [this] (bit-xor (hash do-result-m)
-                            (hash v)))
-  (equals [this that] (and (= MaybeTransformer (class that))
-                           (and (= (.do-result-m that) do-result-m)
-                                (= (.v that) v))))
+  (hasheq [this]
+    (bit-xor (hash (str MaybeTransformer))
+             (.hashCode this)))
+  (hashCode [this]
+    (bit-xor (hash do-result-m)
+             (hash v)))
+  (equals [this that]
+    (and (= MaybeTransformer (class that))
+         (and (= (.do-result-m that) do-result-m)
+              (= (.v that) v))))
 
   clojure.lang.IDeref
   (deref [_]
@@ -1080,21 +1107,24 @@
 
 (deftype StateTransformer [m v mv f alts lzalts]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str StateTransformer))
-                          (.hashCode this)))
-  (hashCode [this] (bit-xor (hash m)
-                            (hash v)
-                            (hash mv)
-                            (hash f)
-                            (hash alts)
-                            (hash lzalts)))
-  (equals [this that] (and (= StateTransformer (class that))
-                           (and (= (.m that) m)
-                                (= (.v that) v)
-                                (= (.mv that) mv)
-                                (= (.f that) f)
-                                (= (.alts that) alts)
-                                (= (.lzalts that) lzalts))))
+  (hasheq [this]
+    (bit-xor (hash (str StateTransformer))
+             (.hashCode this)))
+  (hashCode [this]
+    (bit-xor (hash m)
+             (hash v)
+             (hash mv)
+             (hash f)
+             (hash alts)
+             (hash lzalts)))
+  (equals [this that]
+    (and (= StateTransformer (class that))
+         (and (= (.m that) m)
+              (= (.v that) v)
+              (= (.mv that) mv)
+              (= (.f that) f)
+              (= (.alts that) alts)
+              (= (.lzalts that) lzalts))))
 
   clojure.lang.IFn
   (invoke [_ s]
@@ -1156,15 +1186,18 @@
 
 (deftype WriterTransformer [m mv writer-m]
   clojure.lang.IHashEq
-  (hasheq [this] (bit-xor (hash (str WriterTransformer))
-                          (.hashCode this)))
-  (hashCode [this] (bit-xor (hash m)
-                            (hash mv)
-                            (hash writer-m)))
-  (equals [this that] (and (= WriterTransformer (class that))
-                           (and (= (.m that) m)
-                                (= (.mv that) mv)
-                                (= (.writer-m that) writer-m))))
+  (hasheq [this]
+    (bit-xor (hash (str WriterTransformer))
+             (.hashCode this)))
+  (hashCode [this]
+    (bit-xor (hash m)
+             (hash mv)
+             (hash writer-m)))
+  (equals [this that]
+    (and (= WriterTransformer (class that))
+         (and (= (.m that) m)
+              (= (.mv that) mv)
+              (= (.writer-m that) writer-m))))
 
   clojure.lang.IDeref
   (deref [_]
