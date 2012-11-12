@@ -424,6 +424,16 @@
    result of f applied to the current state and that returns the old state."
   [f]
   (reify
+    clojure.lang.IHashEq
+    (hasheq [this]
+      (bit-xor (hash (str (class this)))
+               (.hashCode this)))
+    (hashCode [this]
+      (hash f))
+    (equals [this that]
+      (and (= (class this) (class that))
+           (= (.f that) f)))
+
     clojure.lang.IFn
     (invoke [_ s]
       [s (f s)])
