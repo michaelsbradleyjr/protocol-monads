@@ -313,6 +313,8 @@
 ;; returns maybe-zero-val, but this is not the case for constructor
 ;; call `(Maybe. nil)` in order to satisfy the first Monad Law.
 
+(def ^:dynamic *maybe-zero-val* nil)
+
 (declare maybe-zero-val)
 
 (deftype Maybe [v]
@@ -368,7 +370,7 @@
 
 (defn maybe
   [v]
-  (if (nil? v)
+  (if (= *maybe-zero-val* v)
     maybe-zero-val
     (Maybe. v)))
 
