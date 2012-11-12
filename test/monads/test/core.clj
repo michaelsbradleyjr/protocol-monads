@@ -857,6 +857,13 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(deftest list-t-factory-excises-maybe-zero-val-when-monad-is-maybe
+  (let [maybe-list (m/list-t m/maybe)]
+    (is (= (maybe-list nil 1 nil 2 nil nil 3 4 nil)
+           (maybe-list 1 2 3 4)))
+    (is (= (maybe-list nil)
+           (maybe-list)))))
+
 (def set-list (m/list-t hash-set))
 
 (deftest list-t-equality
@@ -937,6 +944,13 @@
 ;;  monads.core.VectorTransformer
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftest vector-t-factory-excises-maybe-zero-val-when-monad-is-maybe
+  (let [maybe-vector (m/vector-t m/maybe)]
+    (is (= (maybe-vector nil 1 nil 2 nil nil 3 4 nil)
+           (maybe-vector 1 2 3 4)))
+    (is (= (maybe-vector nil)
+           (maybe-vector)))))
 
 (def set-vec (m/vector-t hash-set))
 
@@ -1019,6 +1033,13 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(deftest lazy-seq-t-factory-excises-maybe-zero-val-when-monad-is-maybe
+  (let [maybe-lazy-seq (m/lazy-seq-t m/maybe)]
+    (is (= (maybe-lazy-seq nil 1 nil 2 nil nil 3 4 nil)
+           (maybe-lazy-seq 1 2 3 4)))
+    (is (= (maybe-lazy-seq nil)
+           (maybe-lazy-seq)))))
+
 (def set-lazy-seq (m/lazy-seq-t hash-set))
 
 (deftest lazy-seq-t-equality
@@ -1099,6 +1120,13 @@
 ;;  monads.core.SetTransformer
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftest set-t-factory-excises-maybe-zero-val-when-monad-is-maybe
+  (let [maybe-set (m/set-t m/maybe)]
+    (is (= (maybe-set nil 1 nil 2 nil nil 3 4 nil)
+           (maybe-set 1 2 3 4)))
+    (is (= (maybe-set nil)
+           (maybe-set)))))
 
 (def vec-set (m/set-t vector))
 
@@ -1189,6 +1217,12 @@
   (is (not= (vec-maybe 1 2 3) (vec-maybe :1 2 3)))
   (is (not= (vec-maybe 1) (vec-maybe 2)))
   (is (not= (vec-maybe {:a 1} {:b 2}) (vec-maybe {:a 2} {:b 2}))))
+
+(deftest maybe-t-factory-excises-maybe-zero-val
+  (is (= (vec-maybe nil 1 nil 2 nil nil 3 4 nil)
+         (vec-maybe 1 2 3 4)))
+  (is (= (vec-maybe nil)
+         (vec-maybe))))
 
 (defn maybe-t-f [n]
   (vec-maybe (inc n)))
