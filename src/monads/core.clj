@@ -1197,6 +1197,13 @@
   (name-monad [_]
     "state-t"))
 
+;; (extend-type State
+;;   MonadDev
+;;   (val-types [_]
+;;     [State StateTransformer])
+;;   (name-monad [_]
+;;     "state"))
+
 (defn state-t
   [m]
   (if (= m maybe)
