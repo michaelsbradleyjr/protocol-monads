@@ -817,11 +817,13 @@
       (fn [& vs]
         (ListTransformer. do-result-m
                           (do-result-m
-                           (plus (fmap
-                                  #(if (= (maybe %) maybe-zero-val)
-                                     (list)
-                                     (list %))
-                                  (vec vs))))))
+                           (if-not (seq* vs)
+                             (list)
+                             (plus (fmap
+                                    #(if (= (maybe %) maybe-zero-val)
+                                       (list)
+                                       (list %))
+                                    (vec vs)))))))
       (fn [& vs]
         (ListTransformer. do-result-m (do-result-m (apply list vs)))))))
 
@@ -885,11 +887,13 @@
       (fn [& vs]
         (VectorTransformer. do-result-m
                             (do-result-m
-                             (plus (fmap
-                                    #(if (= (maybe %) maybe-zero-val)
-                                       []
-                                       [%])
-                                    (vec vs))))))
+                             (if-not (seq* vs)
+                               []
+                               (plus (fmap
+                                      #(if (= (maybe %) maybe-zero-val)
+                                         []
+                                         [%])
+                                      (vec vs)))))))
       (fn [& vs]
         (VectorTransformer. do-result-m (do-result-m (vec vs)))))))
 
@@ -955,11 +959,13 @@
       (fn [& vs]
         (LazySeqTransformer. do-result-m
                              (do-result-m
-                              (plus (fmap
-                                     #(if (= (maybe %) maybe-zero-val)
-                                        (lazy-seq)
-                                        (lazy-seq* %))
-                                     (vec vs))))))
+                              (if-not (seq* vs)
+                                (lazy-seq)
+                                (plus (fmap
+                                       #(if (= (maybe %) maybe-zero-val)
+                                          (lazy-seq)
+                                          (lazy-seq* %))
+                                       (vec vs)))))))
       (fn [& vs]
         (LazySeqTransformer. do-result-m (do-result-m (lazy-seq vs)))))))
 
@@ -1025,11 +1031,13 @@
       (fn [& vs]
         (SetTransformer. do-result-m
                          (do-result-m
-                          (plus (fmap
-                                 #(if (= (maybe %) maybe-zero-val)
-                                    #{}
-                                    #{%})
-                                 (vec vs))))))
+                          (if-not (seq* vs)
+                            #{}
+                            (plus (fmap
+                                   #(if (= (maybe %) maybe-zero-val)
+                                      #{}
+                                      #{%})
+                                   (vec vs)))))))
       (fn [& vs]
         (SetTransformer. do-result-m (do-result-m (apply hash-set vs)))))))
 
@@ -1100,12 +1108,15 @@
     (fn [& vs]
       (MaybeTransformer. do-result-m
                          (apply mv-factory
-                                (plus (fmap
-                                       #(let [v (maybe %)]
-                                          (if-not (= v maybe-zero-val)
-                                            [v]
-                                            []))
-                                       (vec vs))))))))
+                                (if-not (seq* vs)
+                                  [maybe-zero-val]
+                                  (or (seq* (plus (fmap
+                                                   #(let [v (maybe %)]
+                                                      (if-not (= v maybe-zero-val)
+                                                        [v]
+                                                        []))
+                                                   (vec vs))))
+                                      [maybe-zero-val])))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
