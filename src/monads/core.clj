@@ -1081,10 +1081,9 @@
                                                 (deref ((wrap-check mv f) (deref x))))))]
                            (if-not (coll? bres)
                              bres
-                             (let [filt (filter #(not= % maybe-zero-val) bres)]
-                               (if (seq* filt)
-                                 (into (zero bres) filt)
-                                 (do-result-m maybe-zero-val))))))))
+                             (if-let [filt (seq* (filter #(not= % maybe-zero-val) bres))]
+                               (into (zero bres) filt)
+                               (do-result-m maybe-zero-val)))))))
 
   MonadZero
   (zero [_]
