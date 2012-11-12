@@ -1211,6 +1211,12 @@
 
 (def vec-maybe (m/maybe-t vector))
 
+(deftest maybe-t-factory-excises-maybe-zero-val
+  (is (= (vec-maybe nil 1 nil 2 nil nil 3 4 nil)
+         (vec-maybe 1 2 3 4)))
+  (is (= (vec-maybe nil)
+         (vec-maybe))))
+
 (deftest maybe-t-equality
   (is (= (vec-maybe 1 2 3) (vec-maybe 1 2 3)))
   (is (= (vec-maybe {:a 1} {:b 2}) (vec-maybe {:a 1} {:b 2})))
@@ -1218,49 +1224,76 @@
   (is (not= (vec-maybe 1) (vec-maybe 2)))
   (is (not= (vec-maybe {:a 1} {:b 2}) (vec-maybe {:a 2} {:b 2}))))
 
-(deftest maybe-t-factory-excises-maybe-zero-val
-  (is (= (vec-maybe nil 1 nil 2 nil nil 3 4 nil)
-         (vec-maybe 1 2 3 4)))
-  (is (= (vec-maybe nil)
-         (vec-maybe))))
+(def do-result-vec-maybe (partial m/do-result (vec-maybe [nil])))
+(def zero-val-vec-maybe (m/zero (vec-maybe [nil])))
 
-(defn maybe-t-f [n]
-  (vec-maybe (inc n)))
+(defn maybe-t-f [& ns]
+  (apply vec-maybe (map #(when % (inc %)) ns)))
 
-(defn maybe-t-g [n]
-  (vec-maybe (+ n 5)))
+(defn maybe-t-g [& ns]
+  (apply vec-maybe (map #(when % (+ % 5)) ns)))
 
 (deftest first-law-maybe-t
-  (is (= @(first @(m/bind (vec-maybe 10) maybe-t-f))
+  (is (= @(first @(m/bind (do-result-vec-maybe 10) maybe-t-f))
          @(first @(maybe-t-f 10)))))
 
+(deftest first-law-maybe-t-factory
+  (is (= @(first @(m/bind (vec-maybe 10 nil 11) maybe-t-f))
+         @(first @(maybe-t-f 10 nil 11)))))
+
 (deftest second-law-maybe-t
-  (is (= @(first @(m/bind (vec-maybe 10) vec-maybe))
-         @(first @(vec-maybe 10)))))
+  (is (= @(first @(m/bind (do-result-vec-maybe 10) vec-maybe))
+         @(first @(do-result-vec-maybe 10)))))
+
+(deftest second-law-maybe-t-factory
+  (is (= @(first @(m/bind (vec-maybe 10 nil 11) vec-maybe))
+         @(first @(vec-maybe 10 nil 11)))))
 
 (deftest third-law-maybe-t
-  (is (= @(first @(m/bind (m/bind (vec-maybe 4) maybe-t-f) maybe-t-g))
-         @(first @(m/bind (vec-maybe 4)
+  (is (= @(first @(m/bind (m/bind (vec-maybe 4 nil 5) maybe-t-f) maybe-t-g))
+         @(first @(m/bind (vec-maybe 4 nil 5)
                           (fn [x]
                             (m/bind (maybe-t-f x) maybe-t-g)))))))
 
-(deftest zero-laws-maybe-t
-  (is (= m/maybe-zero-val (first @ (m/zero (vec-maybe nil)))))
-  (is (= (first @(m/bind (m/zero (vec-maybe nil)) maybe-t-f))
-         (first @(m/zero (vec-maybe nil)))))
-  (is (= (first @(m/bind (vec-maybe 4) (constantly (m/zero (vec-maybe nil)))))
-         (first @(m/zero (vec-maybe nil)))))
-  (is (= @(first @(m/plus [(vec-maybe 4) (m/zero (vec-maybe nil))]))
-         @(first @(vec-maybe 4))))
-  (is (= @(first @(m/plus [(m/zero (vec-maybe nil)) (vec-maybe 4)]))
-         @(first @(vec-maybe 4)))))
+(deftest plus-maybe-t
+  (let [plus-maybe-t @(m/plus [(vec-maybe 1 2) (vec-maybe) (vec-maybe 3 4)])]
+    (is (= @(vec-maybe 1 2)
+           plus-maybe-t))
+    (is (= clojure.lang.PersistentVector
+           (class plus-maybe-t)))
+    (is (= monads.core.Maybe
+           (class (first plus-maybe-t))))))
+
+#_(deftest zero-laws-maybe-t
+  (is (= [m/maybe-zero-val] @zero-val-vec-maybe))
+  (is (= @(m/bind zero-val-vec-maybe list-t-f)
+         @zero-val-vec-maybe))
+  (is (= @(m/bind (vec-maybe 4 5 6) (constantly zero-val-vec-maybe))
+         @zero-val-vec-maybe))
+  (is (= @(m/plus [(vec-maybe 4 5 6) zero-val-vec-maybe])
+         @(vec-maybe 4 5 6)))
+  (is (= @(m/plus [zero-val-vec-maybe (vec-maybe 4 5 6)])
+         @(vec-maybe 4 5 6))))
 
 (deftest do-maybe-t
-  (is (= [10 15]
-         @(first @(m/do vec-maybe
-                        [x (maybe-t-f 9)
-                         y (maybe-t-g x)]
-                        [x y])))))
+  (is (= @zero-val-vec-maybe
+         @(m/do vec-maybe
+                [x (vec-maybe nil)
+                 y (maybe-t-g x)]
+                [x y])))
+  (let [do-maybe-t
+        @(m/do vec-maybe
+               [x (maybe-t-f 9 nil 7)
+                y (maybe-t-g x)]
+               [x y])]
+    (is (= [(m/maybe [10 15]) (m/maybe [8 13])]
+           do-maybe-t))
+    (is (= clojure.lang.PersistentVector
+           (class do-maybe-t)))
+    (is (= monads.core.Maybe
+           (class (first do-maybe-t))))
+    (is (= clojure.lang.PersistentVector
+           (class @(first do-maybe-t))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
