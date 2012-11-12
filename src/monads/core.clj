@@ -787,8 +787,17 @@
 (defn list-t
   [mv-factory]
   (let [do-result-m (partial do-result (mv-factory [nil]))]
-    (fn [& vs]
-      (ListTransformer. do-result-m (do-result-m (apply list vs))))))
+    (if (= mv-factory maybe)
+      (fn [& vs]
+        (ListTransformer. do-result-m
+                          (do-result-m
+                           (plus (fmap
+                                  #(if (= (maybe %) maybe-zero-val)
+                                     (list)
+                                     (list %))
+                                  (vec vs))))))
+      (fn [& vs]
+        (ListTransformer. do-result-m (do-result-m (apply list vs)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -843,8 +852,17 @@
 (defn vector-t
   [mv-factory]
   (let [do-result-m (partial do-result (mv-factory [nil]))]
-    (fn [& vs]
-      (VectorTransformer. do-result-m (do-result-m (vec vs))))))
+    (if (= mv-factory maybe)
+      (fn [& vs]
+        (VectorTransformer. do-result-m
+                            (do-result-m
+                             (plus (fmap
+                                    #(if (= (maybe %) maybe-zero-val)
+                                       []
+                                       [%])
+                                    (vec vs))))))
+      (fn [& vs]
+        (VectorTransformer. do-result-m (do-result-m (vec vs)))))))
 
 (def vec-t vector-t)
 
@@ -901,8 +919,17 @@
 (defn lazy-seq-t
   [mv-factory]
   (let [do-result-m (partial do-result (mv-factory [nil]))]
-    (fn [& vs]
-      (LazySeqTransformer. do-result-m (do-result-m (lazy-seq vs))))))
+    (if (= mv-factory maybe)
+      (fn [& vs]
+        (LazySeqTransformer. do-result-m
+                             (do-result-m
+                              (plus (fmap
+                                     #(if (= (maybe %) maybe-zero-val)
+                                        (lazy-seq)
+                                        (lazy-seq* %))
+                                     (vec vs))))))
+      (fn [& vs]
+        (LazySeqTransformer. do-result-m (do-result-m (lazy-seq vs)))))))
 
 (def lazy-t lazy-seq-t)
 
@@ -959,8 +986,17 @@
 (defn set-t
   [mv-factory]
   (let [do-result-m (partial do-result (mv-factory [nil]))]
-    (fn [& vs]
-      (SetTransformer. do-result-m (do-result-m (apply hash-set vs))))))
+    (if (= mv-factory maybe)
+      (fn [& vs]
+        (SetTransformer. do-result-m
+                         (do-result-m
+                          (plus (fmap
+                                 #(if (= (maybe %) maybe-zero-val)
+                                    #{}
+                                    #{%})
+                                 (vec vs))))))
+      (fn [& vs]
+        (SetTransformer. do-result-m (do-result-m (apply hash-set vs)))))))
 
 (def hash-set-t set-t)
 
@@ -1026,17 +1062,12 @@
     (fn [& vs]
       (MaybeTransformer. do-result-m
                          (apply mv-factory
-                                (or (seq*
-                                     (reduce (fn [acc v]
-                                               (concat
-                                                acc
-                                                (let [v (maybe v)]
-                                                  (if-not (= v maybe-zero-val)
-                                                    [v]
-                                                    []))))
-                                             []
-                                             vs))
-                                    [maybe-zero-val]))))))
+                                (plus (fmap
+                                       #(let [v (maybe %)]
+                                          (if-not (= v maybe-zero-val)
+                                            [v]
+                                            []))
+                                       (vec vs))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

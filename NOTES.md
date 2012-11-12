@@ -85,3 +85,11 @@ Web-based documentation for the library's API needs to be generated, i.e. in the
 It would also be good to develop a "manual" or "tutorial" which walks through all the examples while giving further guidance and insights as to the library's usage.
 
 Another document is envisioned, which would run along similar lines to Jim Duey's and Konrad Hinsen's monad tutorials, but couched in terms which demonstrate how the protocol-monads library is built up from the basic monad concepts (`bind`, `result`, `do`, `plus`, etc.) and by leveraging Java/Clojure types and Clojure's protocols.
+
+### Should `do-result` and factory function `monads.core/maybe` check whether the value is of type `monads.core.Maybe`?
+
+The idea would be that if value is already of type `Maybe` then `do-result` or `monads.core/maybe` would simply return it without "double-wrapping" it in a `Maybe` instance. This seems like a reasonable thing to do, but the implications aren't entirely clear.
+
+### Should interface method `deref` for `monads.core.MaybeTransformer` deref the inner values of type `monads.core.Maybe`?
+
+This seems like a reasonable thing to do, but the implications aren't entirely clear.

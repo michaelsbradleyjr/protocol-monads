@@ -239,6 +239,13 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(deftest maybe-equality
+  (is (= (m/maybe 1) (m/maybe 1)))
+  (is (= (m/maybe {:a 1}) (m/maybe {:a 1})))
+  (is (not= (m/maybe 1) (m/maybe :1)))
+  (is (not= (m/maybe 1) (m/maybe 2)))
+  (is (not= (m/maybe {:a 1}) (m/maybe {:a 2}))))
+
 (def do-result-maybe (partial m/do-result (m/maybe [nil])))
 (def zero-val-maybe (m/zero (m/maybe [nil])))
 
@@ -306,6 +313,13 @@
 ;;  monads.core.State
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftest state-equality
+  (is (= (m/state 1) (m/state 1)))
+  (is (= (m/state {:a 1}) (m/state {:a 1})))
+  (is (not= (m/state 1) (m/state :1)))
+  (is (not= (m/state 1) (m/state 2)))
+  (is (not= (m/state {:a 1}) (m/state {:a 2}))))
 
 (def do-result-state (partial m/do-result (m/state [nil])))
 
@@ -379,6 +393,13 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(deftest cont-equality
+  (is (= (m/cont 1) (m/cont 1)))
+  (is (= (m/cont {:a 1}) (m/cont {:a 1})))
+  (is (not= (m/cont 1) (m/cont :1)))
+  (is (not= (m/cont 1) (m/cont 2)))
+  (is (not= (m/cont {:a 1}) (m/cont {:a 2}))))
+
 (def do-result-cont (partial m/do-result (m/cont [nil])))
 
 (deftest do-result-and-cont-factory-func-equiv
@@ -426,6 +447,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def test-writer (m/writer #{}))
+
+(deftest writer-equality
+  (is (= (test-writer 1) (test-writer 1)))
+  (is (= (test-writer {:a 1}) (test-writer {:a 1})))
+  (is (not= (test-writer 1) (test-writer :1)))
+  (is (not= (test-writer 1) (test-writer 2)))
+  (is (not= (test-writer {:a 1}) (test-writer {:a 2}))))
 
 (def do-result-writer (partial m/do-result (test-writer [nil])))
 
@@ -829,6 +857,13 @@
 
 (def set-list (m/list-t hash-set))
 
+(deftest list-t-equality
+  (is (= (set-list 1 2 3) (set-list 1 2 3)))
+  (is (= (set-list {:a 1} {:b 2}) (set-list {:a 1} {:b 2})))
+  (is (not= (set-list 1 2 3) (set-list :1 2 3)))
+  (is (not= (set-list 1) (set-list 2)))
+  (is (not= (set-list {:a 1} {:b 2}) (set-list {:a 2} {:b 2}))))
+
 (def do-result-set-list (partial m/do-result (set-list [nil])))
 (def zero-val-set-list (m/zero (set-list [nil])))
 
@@ -902,6 +937,13 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def set-vec (m/vector-t hash-set))
+
+(deftest vector-t-equality
+  (is (= (set-vec 1 2 3) (set-vec 1 2 3)))
+  (is (= (set-vec {:a 1} {:b 2}) (set-vec {:a 1} {:b 2})))
+  (is (not= (set-vec 1 2 3) (set-vec :1 2 3)))
+  (is (not= (set-vec 1) (set-vec 2)))
+  (is (not= (set-vec {:a 1} {:b 2}) (set-vec {:a 2} {:b 2}))))
 
 (def do-result-set-vec (partial m/do-result (set-vec [nil])))
 (def zero-val-set-vec (m/zero (set-vec [nil])))
@@ -977,6 +1019,13 @@
 
 (def set-lazy-seq (m/lazy-seq-t hash-set))
 
+(deftest lazy-seq-t-equality
+  (is (= (set-lazy-seq 1 2 3) (set-lazy-seq 1 2 3)))
+  (is (= (set-lazy-seq {:a 1} {:b 2}) (set-lazy-seq {:a 1} {:b 2})))
+  (is (not= (set-lazy-seq 1 2 3) (set-lazy-seq :1 2 3)))
+  (is (not= (set-lazy-seq 1) (set-lazy-seq 2)))
+  (is (not= (set-lazy-seq {:a 1} {:b 2}) (set-lazy-seq {:a 2} {:b 2}))))
+
 (def do-result-set-lazy-seq (partial m/do-result (set-lazy-seq [nil])))
 (def zero-val-set-lazy-seq (m/zero (set-lazy-seq [nil])))
 
@@ -1051,6 +1100,13 @@
 
 (def vec-set (m/set-t vector))
 
+(deftest set-t-equality
+  (is (= (vec-set 1 2 3) (vec-set 1 2 3)))
+  (is (= (vec-set {:a 1} {:b 2}) (vec-set {:a 1} {:b 2})))
+  (is (not= (vec-set 1 2 3) (vec-set :1 2 3)))
+  (is (not= (vec-set 1) (vec-set 2)))
+  (is (not= (vec-set {:a 1} {:b 2}) (vec-set {:a 2} {:b 2}))))
+
 (def do-result-vec-set (partial m/do-result (vec-set [nil])))
 (def zero-val-vec-set (m/zero (vec-set [nil])))
 
@@ -1124,6 +1180,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (def vec-maybe (m/maybe-t vector))
+
+(deftest maybe-t-equality
+  (is (= (vec-maybe 1 2 3) (vec-maybe 1 2 3)))
+  (is (= (vec-maybe {:a 1} {:b 2}) (vec-maybe {:a 1} {:b 2})))
+  (is (not= (vec-maybe 1 2 3) (vec-maybe :1 2 3)))
+  (is (not= (vec-maybe 1) (vec-maybe 2)))
+  (is (not= (vec-maybe {:a 1} {:b 2}) (vec-maybe {:a 2} {:b 2}))))
+
 (defn maybe-t-f [n]
   (vec-maybe (inc n)))
 
@@ -1179,6 +1243,14 @@
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (def vect-state (m/state-t vector))
+
+  (deftest state-t-equality
+    (is (= (vect-state 1 2 3) (vect-state 1 2 3)))
+    (is (= (vect-state {:a 1} {:b 2}) (vect-state {:a 1} {:b 2})))
+    (is (not= (vect-state 1 2 3) (vect-state :1 2 3)))
+    (is (not= (vect-state 1) (vect-state 2)))
+    (is (not= (vect-state {:a 1} {:b 2}) (vect-state {:a 2} {:b 2}))))
+
   (defn state-t-f [n]
     (vect-state (inc n)))
 
@@ -1275,6 +1347,14 @@
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
   (def vect-writer (m/writer-t hash-set []))
+
+  (deftest writer-t-equality
+    (is (= (vect-writer 1 2 3) (vect-writer 1 2 3)))
+    (is (= (vect-writer {:a 1} {:b 2}) (vect-writer {:a 1} {:b 2})))
+    (is (not= (vect-writer 1 2 3) (vect-writer :1 2 3)))
+    (is (not= (vect-writer 1) (vect-writer 2)))
+    (is (not= (vect-writer {:a 1} {:b 2}) (vect-writer {:a 2} {:b 2}))))
+
   (defn writer-t-f [n]
     (vect-writer (inc n)))
 
