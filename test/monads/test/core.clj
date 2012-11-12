@@ -260,7 +260,11 @@
 (deftest zero-val-from-maybe-factory-func
   (is (= m/maybe-zero-val
          zero-val-maybe
-         (m/maybe nil))))
+         (m/maybe nil)))
+  (binding [m/*maybe-zero-val* {:some ['value]}]
+    (is (= m/maybe-zero-val
+           zero-val-maybe
+           (m/maybe {:some ['value]})))))
 
 (defn maybe-f [n]
   (m/maybe (inc n)))
