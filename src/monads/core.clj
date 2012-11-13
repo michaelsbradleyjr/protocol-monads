@@ -81,46 +81,47 @@
 (def ^:dynamic *throw-on-mismatch* false)
 (def ^:dynamic *warn-on-mismatch*  false)
 
-(defn- mismatch-message [mv rt ts]
-  (let [tw (if (= 1 (count ts))
+(defn- mismatch-message [mv mv-types return-val]
+  (let [return-type (class return-val)
+        tw (if (= 1 (count mv-types))
              "type"
              "types")]
     (str "Type mismatch between bound monadic value and return value of monadic function. "
          "Function returned type "
-         (second (string/split (str rt) #" "))
+         (second (string/split (str return-type) #" "))
          ". The protocol-monad "
          (str "<" (name-monad mv) ">")
          " specifies value "
          tw
          " "
-         (string/join ", " (map* #(second (string/split (str %) #" ")) ts))
+         (string/join ", " (map* #(second (string/split (str %) #" ")) mv-types))
          ".")))
 
-(defn- check-return-type [mv f ts warn-on-mismatch throw-on-mismatch]
+(defn- check-return-type [mv f warn-on-mismatch throw-on-mismatch]
   (fn [v]
-    (let [rv (f v)]
-      (if-not (seq* ts)
-        rv
-        (let [rt (class rv)]
-          (if (some #(= rt %) ts)
-            rv
-            (cond
-              (and warn-on-mismatch (not throw-on-mismatch))
-              ;; let is used in place of do, since standard do has
-              ;; been excluded from this namespace
-              (let []
-                (println (mismatch-message mv rt ts))
-                rv)
-              throw-on-mismatch
-              (throw (Exception. (mismatch-message mv rt ts)))
-              :else
-              rv)))))))
+    (let [return-val (f v)
+          mv-types (val-types mv)]
+      (if-not (seq* mv-types)
+        return-val
+        (if (some identity (map* (fn [icp] (every? #(instance? % return-val) icp)) mv-types))
+          return-val
+          (cond
+            (and warn-on-mismatch (not throw-on-mismatch))
+            ;; let is used in place of do, since standard do has
+            ;; been excluded from this namespace
+            (let []
+              (println (mismatch-message mv mv-types return-val))
+              return-val)
+            throw-on-mismatch
+            (throw (Exception. (mismatch-message mv mv-types return-val)))
+            :else
+            return-val))))))
 
 (defn- wrap-check [mv f]
   (if-not (or *throw-on-mismatch*
               *warn-on-mismatch*)
     f
-    (check-return-type mv f (val-types mv) *warn-on-mismatch* *throw-on-mismatch*)))
+    (check-return-type mv f *warn-on-mismatch* *throw-on-mismatch*)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -148,8 +149,7 @@
 
   MonadDev
   (val-types [_]
-    [clojure.lang.PersistentList
-     clojure.lang.PersistentList$EmptyList])
+    [[java.util.List]])
   (name-monad [_]
     "list")
 
@@ -184,8 +184,7 @@
 
   MonadDev
   (val-types [_]
-    [clojure.lang.PersistentList
-     clojure.lang.PersistentList$EmptyList])
+    [[java.util.List]])
   (name-monad [_]
     "list")
 
@@ -220,7 +219,7 @@
 
   MonadDev
   (val-types [_]
-    [clojure.lang.PersistentVector])
+    [[java.util.List]])
   (name-monad [_]
     "vector")
 
@@ -243,7 +242,7 @@
   (do-result [_ v]
     (lazy-seq* v))
   (bind [mv f]
-    (mapcat (wrap-check mv f) mv))
+    (lazy-seq (mapcat (wrap-check mv f) mv)))
 
   MonadZero
   (zero [_]
@@ -255,7 +254,7 @@
 
   MonadDev
   (val-types [_]
-    [clojure.lang.LazySeq])
+    [[java.util.List]])
   (name-monad [_]
     "lazy-seq")
 
@@ -278,8 +277,9 @@
   (do-result [_ v]
     #{v})
   (bind [mv f]
-    (apply set/union
-           (map* (wrap-check mv f) mv)))
+    (apply hash-set
+           (apply set/union
+                  (map* (wrap-check mv f) mv))))
 
   MonadZero
   (zero [_]
@@ -291,7 +291,7 @@
 
   MonadDev
   (val-types [_]
-    [clojure.lang.PersistentHashSet])
+    [[java.util.Set]])
   (name-monad [_]
     "hash-set")
 
@@ -362,7 +362,7 @@
 
   MonadDev
   (val-types [_]
-    [Maybe])
+    [[Maybe]])
   (name-monad [_]
     "maybe"))
 
@@ -413,7 +413,7 @@
 
   MonadDev
   (val-types [_]
-    [State])
+    [[State]])
   (name-monad [_]
     "state"))
 
@@ -449,7 +449,7 @@
 
     MonadDev
     (val-types [_]
-      [State])
+      [[State]])
     (name-monad [_]
       "state")))
 
@@ -542,7 +542,7 @@
 
   MonadDev
   (val-types [_]
-    [Continuation])
+    [[Continuation]])
   (name-monad [_]
     "cont"))
 
@@ -615,7 +615,7 @@
 
   MonadDev
   (val-types [_]
-    [Writer])
+    [[Writer]])
   (name-monad [_]
     "writer"))
 
@@ -808,7 +808,7 @@
 
   MonadDev
   (val-types [_]
-    [ListTransformer])
+    [[ListTransformer]])
   (name-monad [_]
     "list-t"))
 
@@ -878,7 +878,7 @@
 
   MonadDev
   (val-types [_]
-    [VectorTransformer])
+    [[VectorTransformer]])
   (name-monad [_]
     "vector-t"))
 
@@ -950,7 +950,7 @@
 
   MonadDev
   (val-types [_]
-    [LazySeqTransformer])
+    [[LazySeqTransformer]])
   (name-monad [_]
     "lazy-seq-t"))
 
@@ -1022,7 +1022,7 @@
 
   MonadDev
   (val-types [_]
-    [SetTransformer])
+    [[SetTransformer]])
   (name-monad [_]
     "set-t"))
 
@@ -1106,7 +1106,7 @@
 
   MonadDev
   (val-types [_]
-    [MaybeTransformer])
+    [[MaybeTransformer]])
   (name-monad [_]
     "maybe-t"))
 
@@ -1195,14 +1195,14 @@
 
   MonadDev
   (val-types [_]
-    [StateTransformer])
+    [[StateTransformer]])
   (name-monad [_]
     "state-t"))
 
 ;; (extend-type State
 ;;   MonadDev
 ;;   (val-types [_]
-;;     [State StateTransformer])
+;;     [[State StateTransformer]])
 ;;   (name-monad [_]
 ;;     "state"))
 
@@ -1266,7 +1266,7 @@
 
   MonadDev
   (val-types [_]
-    [WriterTransformer])
+    [[WriterTransformer]])
   (name-monad [_]
     "writer-t"))
 
