@@ -93,3 +93,11 @@ The idea would be that if value is already of type `Maybe` then `do-result` or `
 ### Should interface method `deref` for `monads.core.MaybeTransformer` deref the inner values of type `monads.core.Maybe`?
 
 This seems like a reasonable thing to do, but the implications aren't entirely clear.
+
+### Should the return type checker and `plus` type checker use interfaces, protocols instead of class/type?
+
+Write me...
+
+### Should `extend-type` and `Monad...` protocols be implemented for `clojure.lang.PersistentVector$ChunkedSeq`, `clojure.lang.ArraySeq`, and other frequently encountered sequential/collection types?
+
+Write me...
