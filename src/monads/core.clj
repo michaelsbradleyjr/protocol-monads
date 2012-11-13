@@ -430,8 +430,10 @@
   (i-state [_]))
 
 (defn state
-  [v]
-  (State. v nil nil))
+  ([v]
+     (State. v nil nil))
+  ([mv f]
+     (State. nil mv f)))
 
 (defn update-state
   "Return a State monad value that replaces the current state by the

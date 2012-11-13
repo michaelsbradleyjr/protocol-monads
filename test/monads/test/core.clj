@@ -319,11 +319,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest state-equality
+  "Equality testing for monads.core.State instances is limited owing to
+   the fact that those instances may contain function values which
+   may not be reliably tested for equality, i.e. if they are anonyomous
+   functions."
   (is (= (m/state 1) (m/state 1)))
   (is (= (m/state {:a 1}) (m/state {:a 1})))
   (is (not= (m/state 1) (m/state :1)))
   (is (not= (m/state 1) (m/state 2)))
-  (is (not= (m/state {:a 1}) (m/state {:a 2}))))
+  (is (not= (m/state {:a 1}) (m/state {:a 2})))
+  (is (not= (m/bind (m/state 1) #(m/state (inc %)))
+            (m/bind (m/state 1) #(m/state (inc %))))))
 
 (def do-result-state (partial m/do-result (m/state [nil])))
 
@@ -356,10 +362,19 @@
     (is (= (mv1 :state) (mv2 :state)))))
 
 (deftest update-state
-  (is (= (m/update-state identity) (m/update-state identity)))
-  (is (not= (m/update-state identity) (m/update-state inc)))
   (is (= [:state :new-state]
          ((m/update-state (constantly :new-state)) :state))))
+
+(deftest update-state-equality
+  "The following assertions demonstrate the limitations of testing
+   equality for monads.core.State instances. See the docstring for
+   test 'state-equality' defined above."
+  (is (= (m/update-state identity)
+         (m/update-state identity)))
+  (is (not= (m/update-state identity)
+            (m/update-state inc)))
+  (is (not= (m/update-state (fn [s] s))
+            (m/update-state (fn [s] s)))))
 
 (deftest get-state-val
   (is (= [17 {:a 17}]
@@ -392,6 +407,34 @@
        [2 {:a {:b 4}}]      {:a {:b 2}}  [:a :b]  [* 2]
        [2 {:a {:b 3}}]      {:a {:b 2}}  [:a :b]  [inc]
        [nil {:a {:b [1]}}]  {:a nil}     [:a :b]  [(fnil conj []) 1]))
+
+(defn state-f-2-ary-factory [n]
+  (m/state (m/update-state (fn [s] (conj s `["increment" ~n])))
+           (fn [_] (m/state (inc n)))))
+
+(defn state-g-2-ary-factory [n]
+  (m/state (m/update-state (fn [s] (conj s `["plus-five" ~n])))
+           (fn [_] (m/state (+ n 5)))))
+
+(deftest first-law-state-2-ary
+  (let [mv1 (m/bind (do-result-state 10) state-f-2-ary-factory)
+        mv2 (state-f-2-ary-factory 10)]
+    (is (= (mv1 []) (mv2 [])))))
+
+(deftest third-law-state-2-ary
+  (let [mv1 (m/bind (m/bind (m/state 4) state-f-2-ary-factory) state-g-2-ary-factory)
+        mv2 (m/bind (m/state 4)
+                    (fn [x]
+                      (m/bind (state-f-2-ary-factory x) state-g-2-ary-factory)))]
+    (is (= (mv1 []) (mv2 [])))))
+
+(deftest state-equality-2-ary-factory
+  "The following assertions demonstrate the limitations of testing
+   equality for monads.core.State instances. See the docstring for
+   test 'state-equality' defined above."
+  (is (not= (state-f-2-ary-factory 1) (state-f-2-ary-factory 1)))
+  (is (not= (state-f-2-ary-factory {:a 1})
+            (state-f-2-ary-factory {:a 1}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
