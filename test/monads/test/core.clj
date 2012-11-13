@@ -1421,8 +1421,6 @@
                  y (state-t-g x)]
                 [x y])
           :state)))
-  ;; m/set-state-val, owing to the implementation of update-state, is
-  ;; introducing a problem with the return type checker
   (let [maybe-state (m/state-t m/maybe)]
     (is (= [19 {:val 19}]
            @((m/do maybe-state

@@ -94,7 +94,8 @@
          " specifies value "
          tw
          " "
-         (string/join ", " (map* #(second (string/split (str %) #" ")) mv-types))
+         (str mv-types)
+         #_(string/join ", " (map* #(second (string/split (str %) #" ")) mv-types))
          ".")))
 
 (defn- check-return-type [mv f warn-on-mismatch throw-on-mismatch]
@@ -103,7 +104,12 @@
           mv-types (val-types mv)]
       (if-not (seq* mv-types)
         return-val
-        (if (some identity (map* (fn [icp] (every? #(instance? % return-val) icp)) mv-types))
+        (if (some identity
+                  (map* (fn [icps]
+                          (every? (fn [icp]
+                                    (instance? icp return-val))
+                                  icps))
+                        mv-types))
           return-val
           (cond
             (and warn-on-mismatch (not throw-on-mismatch))
@@ -383,6 +389,9 @@
 ;; Monad describing stateful computations. The monadic values have the
 ;; structure (fn [old-state] [result new-state]).
 
+(defprotocol IState
+  (i-state [_]))
+
 (deftype State [v mv f]
   clojure.lang.IHashEq
   (hasheq [this]
@@ -413,9 +422,12 @@
 
   MonadDev
   (val-types [_]
-    [[State]])
+    [[monads.core.IState]])
   (name-monad [_]
-    "state"))
+    "state")
+
+  IState
+  (i-state [_]))
 
 (defn state
   [v]
@@ -449,9 +461,12 @@
 
     MonadDev
     (val-types [_]
-      [[State]])
+      [[monads.core.IState]])
     (name-monad [_]
-      "state")))
+      "state")
+
+    IState
+    (i-state [_])))
 
 (defn set-state
   "Return a State monad value that replaces the current state by s and
@@ -1196,26 +1211,22 @@
 
   MonadDev
   (val-types [_]
-    [[StateTransformer] [State]])
+    [[monads.core.IState]])
   (name-monad [_]
-    "state-t"))
+    "state-t")
 
-;; (extend-type State
-;;   MonadDev
-;;   (val-types [_]
-;;     [[State StateTransformer]])
-;;   (name-monad [_]
-;;     "state"))
+  IState
+  (i-state [_]))
 
 (defn state-t
   [mv-factory]
   (let [do-result-m (partial do-result (mv-factory [nil]))]
-   (if (= mv-factory maybe)
-     (fn [v]
-       (let [v (if (nil? v) maybe-zero-val v)]
-         (StateTransformer. do-result-m v nil nil nil nil)))
-     (fn [v]
-       (StateTransformer. do-result-m v nil nil nil nil)))))
+    (if (= mv-factory maybe)
+      (fn [v]
+        (let [v (if (nil? v) maybe-zero-val v)]
+          (StateTransformer. do-result-m v nil nil nil nil)))
+      (fn [v]
+        (StateTransformer. do-result-m v nil nil nil nil)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1250,11 +1261,11 @@
     (let [mv (deref mv)]
       (WriterTransformer.
        do-result-m (bind mv (fn [v]
-                    (let [[v1 a1] (deref v)]
-                      (bind (deref ((wrap-check mv f) v1))
-                            (fn [v]
-                              (let [[v2 a2] (deref v)]
-                                (do-result-m (Writer. v2 (writer-m-combine a1 a2)))))))))
+                              (let [[v1 a1] (deref v)]
+                                (bind (deref ((wrap-check mv f) v1))
+                                      (fn [v]
+                                        (let [[v2 a2] (deref v)]
+                                          (do-result-m (Writer. v2 (writer-m-combine a1 a2)))))))))
        writer-m)))
 
   MonadZero
