@@ -94,10 +94,18 @@ The idea would be that if value is already of type `Maybe` then `do-result` or `
 
 This seems like a reasonable thing to do, but the implications aren't entirely clear.
 
-### Should the return type checker and `plus` type checker use interfaces, protocols instead of class/type?
+### Should the return type checker and `plus` type checker use interfaces, protocols instead of or in addition to class/type?
 
-Write me...
+By convention we could assume that the vector returned by the `val-types` protocol method contains vectors which contain classes and/or interfaces and/or protocols. The outer vector would represent logical `or`, while the inner vectors would represent logical `and`. The tests can be performed using `instance?`, which will work for classes, interfaces and protocols.
+
+This would allow a bit more flexible matching of "functionally equivalent" return types, e.g. `clojure.lana.PersistentList` and `clojure.lang.LazySeq`, if for example we specify `[[java.util.List]]` as the return of `val-types` protocol method for `clojure.lang.PeristentList`, `clojure.lang.Vector`, and so on. Picking the best classes, interfaces and/or protocols for the various extended and defined types in `monads.core` will require some thought. But my hunch is that it would be good not to allow a mix between, say, lists and sets; while lists and lazy-seqs should be okay together.
+
+In addition to this slight change of strategy for the type checking, it would be good to do a final `coll?` check in the context of `monads.core/do`, `monads.core/comprehend` and perhaps some other places, and then do a cast back to the type specified by `mv-factory` (in the case of `monads.core/do`) or the zero val for the type of the first member of the collection passed to the monadic function/utility (the implementations of protocol method `bind` do that already).
 
 ### Should `extend-type` and `Monad...` protocols be implemented for `clojure.lang.PersistentVector$ChunkedSeq`, `clojure.lang.ArraySeq`, and other frequently encountered sequential/collection types?
 
-Write me...
+This may be an important thing to do to make the library more robust; on the other hand, the need to do so may be obviated the change in type-checking strategy described in the previous note.
+
+### Implement `filterM`
+
+The monadic function `filterM` was suggested in the `#clojure` IRC channel on Freenode.
