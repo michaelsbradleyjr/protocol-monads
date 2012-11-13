@@ -361,34 +361,34 @@
   (is (= [:state :new-state]
          ((m/update-state (constantly :new-state)) :state))))
 
-(deftest get-val
+(deftest get-state-val
   (is (= [17 {:a 17}]
-         ((m/get-val :a) {:a 17}))))
+         ((m/get-state-val :a) {:a 17}))))
 
-(deftest set-val
+(deftest set-state-val
   (is (= [17 {:a 12}]
-         ((m/set-val :a 12) {:a 17}))))
+         ((m/set-state-val :a 12) {:a 17}))))
 
-(deftest update-val
+(deftest update-state-val
   (is (= [5 {:a 19}]
-         ((m/update-val :a + 14) {:a 5}))))
+         ((m/update-state-val :a + 14) {:a 5}))))
 
-(deftest get-in-val
+(deftest get-in-state-val
   (let [state {:a {:b 1} :c {:d {:e 2}}}]
-    (are [expected args] (is (= expected ((apply m/get-in-val args) state)))
+    (are [expected args] (is (= expected ((apply m/get-in-state-val args) state)))
          [1 state]      [[:a :b]]
          [:def state]   [[:z] :def]
          [nil state]    [[:a :b :c]]
          [2 state]      [[:c :d :e]]
          [{:b 1} state] [[:a]])))
 
-(deftest assoc-in-val
+(deftest assoc-in-state-val
   (is (= [nil {:a {:b {:c 9}}}]
-         ((m/assoc-in-val [:a :b :c] 9) {}))))
+         ((m/assoc-in-state-val [:a :b :c] 9) {}))))
 
-(deftest update-in-val
+(deftest update-in-state-val
   (are [expected in-state path args] (is (= expected
-                                            ((apply m/update-in-val path args) in-state)))
+                                            ((apply m/update-in-state-val path args) in-state)))
        [2 {:a {:b 4}}]      {:a {:b 2}}  [:a :b]  [* 2]
        [2 {:a {:b 3}}]      {:a {:b 2}}  [:a :b]  [inc]
        [nil {:a {:b [1]}}]  {:a nil}     [:a :b]  [(fnil conj []) 1]))
@@ -532,7 +532,15 @@
                [x (range 5)
                 y (range 3)
                 :when (> x 1000)]
-               (+ x y)))))
+               (+ x y))))
+  (let [tinc #(vector (inc %))]
+    (is ( = [[1 2 3] [3 4 5]]
+            (m/do vector
+                  [a (vec (range 5))
+                   :when (odd? a)
+                   x (tinc a)
+                   y (tinc x)]
+                  [a x y])))))
 
 (deftest do-let
   (is (= (m/bind (range 5)
@@ -1369,6 +1377,26 @@
                       (m/bind (state-t-f x) state-t-g)))]
     (is (= (mv1 :state-t) (mv2 :state-t)))))
 
+(deftest plus-state-t
+  (let [maybe-state (m/state-t m/maybe)]
+    (is (= [:test :state]
+           @((m/plus* [(maybe-state nil)
+                       (m/do maybe-state
+                             [:when false]
+                             (throw (Exception. "Really should not be thrown")))
+                       (maybe-state :test)
+                       (m/do maybe-state
+                             [_ (maybe-state 10)]
+                             (throw (Exception. "Should not be thrown")))])
+             :state)))
+    (is (= [:test :state]
+           @((m/plus* [(maybe-state nil)
+                       (maybe-state :test)
+                       (m/do maybe-state
+                             [_ (maybe-state 10)]
+                             (throw (Exception. "Should not be thrown")))])
+             :state)))))
+
 (deftest zero-laws-state-t
   (is (= [] ((m/zero (vec-state nil)) :state)))
   (is (= ((m/bind (m/zero (vec-state nil)) state-t-f) :state)
@@ -1392,48 +1420,15 @@
                 [x (state-t-f 9)
                  y (state-t-g x)]
                 [x y])
-          :state))))
-
-(def parse-m (m/state-t m/maybe))
-
-(deftest test-do
-  (is (= [19 {:val 19}]
-         @((m/do parse-m
-                 [_ (m/set-val :val 19)]
-                 19)
-           {})))
-
-  (let [tinc #(vector (inc %))]
-    (is ( = [[1 2 3] [3 4 5]]
-            (m/do vector
-                  [a (vec (range 5))
-                   :when (odd? a)
-                   x (tinc a)
-                   y (tinc x)]
-                  [a x y])))))
-
-(deftest test-state-maybe-1
-  (let [test-m (m/state-t m/maybe)]
-    (is (= [:test :state]
-           @((m/plus* [(test-m nil)
-                       (m/do test-m
-                             [:when false]
-                             (throw (Exception. "Really should not be thrown")))
-                       (test-m :test)
-                       (m/do test-m
-                             [_ (test-m 10)]
-                             (throw (Exception. "Should not be thrown")))])
-             :state)))))
-
-(deftest test-state-maybe-2
-  (let [test-m (m/state-t m/maybe)]
-    (is (= [:test :state]
-           @((m/plus* [(test-m nil)
-                       (test-m :test)
-                       (m/do test-m
-                             [_ (test-m 10)]
-                             (throw (Exception. "Should not be thrown")))])
-             :state)))))
+          :state)))
+  ;; m/set-state-val, owing to the implementation of update-state, is
+  ;; introducing a problem with the return type checker
+  (let [maybe-state (m/state-t m/maybe)]
+    (is (= [19 {:val 19}]
+           @((m/do maybe-state
+                   [_ (m/set-state-val :val 19)]
+                   19)
+             {})))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1451,55 +1446,55 @@
   ;;
   ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-  (def vect-writer (m/writer-t hash-set []))
+  (def vec-writer (m/writer-t hash-set []))
 
   (deftest writer-t-equality
-    (is (= (vect-writer 1 2 3) (vect-writer 1 2 3)))
-    (is (= (vect-writer {:a 1} {:b 2}) (vect-writer {:a 1} {:b 2})))
-    (is (not= (vect-writer 1 2 3) (vect-writer :1 2 3)))
-    (is (not= (vect-writer 1) (vect-writer 2)))
-    (is (not= (vect-writer {:a 1} {:b 2}) (vect-writer {:a 2} {:b 2}))))
+    (is (= (vec-writer 1 2 3) (vec-writer 1 2 3)))
+    (is (= (vec-writer {:a 1} {:b 2}) (vec-writer {:a 1} {:b 2})))
+    (is (not= (vec-writer 1 2 3) (vec-writer :1 2 3)))
+    (is (not= (vec-writer 1) (vec-writer 2)))
+    (is (not= (vec-writer {:a 1} {:b 2}) (vec-writer {:a 2} {:b 2}))))
 
   (defn writer-t-f [n]
-    (vect-writer (inc n)))
+    (vec-writer (inc n)))
 
   (defn writer-t-g [n]
-    (vect-writer (+ n 5)))
+    (vec-writer (+ n 5)))
 
   (deftest first-law-writer-t
-    (is (= @(first @(m/bind (vect-writer 10) writer-t-f))
+    (is (= @(first @(m/bind (vec-writer 10) writer-t-f))
            @(first @(writer-t-f 10)))))
 
   (deftest second-law-writer-t
-    (is (= @(first @(m/bind (vect-writer 10) vect-writer))
-           @(first @(vect-writer 10)))))
+    (is (= @(first @(m/bind (vec-writer 10) vec-writer))
+           @(first @(vec-writer 10)))))
 
   (deftest third-law-writer-t
-    (is (= @(first @(m/bind (m/bind (vect-writer 4) writer-t-f) writer-t-g))
-           @(first @(m/bind (vect-writer 4)
+    (is (= @(first @(m/bind (m/bind (vec-writer 4) writer-t-f) writer-t-g))
+           @(first @(m/bind (vec-writer 4)
                             (fn [x]
                               (m/bind (writer-t-f x) writer-t-g)))))))
 
   (deftest zero-laws-writer-t
-    (is (= #{} @(m/zero (vect-writer nil))))
-    (is (= @(m/bind (m/zero (vect-writer nil)) writer-t-f)
-           @(m/zero (vect-writer nil))))
-    (is (= @(m/bind (vect-writer 4) (constantly (m/zero (vect-writer nil))))
-           @(m/zero (vect-writer nil))))
-    (is (= @(first @(m/plus [(vect-writer 4) (m/zero (vect-writer nil))]))
-           @(first @(vect-writer 4))))
-    (is (= @(first @(m/plus [(m/zero (vect-writer nil)) (vect-writer 4)]))
-           @(first @(vect-writer 4)))))
+    (is (= #{} @(m/zero (vec-writer nil))))
+    (is (= @(m/bind (m/zero (vec-writer nil)) writer-t-f)
+           @(m/zero (vec-writer nil))))
+    (is (= @(m/bind (vec-writer 4) (constantly (m/zero (vec-writer nil))))
+           @(m/zero (vec-writer nil))))
+    (is (= @(first @(m/plus [(vec-writer 4) (m/zero (vec-writer nil))]))
+           @(first @(vec-writer 4))))
+    (is (= @(first @(m/plus [(m/zero (vec-writer nil)) (vec-writer 4)]))
+           @(first @(vec-writer 4)))))
 
   (deftest do-writer-t
-    (is (= @(first @(vect-writer [10 15]))
-           @(first @(m/do vect-writer
+    (is (= @(first @(vec-writer [10 15]))
+           @(first @(m/do vec-writer
                           [x (writer-t-f 9)
                            y (writer-t-g x)]
                           [x y])))))
 
   (deftest test-hash-set-writer
-    (let [test-m (m/writer-t hash-set [])
+    (let [set-writer (m/writer-t hash-set [])
           writer-m (m/writer [])
           write-msg (fn [msg]
                       (WriterTransformer. hash-set
@@ -1533,22 +1528,22 @@
 
       (is (= #{[5 [:msg3]] [nil [:msg1 :msg3]]}
              (->> (m/plus [(write-msg :msg1)
-                           (m/zero (test-m nil))
+                           (m/zero (set-writer nil))
                            (m/zero (write-msg :msg2))
-                           (test-m 5)])
+                           (set-writer 5)])
                   (censor-msgs #(conj % :msg3))
                   deref
                   (map deref)
                   set)))))
 
   (deftest test-state-writer-maybe
-    (let [test-m (m/state-t (m/writer-t m/maybe []))
+    (let [maybe-writer-state (m/state-t (m/writer-t m/maybe []))
           writer-m (m/writer-t m/maybe [])
           write-msg (fn [msg]
                       (StateTransformer. writer-m
                                          nil
                                          ((m/state-t (m/writer-t m/maybe [msg])) nil)
-                                         (constantly (test-m nil))
+                                         (constantly (maybe-writer-state nil))
                                          nil))
           listen-msgs (fn [mv]
                         (StateTransformer. writer-m
@@ -1557,7 +1552,7 @@
                                              (let [[[_ s] msgs] @@@(mv s)]
                                                ((m/writer-t m/maybe msgs) [msgs s])))
                                            (fn [v]
-                                             (test-m v))
+                                             (maybe-writer-state v))
                                            nil))
           censor-msgs (fn [f mv]
                         (StateTransformer. writer-m
@@ -1566,7 +1561,7 @@
                                              (let [[[v s] msgs] @@@(mv s)]
                                                ((m/writer-t m/maybe (f msgs)) [[v msgs] s])))
                                            (fn [v]
-                                             (test-m v))
+                                             (maybe-writer-state v))
                                            nil))]
       (is (= [[nil :state] [:msg]]
              @@@((write-msg :msg) :state)))
@@ -1575,7 +1570,7 @@
              @@@((m/bind (write-msg :msg)
                          (fn [x]
                            (is (nil? x))
-                           (test-m :result)))
+                           (maybe-writer-state :result)))
                  :state)))
       (is (= [[[nil nil] :state] [:msg1 :msg2]]
              @@@((m/seq [(write-msg :msg1)
@@ -1586,7 +1581,7 @@
                           (write-msg :msg2)])
                  :state)))
       (is (= [[nil :state] [:msg2]]
-             @@@((m/plus [(m/zero (test-m nil))
+             @@@((m/plus [(m/zero (maybe-writer-state nil))
                           (write-msg :msg2)])
                  :state)))
 
@@ -1601,7 +1596,7 @@
                  :state)))
 
       (is (= [[[nil [:msg1]] :state] [:msg1 :msg3]]
-             @@@((->> (m/plus [(m/zero (test-m nil))
+             @@@((->> (m/plus [(m/zero (maybe-writer-state nil))
                                (m/zero (write-msg :msg2))
                                (write-msg :msg1)])
                       (censor-msgs #(conj % :msg3)))
