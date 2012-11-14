@@ -38,6 +38,8 @@ This seems like a reasonable thing to do, as it provides parity with the `monads
 
 That also seems pretty reasonable and a good way to "protect" / "preserve" it as wholly special value. Again, it's not entirely clear whether that's the "correct" thing to do.
 
+A quick experiment reveals that defining the `deref` protocol method for `monads.core.Maybe` to work in this way causes a stack overflow when the REPL attempts to print `monads.core/Nothing`; otherwise, it seems to work fine. An alternative print method could be implemented to work around the stack overflow problem in the REPL.
+
 ### Duplicate monad and transformer description-comments in docstrings for the factory functions
 
 The docstrings were uniformly moved into comments under the banners for the monads and transformers, but there should also be proper docstrings for the various factory functions. The "aliases" for the factory functions for `list`, `hash-set`, `vec`, `vector` and `lazy-seq` could be similarly augmented with docstrings by way of manually constructed metadata maps.
