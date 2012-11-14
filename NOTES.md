@@ -10,6 +10,10 @@ In the same spirit as the return type checker, `plus` / `plus*` should optionall
 
 Need a small battery of tests demonstrating that exceptions are thrown as expected (i.e. for various mismatch scenarios) when type checking is activated.
 
+### Transformers need implementations for `plus-step*`
+
+Need to implement `plus-step*` for each monad transformer.
+
 ### Should there be lazy "star versions" of `comprehend`, `seq`, `chain`?
 
 Need to determine whether those monadic functions are "lazy enough" or whether lazy versions should be implemented in a manner similar to the `plus*` lazy variant of `plus`.
@@ -21,10 +25,6 @@ This is the way the algo.monads handles the ambiguity for certain transformers, 
 See:
 * [Monadic plus for list transformer with set monad](https://gist.github.com/4050049)
 * [Monadic plus for list transformer with list monad](https://gist.github.com/4050099)
-
-### Transformers need implementations for `plus-step*`
-
-Need to implement `plus-step*` for each monad transformer.
 
 ### Use sentinel `::lazy-seq` to indicate `lazy-seq` as monadic value factory function
 
