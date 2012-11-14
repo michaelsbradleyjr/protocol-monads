@@ -328,7 +328,7 @@
   (hasheq [this]
     (bit-xor (hash (str Maybe))
              (.hashCode this)))
-  (hashCode [this]
+  (hashCode [_]
     (hash v))
   (equals [this that]
     (and (= Maybe (class that))
@@ -397,7 +397,7 @@
   (hasheq [this]
     (bit-xor (hash (str State))
              (.hashCode this)))
-  (hashCode [this]
+  (hashCode [_]
     (bit-xor (hash v)
              (hash mv)
              (hash f)))
@@ -444,7 +444,7 @@
     (hasheq [this]
       (bit-xor (hash (str (class this)))
                (.hashCode this)))
-    (hashCode [this]
+    (hashCode [_]
       (hash f))
     (equals [this that]
       (and (= (class this) (class that))
@@ -503,15 +503,18 @@
   [key val]
   (update-state-val key (constantly val)))
 
-(defn get-in-state-val [path & [default]]
+(defn get-in-state-val
+  [path & [default]]
   (bind (get-state)
         #(state (get-in % path default))))
 
-(defn assoc-in-state-val [path val]
+(defn assoc-in-state-val
+  [path val]
   (bind (update-state #(assoc-in % path val))
         #(state (get-in % path))))
 
-(defn update-in-state-val [path f & args]
+(defn update-in-state-val
+  [path f & args]
   (bind (update-state #(apply update-in % path f args))
         #(state (get-in % path))))
 
@@ -531,7 +534,7 @@
   (hasheq [this]
     (bit-xor (hash (str Continuation))
              (.hashCode this)))
-  (hashCode [this]
+  (hashCode [_]
     (bit-xor (hash v)
              (hash mv)
              (hash f)))
@@ -610,7 +613,7 @@
   (hasheq [this]
     (bit-xor (hash (str Writer))
              (.hashCode this)))
-  (hashCode [this]
+  (hashCode [_]
     (bit-xor (hash v)
              (hash accumulator)))
   (equals [this that]
@@ -766,7 +769,7 @@
   "Chains together monadic computation steps that are each functions
    of one parameter. Each step is called with the result of the previous
    step as its argument. (monads.core/chain (step1 step2)) is equivalent
-   to (fn [x] (monads.core/do [r1 (step1 x) r2 (step2 r1)] r2))."
+   to (fn [x] (m/do <mv-factory> [r1 (step1 x) r2 (step2 r1)] r2))."
   [steps]
   (fn [x]
     (let [mv ((first steps) x)
@@ -791,7 +794,7 @@
   (hasheq [this]
     (bit-xor (hash (str ListTransformer))
              (.hashCode this)))
-  (hashCode [this]
+  (hashCode [_]
     (bit-xor (hash do-result-m)
              (hash v)))
   (equals [this that]
@@ -860,7 +863,7 @@
   (hasheq [this]
     (bit-xor (hash (str VectorTransformer))
              (.hashCode this)))
-  (hashCode [this]
+  (hashCode [_]
     (bit-xor (hash do-result-m)
              (hash v)))
   (equals [this that]
@@ -932,7 +935,7 @@
   (hasheq [this]
     (bit-xor (hash (str LazySeqTransformer))
              (.hashCode this)))
-  (hashCode [this]
+  (hashCode [_]
     (bit-xor (hash do-result-m)
              (hash v)))
   (equals [this that]
@@ -1004,7 +1007,7 @@
   (hasheq [this]
     (bit-xor (hash (str SetTransformer))
              (.hashCode this)))
-  (hashCode [this]
+  (hashCode [_]
     (bit-xor (hash do-result-m)
              (hash v)))
   (equals [this that]
@@ -1076,7 +1079,7 @@
   (hasheq [this]
     (bit-xor (hash (str MaybeTransformer))
              (.hashCode this)))
-  (hashCode [this]
+  (hashCode [_]
     (bit-xor (hash do-result-m)
              (hash v)))
   (equals [this that]
@@ -1157,7 +1160,7 @@
   (hasheq [this]
     (bit-xor (hash (str StateTransformer))
              (.hashCode this)))
-  (hashCode [this]
+  (hashCode [_]
     (bit-xor (hash do-result-m)
              (hash v)
              (hash mv)
@@ -1224,11 +1227,148 @@
   [mv-factory]
   (let [do-result-m (partial do-result (mv-factory [nil]))]
     (if (= mv-factory maybe)
-      (fn [v]
-        (let [v (if (nil? v) maybe-zero-val v)]
-          (StateTransformer. do-result-m v nil nil nil nil)))
-      (fn [v]
-        (StateTransformer. do-result-m v nil nil nil nil)))))
+      (fn
+        ([v]
+           (let [v (if (nil? v) maybe-zero-val v)]
+             (StateTransformer. do-result-m v nil nil nil nil)))
+        ([mv f]
+           (StateTransformer. do-result-m nil mv f nil nil)))
+      (fn
+        ([v]
+           (StateTransformer. do-result-m v nil nil nil nil))
+        ([mv f]
+           (StateTransformer. do-result-m nil mv f nil nil))))))
+
+(defn update-state-t
+  "Return a function that returns a StateTransformer monad value (for
+   the monad specified by mv-factory) that replaces the current state by
+   the result of f applied to the current state and that returns the old
+   state."
+  [mv-factory]
+  (let [do-result-m (partial do-result (mv-factory [nil]))]
+    (fn [f]
+      (reify
+        clojure.lang.IHashEq
+        (hasheq [this]
+          (bit-xor (hash (str (class this)))
+                   (.hashCode this)))
+        (hashCode [_]
+          (bit-xor (hash do-result-m)
+                   (hash f)))
+        (equals [this that]
+          (and (= (class this) (class that))
+               (= (.hashCode this)
+                  (.hashCode that))))
+
+        clojure.lang.IFn
+        (invoke [_ s]
+          (do-result-m [s (f s)]))
+
+        Monad
+        (do-result [_ v]
+          (StateTransformer. do-result-m v nil nil nil nil))
+        (bind [mv f]
+          (StateTransformer. do-result-m nil mv (wrap-check mv f) nil nil))
+
+        MonadZero
+        (zero [_]
+          (StateTransformer. do-result-m
+                             nil
+                             (fn [s] (zero (do-result-m [nil])))
+                             (fn [v]
+                               (StateTransformer. do-result-m v nil nil nil nil))
+                             nil
+                             nil))
+        (plus-step [mv mvs]
+          (StateTransformer. do-result-m nil nil nil (list mv mvs) nil))
+        (plus-step* [mv mvs]
+          (StateTransformer. do-result-m nil nil nil nil (list mv mvs)))
+
+        MonadDev
+        (val-types [_]
+          [[monads.core.IState]])
+        (name-monad [_]
+          "state-t")
+
+        IState
+        (i-state [_])))))
+
+(defn set-state-t
+  "Return a function that returns a StateTransformer monad value (for
+   the monad specified by mv-factory) that replaces the current state by
+   s and returns the previous state."
+  [mv-factory]
+  (let [u (update-state-t mv-factory)]
+    (fn [s]
+      (u (constantly s)))))
+
+(defn get-state-t
+  "Return a function that returns a StateTransformer monad value (for
+   the monad specified by mv-factory) that returns the current state
+   and does not modify it."
+  [mv-factory]
+  (let [u (update-state-t mv-factory)]
+    (fn []
+      (u identity))))
+
+(defn get-state-t-val
+  "Return a function that returns a StateTransformer monad value (for
+   the monad specified by mv-factory) that assumes the state to be a map
+   and returns the value corresponding to the given key. The state is
+   not modified."
+  [mv-factory]
+  (let [g (get-state-t mv-factory)
+        m-state (state-t mv-factory)]
+    (fn [key]
+      (bind (g)
+            #(m-state (get % key))))))
+
+(defn update-state-t-val
+  "Return a function that returns a StateTransformer monad value (for
+   the monad specified by mv-factory) that assumes the state to be a map
+   and replaces the value associated with the given key by the return
+   value of f applied to the old value and args. The old value is
+   returned."
+  [mv-factory]
+  (let [u (update-state-t mv-factory)
+        m-state (state-t mv-factory)]
+    (fn [key f & args]
+      (bind (u #(apply update-in % [key] f args))
+            #(m-state (get % key))))))
+
+(defn set-state-t-val
+  "Return a function that returns a StateTransformer monad value (for
+   the monad specified by mv-factory) that assumes the state to be a map
+   and replaces the value associated with key by val. The old value is
+   returned."
+  [mv-factory]
+  (let [u (update-state-t mv-factory)]
+    (fn [key val]
+      (u key (constantly val)))))
+
+(defn get-in-state-t-val
+  [mv-factory]
+  (let [g (get-state-t mv-factory)
+        m-state (state-t mv-factory)]
+    (fn [path & [default]]
+      (bind (g)
+            #(m-state (get-in % path default))))))
+
+(defn assoc-in-state-t-val
+  [mv-factory]
+  (let [u (update-state-t mv-factory)
+        m-state (state-t mv-factory)]
+    (fn [path val]
+      (bind (u #(assoc-in % path val))
+            #(m-state (get-in % path))))))
+
+(defn update-in-state-t-val
+  [mv-factory]
+  (let [u (update-state-t mv-factory)
+        m-state (state-t mv-factory)]
+    (fn [path f & args]
+      (bind (u #(apply update-in % path f args))
+            #(m-state (get-in % path))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1241,7 +1381,7 @@
   (hasheq [this]
     (bit-xor (hash (str WriterTransformer))
              (.hashCode this)))
-  (hashCode [this]
+  (hashCode [_]
     (bit-xor (hash do-result-m)
              (hash mv)
              (hash writer-m)))
