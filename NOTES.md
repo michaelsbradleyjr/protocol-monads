@@ -106,7 +106,7 @@ The revised type checking strategy described in the previous note (which has bee
 
 ### Should `extend-type` and `Monad...` protocols be implemented for `clojure.lang.PersistentVector$ChunkedSeq`, `clojure.lang.ArraySeq`, `java.util.HashSet` and other frequently encountered sequential/collection types?
 
-This may be an important thing to do to make the library more robust; on the other hand, the need to do so may be somewhat obviated the change in type-checking strategy described in the previous note.
+This may be an important thing to do to make the library more robust; on the other hand, the need to do so may be somewhat obviated by the changes in type-checking strategy described in the previous notes.
 
 ### Implement `filterM`
 
