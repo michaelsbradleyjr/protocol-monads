@@ -30,9 +30,13 @@ See:
 
 At present, it's not possible to do `(set-t lazy-seq)` or similar since `lazy-seq` (and `monads.core/lazy-seq*`, `monads.core/lazy-seq`) is a macro. However, it should be possible to do something like `(def lazy ::lazy-seq)` in `monads.core`, and then have some logic in the transformer factories that checks whether the `mv-factory` argument equals `monads.core/lazy` and setup `do-result-m` to use `monads.core/lazy-seq*`.
 
-### Should transformer factories perform `nil` -> `maybe-zero-val` short-circuit when `mv-factory` is `monads.core/maybe`?
+### Should transformer factories perform `nil` -> `monads.core/Nothing` short-circuit when `mv-factory` is `monads.core/maybe`?
 
 This seems like a reasonable thing to do, as it provides parity with the `monads.core/maybe` factory function, but it's not entirely clear whether that's the "correct" thing to do.
+
+### Should `(deref monads.core/Nothing)` return `monads.core/Nothing` as a special case, i.e. instead of `:monads.core/Nothing`?
+
+That also seems pretty reasonable and a good way to "protect" / "preserve" it as wholly special value. Again, it's not entirely clear whether that's the "correct" thing to do.
 
 ### Duplicate monad and transformer description-comments in docstrings for the factory functions
 

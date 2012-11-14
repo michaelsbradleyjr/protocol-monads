@@ -313,15 +313,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Monad describing computations with possible failures. Failure is
-;; represented by maybe-zero-val, any other value is considered valid.
-;; As soon as a step returns maybe-zero-val, the whole computation
-;; will yield maybe-zero-val as well. For convenience `(maybe nil)`
-;; returns maybe-zero-val, but this is not the case for constructor
-;; call `(Maybe. nil)` in order to satisfy the first Monad Law.
+;; represented by monads.core/Nothing, any other value is considered
+;; valid. As soon as a step returns monads.core/Nothing, the whole
+;; computation will yield monads.core/Nothing as well. For convenience
+;; `(monads.core/maybe nil)` returns monads.core/Nothing, but this is
+;; not the case for constructor call `(monads.core.Maybe. nil)` in
+;; order to satisfy the first Monad Law for all values.
 
-(def ^:dynamic *maybe-zero-val* nil)
+(def ^:dynamic *Nothing* nil)
 
-(declare maybe-zero-val)
+(declare Nothing)
 
 (deftype Maybe [v]
   clojure.lang.IHashEq
@@ -342,28 +343,28 @@
   (do-result [_ v]
     (Maybe. v))
   (bind [mv f]
-    (if (= mv maybe-zero-val)
-      maybe-zero-val
+    (if (= mv Nothing)
+      Nothing
       ((wrap-check mv f) (deref mv))))
 
   MonadZero
   (zero [_]
-    maybe-zero-val)
+    Nothing)
   (plus-step [mv mvs]
     (let [mv (->> (cons mv mvs)
-                  (drop-while #(= maybe-zero-val %))
+                  (drop-while #(= Nothing %))
                   first)]
       (if (nil? mv)
-        maybe-zero-val
+        Nothing
         mv)))
   (plus-step* [mv mvs]
-    (if-not (= maybe-zero-val mv)
+    (if-not (= Nothing mv)
       mv
       (let [mv (->> mvs
-                    (drop-while #(= maybe-zero-val (%)))
+                    (drop-while #(= Nothing (%)))
                     first)]
         (if (nil? mv)
-          maybe-zero-val
+          Nothing
           (mv)))))
 
   MonadDev
@@ -372,12 +373,12 @@
   (name-monad [_]
     "maybe"))
 
-(def maybe-zero-val (Maybe. ::nothing))
+(def Nothing (Maybe. ::Nothing))
 
 (defn maybe
   [v]
-  (if (= *maybe-zero-val* v)
-    maybe-zero-val
+  (if (= *Nothing* v)
+    Nothing
     (Maybe. v)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -842,7 +843,7 @@
                            (if-not (seq* vs)
                              (list)
                              (plus (fmap
-                                    #(if (= (maybe %) maybe-zero-val)
+                                    #(if (= (maybe %) Nothing)
                                        (list)
                                        (list %))
                                     (vec vs)))))))
@@ -912,7 +913,7 @@
                              (if-not (seq* vs)
                                []
                                (plus (fmap
-                                      #(if (= (maybe %) maybe-zero-val)
+                                      #(if (= (maybe %) Nothing)
                                          []
                                          [%])
                                       (vec vs)))))))
@@ -984,7 +985,7 @@
                               (if-not (seq* vs)
                                 (lazy-seq)
                                 (plus (fmap
-                                       #(if (= (maybe %) maybe-zero-val)
+                                       #(if (= (maybe %) Nothing)
                                           (lazy-seq)
                                           (lazy-seq* %))
                                        (vec vs)))))))
@@ -1056,7 +1057,7 @@
                           (if-not (seq* vs)
                             #{}
                             (plus (fmap
-                                   #(if (= (maybe %) maybe-zero-val)
+                                   #(if (= (maybe %) Nothing)
                                       #{}
                                       #{%})
                                    (vec vs)))))))
@@ -1071,8 +1072,8 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;; Monad transformer that transforms a monad into a monad in which
-;; the base values can be invalid (represented by maybe-zero-val).
+;; Monad transformer that transforms a monad into a monad in which the
+;; base values can be invalid (represented by monads.core/Nothing).
 
 (deftype MaybeTransformer [do-result-m v]
   clojure.lang.IHashEq
@@ -1098,27 +1099,27 @@
     (let [v (deref mv)]
       (MaybeTransformer. do-result-m
                          (let [bres (bind v (fn [x]
-                                              (if (= x maybe-zero-val)
-                                                (do-result-m maybe-zero-val)
+                                              (if (= x Nothing)
+                                                (do-result-m Nothing)
                                                 (deref ((wrap-check mv f) (deref x))))))]
                            (if-not (coll? bres)
                              bres
-                             (if-let [filt (seq* (filter #(not= % maybe-zero-val) bres))]
+                             (if-let [filt (seq* (filter #(not= % Nothing) bres))]
                                (into (zero bres) filt)
-                               (do-result-m maybe-zero-val)))))))
+                               (do-result-m Nothing)))))))
 
   MonadZero
   (zero [_]
-    (MaybeTransformer. do-result-m (do-result-m maybe-zero-val)))
+    (MaybeTransformer. do-result-m (do-result-m Nothing)))
   (plus-step [mv mvs]
     (MaybeTransformer.
      do-result-m (bind (deref mv)
                        (fn [x]
                          (cond
-                           (and (= x maybe-zero-val) (empty? mvs))
-                           (do-result-m maybe-zero-val)
+                           (and (= x Nothing) (empty? mvs))
+                           (do-result-m Nothing)
 
-                           (= x maybe-zero-val)
+                           (= x Nothing)
                            (deref (plus mvs))
 
                            :else
@@ -1137,14 +1138,14 @@
       (MaybeTransformer. do-result-m
                          (apply mv-factory
                                 (if-not (seq* vs)
-                                  [maybe-zero-val]
+                                  [Nothing]
                                   (or (seq* (plus (fmap
                                                    #(let [v (maybe %)]
-                                                      (if-not (= v maybe-zero-val)
+                                                      (if-not (= v Nothing)
                                                         [v]
                                                         []))
                                                    (vec vs))))
-                                      [maybe-zero-val])))))))
+                                      [Nothing])))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1229,7 +1230,7 @@
     (if (= mv-factory maybe)
       (fn
         ([v]
-           (let [v (if (nil? v) maybe-zero-val v)]
+           (let [v (if (= *Nothing* v) Nothing v)]
              (StateTransformer. do-result-m v nil nil nil nil)))
         ([mv f]
            (StateTransformer. do-result-m nil mv f nil nil)))
@@ -1430,7 +1431,16 @@
 (defn writer-t [mv-factory accumulator]
   (let [do-result-m (partial do-result (mv-factory [nil]))
         writer-m (writer accumulator)]
-    (fn [v]
-      (WriterTransformer. do-result-m
-                          (do-result-m (writer-m v))
-                          writer-m))))
+    (if (= mv-factory maybe)
+      (fn [v]
+        (let [mv (if (= *Nothing* v)
+                   Nothing
+                   (do-result-m (writer-m v)))]
+          (WriterTransformer. do-result-m
+                              mv
+                              writer-m)))
+      (fn [v]
+        (let [mv (do-result-m (writer-m v))]
+          (WriterTransformer. do-result-m
+                              mv
+                              writer-m))))))
