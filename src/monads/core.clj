@@ -1318,10 +1318,10 @@
    not modified."
   [mv-factory]
   (let [g (get-state-t mv-factory)
-        m-state (state-t mv-factory)]
+        do-result-m-state (partial do-result ((state-t mv-factory) [nil]))]
     (fn [key]
       (bind (g)
-            #(m-state (get % key))))))
+            #(do-result-m-state (get % key))))))
 
 (defn update-state-t-val
   "Return a function that returns a StateTransformer monad value (for
@@ -1331,10 +1331,10 @@
    returned."
   [mv-factory]
   (let [u (update-state-t mv-factory)
-        m-state (state-t mv-factory)]
+        do-result-m-state (partial do-result ((state-t mv-factory) [nil]))]
     (fn [key f & args]
       (bind (u #(apply update-in % [key] f args))
-            #(m-state (get % key))))))
+            #(do-result-m-state (get % key))))))
 
 (defn set-state-t-val
   "Return a function that returns a StateTransformer monad value (for
@@ -1342,33 +1342,33 @@
    and replaces the value associated with key by val. The old value is
    returned."
   [mv-factory]
-  (let [u (update-state-t mv-factory)]
+  (let [uv (update-state-t-val mv-factory)]
     (fn [key val]
-      (u key (constantly val)))))
+      (uv key (constantly val)))))
 
 (defn get-in-state-t-val
   [mv-factory]
   (let [g (get-state-t mv-factory)
-        m-state (state-t mv-factory)]
+        do-result-m-state (partial do-result ((state-t mv-factory) [nil]))]
     (fn [path & [default]]
       (bind (g)
-            #(m-state (get-in % path default))))))
+            #(do-result-m-state (get-in % path default))))))
 
 (defn assoc-in-state-t-val
   [mv-factory]
   (let [u (update-state-t mv-factory)
-        m-state (state-t mv-factory)]
+        do-result-m-state (partial do-result ((state-t mv-factory) [nil]))]
     (fn [path val]
       (bind (u #(assoc-in % path val))
-            #(m-state (get-in % path))))))
+            #(do-result-m-state (get-in % path))))))
 
 (defn update-in-state-t-val
   [mv-factory]
   (let [u (update-state-t mv-factory)
-        m-state (state-t mv-factory)]
+        do-result-m-state (partial do-result ((state-t mv-factory) [nil]))]
     (fn [path f & args]
       (bind (u #(apply update-in % path f args))
-            #(m-state (get-in % path))))))
+            #(do-result-m-state (get-in % path))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;

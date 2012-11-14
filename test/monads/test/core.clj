@@ -847,6 +847,22 @@
     (is (= ((m/do m/state [x (st 8) y (su x)] y) :state)
            (((m/chain [st su]) 8) :state)))))
 
+(deftest chain-state
+  (let [state-up (m/update-state #(conj % "step"))]
+    (is (= (let [step-f (fn [n] (m/state
+                                 state-up
+                                 (fn [_] (m/state (inc n)))))]
+             (((m/chain [step-f step-f]) 1)
+              []))
+           ((m/do m/state
+                  [x (m/state 1)
+                   y (m/state (inc x))
+                   _ state-up
+                   z (m/state (inc y))
+                   _ state-up]
+                  z)
+            [])))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;;  Monad Zero Laws for monads.core/plus and monads.core/plus*
@@ -930,6 +946,10 @@
 
 (def do-result-set-list (partial m/do-result (set-list [nil])))
 (def zero-val-set-list (m/zero (set-list [nil])))
+
+(deftest do-result-and-list-t-factory-func-equiv
+  (is (= @(do-result-set-list [nil])
+         @(set-list [nil]))))
 
 (defn list-t-f [& ns]
   (apply set-list (map inc ns)))
@@ -1019,6 +1039,10 @@
 (def do-result-set-vec (partial m/do-result (set-vec [nil])))
 (def zero-val-set-vec (m/zero (set-vec [nil])))
 
+(deftest do-result-and-vector-t-factory-func-equiv
+  (is (= @(do-result-set-vec [nil])
+         @(set-vec [nil]))))
+
 (defn vector-t-f [& ns]
   (apply set-vec (map inc ns)))
 
@@ -1107,6 +1131,10 @@
 (def do-result-set-lazy-seq (partial m/do-result (set-lazy-seq [nil])))
 (def zero-val-set-lazy-seq (m/zero (set-lazy-seq [nil])))
 
+(deftest do-result-and-lazy-seq-t-factory-func-equiv
+  (is (= @(do-result-set-lazy-seq [nil])
+         @(set-lazy-seq [nil]))))
+
 (defn lazy-seq-t-f [& ns]
   (apply set-lazy-seq (map inc ns)))
 
@@ -1194,6 +1222,10 @@
 
 (def do-result-vec-set (partial m/do-result (vec-set [nil])))
 (def zero-val-vec-set (m/zero (vec-set [nil])))
+
+(deftest do-result-and-set-t-factory-func-equiv
+  (is (= @(do-result-vec-set [nil])
+         @(vec-set [nil]))))
 
 (defn set-t-f [& ns]
   (apply vec-set (map inc ns)))
@@ -1388,14 +1420,37 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(deftest state-t-factory-short-circuits-to-maybe-zero-val-when-monad-is-maybe
+  (let [maybe-state (m/state-t m/maybe)]
+    (is (= ((maybe-state nil) :state)
+           m/maybe-zero-val))))
+
 (def vec-state (m/state-t vector))
 
 (deftest state-t-equality
+  "Equality testing for monads.core.StateTransformer instances is
+   limited owing to the fact that those instances may contain function
+   values which may not be reliably tested for equality, i.e. if they
+   are anonyomous functions."
   (is (= (vec-state 1) (vec-state 1)))
   (is (= (vec-state {:a 1}) (vec-state {:a 1})))
   (is (not= (vec-state 1) (vec-state :1)))
   (is (not= (vec-state 1) (vec-state 2)))
-  (is (not= (vec-state {:a 1}) (vec-state {:a 2}))))
+  (is (not= (vec-state {:a 1}) (vec-state {:a 2})))
+  (is (not= (m/bind (vec-state 1) #(vec-state (inc %)))
+            (m/bind (vec-state 1) #(vec-state (inc %))))))
+
+(def do-result-vec-state (partial m/do-result (vec-state [nil])))
+(def zero-val-vec-state (m/zero (vec-state [nil])))
+
+(deftest do-result-and-state-t-factory-func-equiv
+  (is (= ((do-result-vec-state [nil]) :state)
+         ((vec-state [nil]) :state))))
+
+(deftest zero-val-from-state-t-factory-func
+  (is (= []
+         (zero-val-vec-state :state)
+         ((vec-state []) :state))))
 
 (defn state-t-f [n]
   (vec-state (inc n)))
@@ -1404,12 +1459,12 @@
   (vec-state (+ n 5)))
 
 (deftest first-law-state-t
-  (let [mv1 (m/bind (vec-state 10) state-t-f)
+  (let [mv1 (m/bind (do-result-vec-state 10) state-t-f)
         mv2 (state-t-f 10)]
     (is (= (mv1 {}) (mv2 {})))))
 
 (deftest second-law-state-t
-  (let [mv1 (m/bind (vec-state 10) vec-state)
+  (let [mv1 (m/bind (do-result-vec-state 10) vec-state)
         mv2 (vec-state 10)]
     (is (= (mv1 :state-t) (mv2 :state-t)))))
 
@@ -1419,6 +1474,89 @@
                     (fn [x]
                       (m/bind (state-t-f x) state-t-g)))]
     (is (= (mv1 :state-t) (mv2 :state-t)))))
+
+(def update-vec-state (m/update-state-t vector))
+
+(deftest update-state-t
+  (is (= [[:state :new-state]]
+         ((update-vec-state (constantly :new-state)) :state))))
+
+(deftest update-state-t-equality
+  "The following assertions demonstrate the limitations of testing
+   equality for monads.core.StateTransformer instances. See the
+   docstring for test 'state-t-equality' defined above."
+  (is (= (update-vec-state identity)
+         (update-vec-state identity)))
+  (is (not= (update-vec-state identity)
+            (update-vec-state inc)))
+  (is (not= (update-vec-state (fn [s] s))
+            (update-vec-state (fn [s] s)))))
+
+(deftest get-state-t-val
+  (let [get-vec-state-val (m/get-state-t-val vector)]
+    (is (= [[17 {:a 17}]]
+           ((get-vec-state-val :a) {:a 17})))))
+
+(deftest set-state-t-val
+  (let [set-vec-state-val (m/set-state-t-val vector)]
+    (is (= [[17 {:a 12}]]
+           ((set-vec-state-val :a 12) {:a 17})))))
+
+(deftest update-state-t-val
+  (let [update-vec-state-val (m/update-state-t-val vector)]
+    (is (= [[5 {:a 19}]]
+           ((update-vec-state-val :a + 14) {:a 5})))))
+
+(deftest get-in-state-t-val
+  (let [get-in-vec-state-val (m/get-in-state-t-val vector)
+        state {:a {:b 1} :c {:d {:e 2}}}]
+    (are [expected args] (is (= expected ((apply get-in-vec-state-val args) state)))
+         [[1 state]]      [[:a :b]]
+         [[:def state]]   [[:z] :def]
+         [[nil state]]    [[:a :b :c]]
+         [[2 state]]      [[:c :d :e]]
+         [[{:b 1} state]] [[:a]])))
+
+(deftest assoc-in-state-t-val
+  (let [assoc-in-vec-state-val (m/assoc-in-state-t-val vector)]
+    (is (= [[nil {:a {:b {:c 9}}}]]
+           ((assoc-in-vec-state-val [:a :b :c] 9) {})))))
+
+(deftest update-in-state-t-val
+  (let [update-in-vec-state-val (m/update-in-state-t-val vector)]
+    (are [expected in-state path args] (is (= expected
+                                              ((apply update-in-vec-state-val path args) in-state)))
+         [[2 {:a {:b 4}}]]      {:a {:b 2}}  [:a :b]  [* 2]
+         [[2 {:a {:b 3}}]]      {:a {:b 2}}  [:a :b]  [inc]
+         [[nil {:a {:b [1]}}]]  {:a nil}     [:a :b]  [(fnil conj []) 1])))
+
+(defn state-t-f-2-ary-factory [n]
+  (vec-state (update-vec-state (fn [s] (conj s `["increment" ~n])))
+             (fn [_] (vec-state (inc n)))))
+
+(defn state-t-g-2-ary-factory [n]
+  (vec-state (update-vec-state (fn [s] (conj s `["plus-five" ~n])))
+             (fn [_] (vec-state (+ n 5)))))
+
+(deftest first-law-state-2-ary
+  (let [mv1 (m/bind (do-result-state 10) state-t-f-2-ary-factory)
+        mv2 (state-t-f-2-ary-factory 10)]
+    (is (= (mv1 []) (mv2 [])))))
+
+(deftest third-law-state-2-ary
+  (let [mv1 (m/bind (m/bind (vec-state 4) state-t-f-2-ary-factory) state-t-g-2-ary-factory)
+        mv2 (m/bind (vec-state 4)
+                    (fn [x]
+                      (m/bind (state-t-f-2-ary-factory x) state-t-g-2-ary-factory)))]
+    (is (= (mv1 []) (mv2 [])))))
+
+(deftest state-t-equality-2-ary-factory
+  "The following assertions demonstrate the limitations of testing
+   equality for monads.core.StateTransformer instances. See the
+   docstring for test 'state-t-equality' defined above."
+  (is (not= (state-t-f-2-ary-factory 1) (state-t-f-2-ary-factory 1)))
+  (is (not= (state-t-f-2-ary-factory {:a 1})
+            (state-t-f-2-ary-factory {:a 1}))))
 
 (deftest plus-state-t
   (let [maybe-state (m/state-t m/maybe)]
@@ -1441,35 +1579,71 @@
              :state)))))
 
 (deftest zero-laws-state-t
-  (is (= [] ((m/zero (vec-state nil)) :state)))
-  (is (= ((m/bind (m/zero (vec-state nil)) state-t-f) :state)
+  (is (= [] (zero-val-vec-state :state)))
+  (is (= ((m/bind zero-val-vec-state state-t-f) :state)
          []))
-  (is (= ((m/bind (vec-state 4) (constantly (m/zero (vec-state nil)))) :state)
+  (is (= ((m/bind (vec-state 4) (constantly zero-val-vec-state)) :state)
          []))
-  (is (= ((m/plus [(vec-state 5) (m/zero (vec-state nil))]) :state)
+  (is (= ((m/plus [(vec-state 5) zero-val-vec-state]) :state)
          ((vec-state 5) :state)))
-  (is (= ((m/plus [(m/zero (vec-state nil)) (vec-state 4)]) :state)
+  (is (= ((m/plus [zero-val-vec-state (vec-state 4)]) :state)
          ((vec-state 4) :state))))
 
 (deftest do-state-t
-  (is (= []
-         ((m/do vec-state
-                [:when false]
-                :something)
-          :state)))
+  (let [do-state-t
+        (m/do vec-state
+              [x (state-t-f 9)
+               y (state-t-g x)]
+              (list x y))
+        do-state-t-ret
+        (do-state-t :state)]
+    (is (= [[(list 10 15) :state]]
+           do-state-t-ret))
+    (is (= monads.core.StateTransformer
+           (class do-state-t)))
+    (is (= clojure.lang.PersistentVector
+           (class do-state-t-ret)))
+    (is (= clojure.lang.PersistentList
+           (class (first (first do-state-t-ret)))))
+    (is (= []
+           ((m/do vec-state
+                  [:when false]
+                  :something)
+            :state)))
+    (let [maybe-state (m/state-t m/maybe)]
+      (is (= [19 {:val 19}]
+             @((m/do maybe-state
+                     [_ ((m/set-state-t-val m/maybe) :val 19)]
+                     19)
+               {})
+             @((m/do maybe-state
+                     [_ (m/set-state-val :val 19)]
+                     19)
+               {}))))))
 
-  (is (= [[[10 15] :state]]
-         ((m/do vec-state
-                [x (state-t-f 9)
-                 y (state-t-g x)]
-                [x y])
-          :state)))
-  (let [maybe-state (m/state-t m/maybe)]
-    (is (= [19 {:val 19}]
-           @((m/do maybe-state
-                   [_ (m/set-state-val :val 19)]
-                   19)
-             {})))))
+(deftest chain-state-t
+  (let [state-up (update-vec-state #(conj % "step"))]
+    (is (= (let [step-f (fn [n] (vec-state
+                                 state-up
+                                 (fn [_] (vec-state (inc n)))))]
+             (((m/chain [step-f step-f]) 1)
+              []))
+           ((m/do vec-state
+                  [x (vec-state 1)
+                   y (vec-state (inc x))
+                   _ state-up
+                   z (vec-state (inc y))
+                   _ state-up]
+                  z)
+            [])
+           ((m/do vec-state
+                  [x (vec-state 1)
+                   y (vec-state (inc x))
+                   _ state-up
+                   z (vec-state (inc y))
+                   _ state-up]
+                  z)
+            [])))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
