@@ -645,8 +645,8 @@
   (fn [v]
     (Writer. v accumulator)))
 
-(defn write [mv-factory val-to-write]
-  (let [[_ a] (deref (mv-factory [nil]))]
+(defn write [writer-factory val-to-write]
+  (let [[_ a] (deref (writer-factory [nil]))]
     (Writer. nil (writer-m-add a val-to-write))))
 
 (defn listen [mv]
