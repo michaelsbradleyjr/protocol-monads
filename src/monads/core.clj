@@ -388,7 +388,13 @@
                               (.getSimpleName (class o))
                               (System/identityHashCode o)
                               "")
-                      pr-on, "", ">", (list (.v o)), w)))
+                      pr-on
+                      ""
+                      ">"
+                      (list (let [vo (.v o)]
+                              (if (= ::Nothing vo)
+                                'Nothing
+                                vo))) #_(list (.v o)), w)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
