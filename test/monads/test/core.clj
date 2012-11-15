@@ -241,8 +241,10 @@
 
 (deftest maybe-equality
   (is (= (m/maybe 1) (m/maybe 1)))
+  (is (= @(m/maybe 1) @(m/maybe 1)))
   (is (= (m/maybe {:a 1}) (m/maybe {:a 1})))
   (is (not= (m/maybe 1) (m/maybe :1)))
+  (is (not= @(m/maybe 1) @(m/maybe :1)))
   (is (not= (m/maybe 1) (m/maybe 2)))
   (is (not= (m/maybe {:a 1}) (m/maybe {:a 2}))))
 
@@ -250,10 +252,14 @@
 (def zero-val-maybe (m/zero (m/maybe [nil])))
 
 (deftest do-result-and-maybe-factory-func-equiv
+  (is (= (do-result-maybe [nil])
+         (m/maybe [nil])))
   (is (= @(do-result-maybe [nil])
          @(m/maybe [nil]))))
 
 (deftest do-result-and-maybe-factory-func-not-equiv-for-nil
+  (is (not= (do-result-maybe nil)
+            (m/maybe nil)))
   (is (not= @(do-result-maybe nil)
             @(m/maybe nil))))
 
@@ -273,17 +279,17 @@
   (m/maybe (+ n 5)))
 
 (deftest first-law-maybe
-  (is (= @(m/bind (do-result-maybe 10) maybe-f)
-         @(maybe-f 10))))
+  (is (= (m/bind (do-result-maybe 10) maybe-f)
+         (maybe-f 10))))
 
 (deftest second-law-maybe
-  (is (= @(m/bind (do-result-maybe 10) do-result-maybe)
-         @(do-result-maybe 10))))
+  (is (= (m/bind (do-result-maybe 10) do-result-maybe)
+         (do-result-maybe 10))))
 
 (deftest third-law-maybe
-  (is (= @(m/bind (m/bind (m/maybe 5) maybe-f) maybe-g)
-         @(m/bind (m/maybe 5) (fn [x]
-                                (m/bind (maybe-f x) maybe-g))))))
+  (is (= (m/bind (m/bind (m/maybe 5) maybe-f) maybe-g)
+         (m/bind (m/maybe 5) (fn [x]
+                               (m/bind (maybe-f x) maybe-g))))))
 
 ;; Special cases -- ensure we're handling them correctly. The m/maybe
 ;; factory function is not used to generate the monadic value passed
@@ -292,15 +298,15 @@
 ;; protocol method do-result, as implemented for class Maybe, does not
 ;; short-circuit.
 (deftest first-law-maybe-nil
-  (is (= @(m/bind (do-result-maybe nil) (comp m/maybe not))
-         @((comp m/maybe not) nil))))
+  (is (= (m/bind (do-result-maybe nil) (comp m/maybe not))
+         ((comp m/maybe not) nil))))
 
 ;; For the same reasons given in the previous comment, m/maybe is not
 ;; used as the monadic function for this test, nor to generate the
 ;; monadic value passed as the first argument to m/bind.
 (deftest second-law-maybe-nil
-  (is (= @(m/bind (do-result-maybe nil) do-result-maybe)
-         @(do-result-maybe nil))))
+  (is (= (m/bind (do-result-maybe nil) do-result-maybe)
+         (do-result-maybe nil))))
 
 (deftest zero-laws-maybe
   (is (= (m/bind zero-val-maybe maybe-f)
@@ -328,8 +334,15 @@
   (is (not= (m/state 1) (m/state :1)))
   (is (not= (m/state 1) (m/state 2)))
   (is (not= (m/state {:a 1}) (m/state {:a 2})))
-  (is (not= (m/bind (m/state 1) #(m/state (inc %)))
-            (m/bind (m/state 1) #(m/state (inc %))))))
+  (binding [m/*throw-on-mismatch* false
+            m/*warn-on-mismatch* false]
+    (let [f #(m/state (inc %))]
+      (is (= (m/bind (m/state 1) f)
+             (m/bind (m/state 1) f)))))
+  (binding [m/*throw-on-mismatch* false
+            m/*warn-on-mismatch* false]
+    (is (not= (m/bind (m/state 1) #(m/state (inc %)))
+              (m/bind (m/state 1) #(m/state (inc %)))))))
 
 (def do-result-state (partial m/do-result (m/state [nil])))
 
@@ -449,6 +462,26 @@
   (is (not= (m/cont 1) (m/cont 2)))
   (is (not= (m/cont {:a 1}) (m/cont {:a 2}))))
 
+(deftest cont-equality
+  "Equality testing for monads.core.Continuation instances is limited
+   owing to the fact that those instances may contain function values
+   which may not be reliably tested for equality, i.e. if they are
+   anonyomous functions."
+  (is (= (m/cont 1) (m/cont 1)))
+  (is (= (m/cont {:a 1}) (m/cont {:a 1})))
+  (is (not= (m/cont 1) (m/cont :1)))
+  (is (not= (m/cont 1) (m/cont 2)))
+  (is (not= (m/cont {:a 1}) (m/cont {:a 2})))
+  (binding [m/*throw-on-mismatch* false
+            m/*warn-on-mismatch* false]
+    (let [f #(m/cont (inc %))]
+      (is (= (m/bind (m/cont 1) f)
+             (m/bind (m/cont 1) f)))))
+  (binding [m/*throw-on-mismatch* false
+            m/*warn-on-mismatch* false]
+    (is (not= (m/bind (m/cont 1) #(m/cont (inc %)))
+              (m/bind (m/cont 1) #(m/cont (inc %)))))))
+
 (def do-result-cont (partial m/do-result (m/cont [nil])))
 
 (deftest do-result-and-cont-factory-func-equiv
@@ -507,8 +540,8 @@
 (def do-result-writer (partial m/do-result (writer+set [nil])))
 
 (deftest do-result-and-writer-factory-func-equiv
-  (is (= @(do-result-writer [nil])
-         @(writer+set [nil]))))
+  (is (= (do-result-writer [nil])
+         (writer+set [nil]))))
 
 (defn writer-f [n]
   (writer+set (inc n)))
@@ -517,16 +550,16 @@
   (writer+set (+ n 5)))
 
 (deftest first-law-writer
-  (is (= @(m/bind (writer+set 10) writer-f)
-         @(writer-f 10))))
+  (is (= (m/bind (writer+set 10) writer-f)
+         (writer-f 10))))
 
 (deftest second-law-writer
-  (is (= @(m/bind (writer+set 10) writer+set)
-         @(writer+set 10))))
+  (is (= (m/bind (writer+set 10) writer+set)
+         (writer+set 10))))
 
 (deftest third-law-writer
-  (is (=@(m/bind (m/bind (writer+set 3) writer-f) writer-g)
-        @(m/bind (writer+set 3)
+  (is (= (m/bind (m/bind (writer+set 3) writer-f) writer-g)
+         (m/bind (writer+set 3)
                  (fn [x]
                    (m/bind (writer-f x) writer-g))))))
 
@@ -939,8 +972,10 @@
 
 (deftest list-t-equality
   (is (= (set-list 1 2 3) (set-list 1 2 3)))
+  (is (= @(set-list 1 2 3) @(set-list 1 2 3)))
   (is (= (set-list {:a 1} {:b 2}) (set-list {:a 1} {:b 2})))
   (is (not= (set-list 1 2 3) (set-list :1 2 3)))
+  (is (not= @(set-list 1 2 3) @(set-list :1 2 3)))
   (is (not= (set-list 1) (set-list 2)))
   (is (not= (set-list {:a 1} {:b 2}) (set-list {:a 2} {:b 2}))))
 
@@ -948,6 +983,8 @@
 (def zero-val-set-list (m/zero (set-list [nil])))
 
 (deftest do-result-and-list-t-factory-func-equiv
+  (is (= (do-result-set-list [nil])
+         (set-list [nil])))
   (is (= @(do-result-set-list [nil])
          @(set-list [nil]))))
 
@@ -958,61 +995,65 @@
   (apply set-list (map #(+ % 5) ns)))
 
 (deftest first-law-list-t
-  (is (= @(m/bind (do-result-set-list 10) list-t-f)
-         @(list-t-f 10))))
+  (is (= (m/bind (do-result-set-list 10) list-t-f)
+         (list-t-f 10))))
 
 (deftest first-law-list-t-factory
-  (is (= @(m/bind (set-list 10 11 12) list-t-f)
-         @(list-t-f 10 11 12))))
+  (is (= (m/bind (set-list 10 11 12) list-t-f)
+         (list-t-f 10 11 12))))
 
 (deftest second-law-list-t
-  (is (= @(m/bind (do-result-set-list 10) do-result-set-list)
-         @(do-result-set-list 10))))
+  (is (= (m/bind (do-result-set-list 10) do-result-set-list)
+         (do-result-set-list 10))))
 
 (deftest second-law-list-t-factory
-  (is (= @(m/bind (set-list 10 11 12) set-list)
-         @(set-list 10 11 12))))
+  (is (= (m/bind (set-list 10 11 12) set-list)
+         (set-list 10 11 12))))
 
 (deftest third-law-list-t
-  (is (= @(m/bind (m/bind (set-list 4 5 6) list-t-f) list-t-g)
-         @(m/bind (set-list 4 5 6)
-                  (fn [x]
-                    (m/bind (list-t-f x) list-t-g))))))
+  (is (= (m/bind (m/bind (set-list 4 5 6) list-t-f) list-t-g)
+         (m/bind (set-list 4 5 6)
+                 (fn [x]
+                   (m/bind (list-t-f x) list-t-g))))))
 
 (deftest plus-list-t
-  (let [plus-list-t @(m/plus [(set-list 1 2) (set-list) (set-list 3 4)])]
+  (let [plus-list-t (m/plus [(set-list 1 2) (set-list) (set-list 3 4)])]
     (is (= #{(list 1 2 3 4)}
-           plus-list-t))
-    (is (= clojure.lang.PersistentHashSet
+           @plus-list-t))
+    (is (= monads.core.ListTransformer
            (class plus-list-t)))
+    (is (= clojure.lang.PersistentHashSet
+           (class @plus-list-t)))
     (is (= clojure.lang.PersistentList
-           (class (first plus-list-t))))))
+           (class (first @plus-list-t))))))
 
 (deftest zero-laws-list-t
   (is (= #{(list)} @zero-val-set-list))
-  (is (= @(m/bind zero-val-set-list list-t-f)
-         @zero-val-set-list))
-  (is (= @(m/bind (set-list 4 5 6) (constantly zero-val-set-list))
-         @zero-val-set-list))
-  (is (= @(m/plus [(set-list 4 5 6) zero-val-set-list])
-         @(set-list 4 5 6)))
-  (is (= @(m/plus [zero-val-set-list (set-list 4 5 6)])
-         @(set-list 4 5 6))))
+  (is (= (m/bind zero-val-set-list list-t-f)
+         zero-val-set-list))
+  (is (= (m/bind (set-list 4 5 6) (constantly zero-val-set-list))
+         zero-val-set-list))
+  (is (= (m/plus [(set-list 4 5 6) zero-val-set-list])
+         (set-list 4 5 6)))
+  (is (= (m/plus [zero-val-set-list (set-list 4 5 6)])
+         (set-list 4 5 6))))
 
 (deftest do-list-t
   (let [do-list-t
-        @(m/do set-list
-               [x (list-t-f 9 8 7)
-                y (list-t-g x)]
-               [x y])]
+        (m/do set-list
+              [x (list-t-f 9 8 7)
+               y (list-t-g x)]
+              [x y])]
     (is (= #{(list [10 15] [9 14] [8 13])}
-           do-list-t))
-    (is (= clojure.lang.PersistentHashSet
+           @do-list-t))
+    (is (= monads.core.ListTransformer
            (class do-list-t)))
+    (is (= clojure.lang.PersistentHashSet
+           (class @do-list-t)))
     (is (= clojure.lang.PersistentList
-           (class (first do-list-t))))
+           (class (first @do-list-t))))
     (is (= clojure.lang.PersistentVector
-           (class (first (first do-list-t)))))))
+           (class (first (first @do-list-t)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1031,8 +1072,10 @@
 
 (deftest vector-t-equality
   (is (= (set-vec 1 2 3) (set-vec 1 2 3)))
+  (is (= @(set-vec 1 2 3) @(set-vec 1 2 3)))
   (is (= (set-vec {:a 1} {:b 2}) (set-vec {:a 1} {:b 2})))
   (is (not= (set-vec 1 2 3) (set-vec :1 2 3)))
+  (is (not= @(set-vec 1 2 3) @(set-vec :1 2 3)))
   (is (not= (set-vec 1) (set-vec 2)))
   (is (not= (set-vec {:a 1} {:b 2}) (set-vec {:a 2} {:b 2}))))
 
@@ -1040,6 +1083,8 @@
 (def zero-val-set-vec (m/zero (set-vec [nil])))
 
 (deftest do-result-and-vector-t-factory-func-equiv
+  (is (= (do-result-set-vec [nil])
+         (set-vec [nil])))
   (is (= @(do-result-set-vec [nil])
          @(set-vec [nil]))))
 
@@ -1050,61 +1095,65 @@
   (apply set-vec (map #(+ % 5) ns)))
 
 (deftest first-law-vector-t
-  (is (= @(m/bind (do-result-set-vec 10) vector-t-f)
-         @(vector-t-f 10))))
+  (is (= (m/bind (do-result-set-vec 10) vector-t-f)
+         (vector-t-f 10))))
 
 (deftest first-law-vector-factory
-  (is (= @(m/bind (set-vec 10 11 12) vector-t-f)
-         @(vector-t-f 10 11 12))))
+  (is (= (m/bind (set-vec 10 11 12) vector-t-f)
+         (vector-t-f 10 11 12))))
 
 (deftest second-law-vector-t
-  (is (= @(m/bind (do-result-set-vec 10) do-result-set-vec)
-         @(set-vec 10))))
+  (is (= (m/bind (do-result-set-vec 10) do-result-set-vec)
+         (set-vec 10))))
 
 (deftest second-law-vector-t-factory
-  (is (= @(m/bind (set-vec 10 11 12) set-vec)
-         @(set-vec 10 11 12))))
+  (is (= (m/bind (set-vec 10 11 12) set-vec)
+         (set-vec 10 11 12))))
 
 (deftest third-law-vector-t
-  (is (= @(m/bind (m/bind (set-vec 4 5 6) vector-t-f) vector-t-g)
-         @(m/bind (set-vec 4 5 6)
-                  (fn [x]
-                    (m/bind (vector-t-f x) vector-t-g))))))
+  (is (= (m/bind (m/bind (set-vec 4 5 6) vector-t-f) vector-t-g)
+         (m/bind (set-vec 4 5 6)
+                 (fn [x]
+                   (m/bind (vector-t-f x) vector-t-g))))))
 
 (deftest plus-vector-t
-  (let [plus-vector-t @(m/plus [(set-vec 1 2) (set-vec) (set-vec 3 4)])]
+  (let [plus-vector-t (m/plus [(set-vec 1 2) (set-vec) (set-vec 3 4)])]
     (is (= #{[1 2 3 4]}
-           plus-vector-t))
-    (is (= clojure.lang.PersistentHashSet
+           @plus-vector-t))
+    (is (= monads.core.VectorTransformer
            (class plus-vector-t)))
+    (is (= clojure.lang.PersistentHashSet
+           (class @plus-vector-t)))
     (is (= clojure.lang.PersistentVector
-           (class (first plus-vector-t))))))
+           (class (first @plus-vector-t))))))
 
 (deftest zero-laws-vector-t
   (is (= #{[]} @zero-val-set-vec))
-  (is (= @(m/bind zero-val-set-vec vector-t-f)
-         @zero-val-set-vec))
-  (is (= @(m/bind (set-vec 4 5 6) (constantly zero-val-set-vec))
-         @zero-val-set-vec))
-  (is (= @(m/plus [(set-vec 4 5 6) zero-val-set-vec])
-         @(set-vec 4 5 6)))
-  (is (= @(m/plus [zero-val-set-vec (set-vec 4 5 6)])
-         @(set-vec 4 5 6))))
+  (is (= (m/bind zero-val-set-vec vector-t-f)
+         zero-val-set-vec))
+  (is (= (m/bind (set-vec 4 5 6) (constantly zero-val-set-vec))
+         zero-val-set-vec))
+  (is (= (m/plus [(set-vec 4 5 6) zero-val-set-vec])
+         (set-vec 4 5 6)))
+  (is (= (m/plus [zero-val-set-vec (set-vec 4 5 6)])
+         (set-vec 4 5 6))))
 
 (deftest do-vector-t
   (let [do-vector-t
-        @(m/do set-vec
-               [x (vector-t-f 9 8 7)
-                y (vector-t-g x)]
-               (list x y))]
+        (m/do set-vec
+              [x (vector-t-f 9 8 7)
+               y (vector-t-g x)]
+              (list x y))]
     (is (= #{[(list 10 15) (list 9 14) (list 8 13)]}
-           do-vector-t))
-    (is (= clojure.lang.PersistentHashSet
+           @do-vector-t))
+    (is (= monads.core.VectorTransformer
            (class do-vector-t)))
+    (is (= clojure.lang.PersistentHashSet
+           (class @do-vector-t)))
     (is (= clojure.lang.PersistentVector
-           (class (first do-vector-t))))
+           (class (first @do-vector-t))))
     (is (= clojure.lang.PersistentList
-           (class (first (first do-vector-t)))))))
+           (class (first (first @do-vector-t)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1123,8 +1172,10 @@
 
 (deftest lazy-seq-t-equality
   (is (= (set-lazy-seq 1 2 3) (set-lazy-seq 1 2 3)))
+  (is (= @(set-lazy-seq 1 2 3) @(set-lazy-seq 1 2 3)))
   (is (= (set-lazy-seq {:a 1} {:b 2}) (set-lazy-seq {:a 1} {:b 2})))
   (is (not= (set-lazy-seq 1 2 3) (set-lazy-seq :1 2 3)))
+  (is (not= @(set-lazy-seq 1 2 3) @(set-lazy-seq :1 2 3)))
   (is (not= (set-lazy-seq 1) (set-lazy-seq 2)))
   (is (not= (set-lazy-seq {:a 1} {:b 2}) (set-lazy-seq {:a 2} {:b 2}))))
 
@@ -1132,6 +1183,8 @@
 (def zero-val-set-lazy-seq (m/zero (set-lazy-seq [nil])))
 
 (deftest do-result-and-lazy-seq-t-factory-func-equiv
+  (is (= (do-result-set-lazy-seq [nil])
+         (set-lazy-seq [nil])))
   (is (= @(do-result-set-lazy-seq [nil])
          @(set-lazy-seq [nil]))))
 
@@ -1142,61 +1195,65 @@
   (apply set-lazy-seq (map #(+ % 5) ns)))
 
 (deftest first-law-lazy-seq-t
-  (is (= @(m/bind (do-result-set-lazy-seq 10) lazy-seq-t-f)
-         @(lazy-seq-t-f 10))))
+  (is (= (m/bind (do-result-set-lazy-seq 10) lazy-seq-t-f)
+         (lazy-seq-t-f 10))))
 
 (deftest first-law-lazy-seq-t-factory
-  (is (= @(m/bind (set-lazy-seq 10 11 12) lazy-seq-t-f)
-         @(lazy-seq-t-f 10 11 12))))
+  (is (= (m/bind (set-lazy-seq 10 11 12) lazy-seq-t-f)
+         (lazy-seq-t-f 10 11 12))))
 
 (deftest second-law-lazy-seq-t
-  (is (= @(m/bind (do-result-set-lazy-seq 10) do-result-set-lazy-seq)
-         @(do-result-set-lazy-seq 10))))
+  (is (= (m/bind (do-result-set-lazy-seq 10) do-result-set-lazy-seq)
+         (do-result-set-lazy-seq 10))))
 
 (deftest second-law-lazy-seq-t-factory
-  (is (= @(m/bind (set-lazy-seq 10 11 12) set-lazy-seq)
-         @(set-lazy-seq 10 11 12))))
+  (is (= (m/bind (set-lazy-seq 10 11 12) set-lazy-seq)
+         (set-lazy-seq 10 11 12))))
 
 (deftest third-law-lazy-seq-t
-  (is (= @(m/bind (m/bind (set-lazy-seq 4 5 6) lazy-seq-t-f) lazy-seq-t-g)
-         @(m/bind (set-lazy-seq 4 5 6)
+  (is (= (m/bind (m/bind (set-lazy-seq 4 5 6) lazy-seq-t-f) lazy-seq-t-g)
+         (m/bind (set-lazy-seq 4 5 6)
                   (fn [x]
                     (m/bind (lazy-seq-t-f x) lazy-seq-t-g))))))
 
 (deftest plus-lazy-seq-t
-  (let [plus-lazy-seq-t @(m/plus [(set-lazy-seq 1 2) (set-lazy-seq) (set-lazy-seq 3 4)])]
+  (let [plus-lazy-seq-t (m/plus [(set-lazy-seq 1 2) (set-lazy-seq) (set-lazy-seq 3 4)])]
     (is (= #{(m/lazy-seq* 1 2 3 4)}
-           plus-lazy-seq-t))
-    (is (= clojure.lang.PersistentHashSet
+           @plus-lazy-seq-t))
+    (is (= monads.core.LazySeqTransformer
            (class plus-lazy-seq-t)))
+    (is (= clojure.lang.PersistentHashSet
+           (class @plus-lazy-seq-t)))
     (is (= clojure.lang.LazySeq
-           (class (first plus-lazy-seq-t))))))
+           (class (first @plus-lazy-seq-t))))))
 
 (deftest zero-laws-lazy-seq-t
   (is (= #{(lazy-seq)} @zero-val-set-lazy-seq))
-  (is (= @(m/bind zero-val-set-lazy-seq lazy-seq-t-f)
-         @zero-val-set-lazy-seq))
-  (is (= @(m/bind (set-lazy-seq 4 5 6) (constantly zero-val-set-lazy-seq))
-         @zero-val-set-lazy-seq))
-  (is (= @(m/plus [(set-lazy-seq 4 5 6) zero-val-set-lazy-seq])
-         @(set-lazy-seq 4 5 6)))
-  (is (= @(m/plus [zero-val-set-lazy-seq (set-lazy-seq 4 5 6)])
-         @(set-lazy-seq 4 5 6))))
+  (is (= (m/bind zero-val-set-lazy-seq lazy-seq-t-f)
+         zero-val-set-lazy-seq))
+  (is (= (m/bind (set-lazy-seq 4 5 6) (constantly zero-val-set-lazy-seq))
+         zero-val-set-lazy-seq))
+  (is (= (m/plus [(set-lazy-seq 4 5 6) zero-val-set-lazy-seq])
+         (set-lazy-seq 4 5 6)))
+  (is (= (m/plus [zero-val-set-lazy-seq (set-lazy-seq 4 5 6)])
+         (set-lazy-seq 4 5 6))))
 
 (deftest do-lazy-seq-t
   (let [do-lazy-seq-t
-        @(m/do set-lazy-seq
+        (m/do set-lazy-seq
                [x (lazy-seq-t-f 9 8 7)
                 y (lazy-seq-t-g x)]
                [x y])]
     (is (= #{(list [10 15] [9 14] [8 13])}
-           do-lazy-seq-t))
-    (is (= clojure.lang.PersistentHashSet
+           @do-lazy-seq-t))
+    (is (= monads.core.LazySeqTransformer
            (class do-lazy-seq-t)))
+    (is (= clojure.lang.PersistentHashSet
+           (class @do-lazy-seq-t)))
     (is (= clojure.lang.LazySeq
-           (class (first do-lazy-seq-t))))
+           (class (first @do-lazy-seq-t))))
     (is (= clojure.lang.PersistentVector
-           (class (first (first do-lazy-seq-t)))))))
+           (class (first (first @do-lazy-seq-t)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1215,8 +1272,10 @@
 
 (deftest set-t-equality
   (is (= (vec-set 1 2 3) (vec-set 1 2 3)))
+  (is (= @(vec-set 1 2 3) @(vec-set 1 2 3)))
   (is (= (vec-set {:a 1} {:b 2}) (vec-set {:a 1} {:b 2})))
   (is (not= (vec-set 1 2 3) (vec-set :1 2 3)))
+  (is (not= @(vec-set 1 2 3) @(vec-set :1 2 3)))
   (is (not= (vec-set 1) (vec-set 2)))
   (is (not= (vec-set {:a 1} {:b 2}) (vec-set {:a 2} {:b 2}))))
 
@@ -1224,6 +1283,8 @@
 (def zero-val-vec-set (m/zero (vec-set [nil])))
 
 (deftest do-result-and-set-t-factory-func-equiv
+  (is (= (do-result-vec-set [nil])
+         (vec-set [nil])))
   (is (= @(do-result-vec-set [nil])
          @(vec-set [nil]))))
 
@@ -1234,61 +1295,65 @@
   (apply vec-set (map #(+ % 5) ns)))
 
 (deftest first-law-set-t
-  (is (= @(m/bind (do-result-vec-set 10) set-t-f)
-         @(set-t-f 10))))
+  (is (= (m/bind (do-result-vec-set 10) set-t-f)
+         (set-t-f 10))))
 
 (deftest first-law-vector-factory
-  (is (= @(m/bind (vec-set 10 11 12) set-t-f)
-         @(set-t-f 10 11 12))))
+  (is (= (m/bind (vec-set 10 11 12) set-t-f)
+         (set-t-f 10 11 12))))
 
 (deftest second-law-set-t
-  (is (= @(m/bind (do-result-vec-set 10) do-result-vec-set)
-         @(vec-set 10))))
+  (is (= (m/bind (do-result-vec-set 10) do-result-vec-set)
+         (vec-set 10))))
 
 (deftest second-law-set-t-factory
-  (is (= @(m/bind (vec-set 10 11 12) vec-set)
-         @(vec-set 10 11 12))))
+  (is (= (m/bind (vec-set 10 11 12) vec-set)
+         (vec-set 10 11 12))))
 
 (deftest third-law-set-t
-  (is (= @(m/bind (m/bind (vec-set 4 5 6) set-t-f) set-t-g)
-         @(m/bind (vec-set 4 5 6)
+  (is (= (m/bind (m/bind (vec-set 4 5 6) set-t-f) set-t-g)
+         (m/bind (vec-set 4 5 6)
                   (fn [x]
                     (m/bind (set-t-f x) set-t-g))))))
 
 (deftest plus-set-t
-  (let [plus-set-t @(m/plus [(vec-set 1 2) (vec-set 1 2) (vec-set) (vec-set 2 3 4) (vec-set 2 3 4)])]
+  (let [plus-set-t (m/plus [(vec-set 1 2) (vec-set 1 2) (vec-set) (vec-set 2 3 4) (vec-set 2 3 4)])]
     (is (= [#{1 2 3 4}]
-           plus-set-t))
-    (is (= clojure.lang.PersistentVector
+           @plus-set-t))
+    (is (= monads.core.SetTransformer
            (class plus-set-t)))
+    (is (= clojure.lang.PersistentVector
+           (class @plus-set-t)))
     (is (= clojure.lang.PersistentHashSet
-           (class (first plus-set-t))))))
+           (class (first @plus-set-t))))))
 
 (deftest zero-laws-set-t
   (is (= [#{}] @zero-val-vec-set))
-  (is (= @(m/bind zero-val-vec-set set-t-f)
-         @zero-val-vec-set))
-  (is (= @(m/bind (vec-set 4 5 6) (constantly zero-val-vec-set))
-         @zero-val-vec-set))
-  (is (= @(m/plus [(vec-set 4 5 6) zero-val-vec-set])
-         @(vec-set 4 5 6)))
-  (is (= @(m/plus [zero-val-vec-set (vec-set 4 5 6)])
-         @(vec-set 4 5 6))))
+  (is (= (m/bind zero-val-vec-set set-t-f)
+         zero-val-vec-set))
+  (is (= (m/bind (vec-set 4 5 6) (constantly zero-val-vec-set))
+         zero-val-vec-set))
+  (is (= (m/plus [(vec-set 4 5 6) zero-val-vec-set])
+         (vec-set 4 5 6)))
+  (is (= (m/plus [zero-val-vec-set (vec-set 4 5 6)])
+         (vec-set 4 5 6))))
 
 (deftest do-set-t
   (let [do-set-t
-        @(m/do vec-set
+        (m/do vec-set
                [x (set-t-f 9 8 7)
                 y (set-t-g x)]
                (list x y))]
     (is (= [#{(list 10 15) (list 9 14) (list 8 13)}]
-           do-set-t))
-    (is (= clojure.lang.PersistentVector
+           @do-set-t))
+    (is (= monads.core.SetTransformer
            (class do-set-t)))
+    (is (= clojure.lang.PersistentVector
+           (class @do-set-t)))
     (is (= clojure.lang.PersistentHashSet
-           (class (first do-set-t))))
+           (class (first @do-set-t))))
     (is (= clojure.lang.PersistentList
-           (class (first (first do-set-t)))))))
+           (class (first (first @do-set-t)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1315,10 +1380,14 @@
 (def zero-val-vec-maybe (m/zero (vec-maybe [nil])))
 
 (deftest do-result-and-maybe-t-factory-func-equiv
+  (is (= (do-result-vec-maybe [nil])
+         (vec-maybe [nil])))
   (is (= @(do-result-vec-maybe [nil])
          @(vec-maybe [nil]))))
 
 (deftest do-result-and-maybe-t-factory-func-not-equiv-for-nil
+  (is (not= (do-result-vec-maybe nil)
+            (vec-maybe nil)))
   (is (not= @(do-result-vec-maybe nil)
             @(vec-maybe nil))))
 
@@ -1336,26 +1405,26 @@
   (apply vec-maybe (map #(when % (+ % 5)) ns)))
 
 (deftest first-law-maybe-t
-  (is (= @(first @(m/bind (do-result-vec-maybe 10) maybe-t-f))
-         @(first @(maybe-t-f 10)))))
+  (is (= (m/bind (do-result-vec-maybe 10) maybe-t-f)
+         (maybe-t-f 10))))
 
 (deftest first-law-maybe-t-factory
-  (is (= @(first @(m/bind (vec-maybe 10 nil 11) maybe-t-f))
-         @(first @(maybe-t-f 10 nil 11)))))
+  (is (= (m/bind (vec-maybe 10 nil 11) maybe-t-f)
+         (maybe-t-f 10 nil 11))))
 
 (deftest second-law-maybe-t
-  (is (= @(first @(m/bind (do-result-vec-maybe 10) vec-maybe))
-         @(first @(do-result-vec-maybe 10)))))
+  (is (= (m/bind (do-result-vec-maybe 10) vec-maybe)
+         (do-result-vec-maybe 10))))
 
 (deftest second-law-maybe-t-factory
-  (is (= @(first @(m/bind (vec-maybe 10 nil 11) vec-maybe))
-         @(first @(vec-maybe 10 nil 11)))))
+  (is (= (m/bind (vec-maybe 10 nil 11) vec-maybe)
+         (vec-maybe 10 nil 11))))
 
 (deftest third-law-maybe-t
-  (is (= @(first @(m/bind (m/bind (vec-maybe 4 nil 5) maybe-t-f) maybe-t-g))
-         @(first @(m/bind (vec-maybe 4 nil 5)
-                          (fn [x]
-                            (m/bind (maybe-t-f x) maybe-t-g)))))))
+  (is (= (m/bind (m/bind (vec-maybe 4 nil 5) maybe-t-f) maybe-t-g)
+         (m/bind (vec-maybe 4 nil 5)
+                 (fn [x]
+                   (m/bind (maybe-t-f x) maybe-t-g))))))
 
 ;; Special cases -- ensure we're handling them correctly. The
 ;; vec-maybe factory function (returned by m/maybe-t) is not used to
@@ -1364,55 +1433,59 @@
 ;; nil to maybe-zero-val. The protocol method do-result, as implemented
 ;; for class MaybeTransformer, does not short-circuit.
 (deftest first-law-maybe-t-nil
-  (is (= @(m/bind (do-result-vec-maybe nil) (comp vec-maybe not))
-         @((comp vec-maybe not) nil))))
+  (is (= (m/bind (do-result-vec-maybe nil) (comp vec-maybe not))
+         ((comp vec-maybe not) nil))))
 
 ;; For the same reasons given in the previous comment, vec-maybe is
 ;; not used as the monadic function for this test, nor to generate the
 ;; monadic value passed as the first argument to m/bind.
 (deftest second-law-maybe-t-nil
-  (is (= @(m/bind (do-result-vec-maybe nil) do-result-vec-maybe)
-         @(do-result-vec-maybe nil))))
+  (is (= (m/bind (do-result-vec-maybe nil) do-result-vec-maybe)
+         (do-result-vec-maybe nil))))
 
 (deftest plus-maybe-t
-  (let [plus-maybe-t @(m/plus [(vec-maybe 1 2) (vec-maybe) (vec-maybe 3 4)])]
-    (is (= @(vec-maybe 1 2)
+  (let [plus-maybe-t (m/plus [(vec-maybe 1 2) (vec-maybe) (vec-maybe 3 4)])]
+    (is (= (vec-maybe 1 2)
            plus-maybe-t))
-    (is (= clojure.lang.PersistentVector
+    (is (= monads.core.MaybeTransformer
            (class plus-maybe-t)))
+    (is (= clojure.lang.PersistentVector
+           (class @plus-maybe-t)))
     (is (= monads.core.Maybe
-           (class (first plus-maybe-t))))))
+           (class (first @plus-maybe-t))))))
 
 (deftest zero-laws-maybe-t
   (is (= [m/Nothing] @zero-val-vec-maybe))
-  (is (= @(m/bind zero-val-vec-maybe list-t-f)
-         @zero-val-vec-maybe))
-  (is (= @(m/bind (vec-maybe 4 5 nil) (constantly zero-val-vec-maybe))
-         @zero-val-vec-maybe))
-  (is (= @(m/plus [(vec-maybe 4 5 nil) zero-val-vec-maybe])
-         @(vec-maybe 4 5 nil)))
-  (is (= @(m/plus [zero-val-vec-maybe (vec-maybe 4 nil 5)])
-         @(vec-maybe 4 nil 5))))
+  (is (= (m/bind zero-val-vec-maybe list-t-f)
+         zero-val-vec-maybe))
+  (is (= (m/bind (vec-maybe 4 5 nil) (constantly zero-val-vec-maybe))
+         zero-val-vec-maybe))
+  (is (= (m/plus [(vec-maybe 4 5 nil) zero-val-vec-maybe])
+         (vec-maybe 4 5 nil)))
+  (is (= (m/plus [zero-val-vec-maybe (vec-maybe 4 nil 5)])
+         (vec-maybe 4 nil 5))))
 
 (deftest do-maybe-t
-  (is (= @zero-val-vec-maybe
-         @(m/do vec-maybe
-                [x (vec-maybe nil)
-                 y (maybe-t-g x)]
-                [x y])))
-  (let [do-maybe-t
-        @(m/do vec-maybe
-               [x (maybe-t-f 9 nil 7)
+  (is (= zero-val-vec-maybe
+         (m/do vec-maybe
+               [x (vec-maybe nil)
                 y (maybe-t-g x)]
-               [x y])]
+               [x y])))
+  (let [do-maybe-t
+        (m/do vec-maybe
+              [x (maybe-t-f 9 nil 7)
+               y (maybe-t-g x)]
+              [x y])]
     (is (= [(m/maybe [10 15]) (m/maybe [8 13])]
-           do-maybe-t))
-    (is (= clojure.lang.PersistentVector
+           @do-maybe-t))
+    (is (= monads.core.MaybeTransformer
            (class do-maybe-t)))
-    (is (= monads.core.Maybe
-           (class (first do-maybe-t))))
     (is (= clojure.lang.PersistentVector
-           (class @(first do-maybe-t))))))
+           (class @do-maybe-t)))
+    (is (= monads.core.Maybe
+           (class (first @do-maybe-t))))
+    (is (= clojure.lang.PersistentVector
+           (class @(first @do-maybe-t))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1437,8 +1510,15 @@
   (is (not= (vec-state 1) (vec-state :1)))
   (is (not= (vec-state 1) (vec-state 2)))
   (is (not= (vec-state {:a 1}) (vec-state {:a 2})))
-  (is (not= (m/bind (vec-state 1) #(vec-state (inc %)))
-            (m/bind (vec-state 1) #(vec-state (inc %))))))
+  (binding [m/*throw-on-mismatch* false
+            m/*warn-on-mismatch* false]
+    (let [f #(vec-state (inc %))]
+      (is (= (m/bind (vec-state 1) f)
+             (m/bind (vec-state 1) f)))))
+  (binding [m/*throw-on-mismatch* false
+            m/*warn-on-mismatch* false]
+    (is (not= (m/bind (vec-state 1) #(vec-state (inc %)))
+              (m/bind (vec-state 1) #(vec-state (inc %)))))))
 
 (def do-result-vec-state (partial m/do-result (vec-state [nil])))
 (def zero-val-vec-state (m/zero (vec-state [nil])))
@@ -1554,7 +1634,8 @@
   "The following assertions demonstrate the limitations of testing
    equality for monads.core.StateTransformer instances. See the
    docstring for test 'state-t-equality' defined above."
-  (is (not= (state-t-f-2-ary-factory 1) (state-t-f-2-ary-factory 1)))
+  (is (not= (state-t-f-2-ary-factory 1)
+            (state-t-f-2-ary-factory 1)))
   (is (not= (state-t-f-2-ary-factory {:a 1})
             (state-t-f-2-ary-factory {:a 1}))))
 
@@ -1590,13 +1671,11 @@
          ((vec-state 4) :state))))
 
 (deftest do-state-t
-  (let [do-state-t
-        (m/do vec-state
-              [x (state-t-f 9)
-               y (state-t-g x)]
-              (list x y))
-        do-state-t-ret
-        (do-state-t :state)]
+  (let [do-state-t (m/do vec-state
+                         [x (state-t-f 9)
+                          y (state-t-g x)]
+                         (list x y))
+        do-state-t-ret (do-state-t :state)]
     (is (= [[(list 10 15) :state]]
            do-state-t-ret))
     (is (= monads.core.StateTransformer
@@ -1615,10 +1694,6 @@
              @((m/do maybe-state
                      [_ ((m/set-state-t-val m/maybe) :val 19)]
                      19)
-               {})
-             @((m/do maybe-state
-                     [_ (m/set-state-val :val 19)]
-                     19)
                {}))))))
 
 (deftest chain-state-t
@@ -1628,14 +1703,6 @@
                                  (fn [_] (vec-state (inc n)))))]
              (((m/chain [step-f step-f]) 1)
               []))
-           ((m/do vec-state
-                  [x (vec-state 1)
-                   y (vec-state (inc x))
-                   _ state-up
-                   z (vec-state (inc y))
-                   _ state-up]
-                  z)
-            [])
            ((m/do vec-state
                   [x (vec-state 1)
                    y (vec-state (inc x))
@@ -1660,8 +1727,10 @@
 
 (deftest writer-t-equality
   (is (= (set-writer+vec 1) (set-writer+vec 1 )))
+  (is (= @(set-writer+vec 1) @(set-writer+vec 1 )))
   (is (= (set-writer+vec {:a 1}) (set-writer+vec {:a 1})))
   (is (not= (set-writer+vec 1) (set-writer+vec :1)))
+  (is (not= @(set-writer+vec 1) @(set-writer+vec :1)))
   (is (not= (set-writer+vec 1) (set-writer+vec 2)))
   (is (not= (set-writer+vec {:a 1}) (set-writer+vec {:a 2}))))
 
@@ -1669,6 +1738,8 @@
 (def zero-val-set-writer+vec (m/zero (set-writer+vec [nil])))
 
 (deftest do-result-and-writer-t-factory-func-equiv
+  (is (= (do-result-set-writer+vec [nil])
+         (set-writer+vec [nil])))
   (is (= @(do-result-set-writer+vec [nil])
          @(set-writer+vec [nil]))))
 
@@ -1678,22 +1749,19 @@
 (defn writer-t-g [n]
   (set-writer+vec (+ n 5)))
 
-#_(deftest first-law-writer-t
-    (is (= @(first @(m/bind (set-writer+vec 10) writer-t-f))
-           @(first @(writer-t-f 10)))))
+(deftest first-law-writer-t
+  (is (= (m/bind (set-writer+vec 10) writer-t-f)
+         (writer-t-f 10))))
 
-(comment
+(deftest second-law-writer-t
+  (is (= (m/bind (set-writer+vec 10) set-writer+vec)
+         (set-writer+vec 10))))
 
-  (deftest second-law-writer-t
-    (is (= @(first @(m/bind (set-writer+vec 10) set-writer+vec))
-           @(first @(set-writer+vec 10)))))
-
-  (deftest third-law-writer-t
-    (is (= @(first @(m/bind (m/bind (set-writer+vec 4) writer-t-f) writer-t-g))
-           @(first @(m/bind (set-writer+vec 4)
-                            (fn [x]
-                              (m/bind (writer-t-f x) writer-t-g)))))))
-  )
+(deftest third-law-writer-t
+  (is (= (m/bind (m/bind (set-writer+vec 4) writer-t-f) writer-t-g)
+         (m/bind (set-writer+vec 4)
+                 (fn [x]
+                   (m/bind (writer-t-f x) writer-t-g))))))
 
 (comment
 

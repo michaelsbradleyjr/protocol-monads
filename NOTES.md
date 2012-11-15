@@ -117,3 +117,9 @@ This may be an important thing to do to make the library more robust; on the oth
 ### Implement `filterM`
 
 The monadic function `filterM` was suggested in the `#clojure` IRC channel on Freenode.
+
+### Equality testing for transformers probably needs adjustment
+
+The (somewhat limited, i.e. for `StateTransformer`) equality testing for transformer instances should probably use `mv-factory` instead of `do-result-m` since in the same program a developer might use `m/state-t` to generate "the same" factory function  multiple times (e.g. multiple uses of `(m/state-t vector)`). In that case, the `do-result-m` values are not comparable, but the original `mv-factory` function-values would be. So the transformer definitions need to be adjust to carry around `mv-factory`, though only for the purposes of equality testing.
+
+`WriterTransformer` will need to be adjusted in an additional manner, i.e. it will also need to carry around the reference to the original `accumulator` in addition to `writer-m` (since the latter is a function and the same situation can arise as for `do-result-m`). But further consideration should be given to whether the original `accumulator` should be carried around, or a "clean" derivative, i.e. one generated with the `writer-m-empty` protocol method.

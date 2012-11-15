@@ -1505,15 +1505,15 @@
                         (do-result-m (writer-m v))
                         writer-m))
   (bind [mv f]
-    (let [mv (deref mv)]
-      (WriterTransformer. do-result-m
-                          (bind mv (fn [v]
-                                     (let [[v1 a1] (deref v)]
-                                       (bind (deref ((wrap-check mv f) v1))
-                                             (fn [v]
-                                               (let [[v2 a2] (deref v)]
-                                                 (do-result-m (Writer. v2 (writer-m-combine a1 a2)))))))))
-                          writer-m)))
+    (WriterTransformer. do-result-m
+                        (bind (deref mv)
+                              (fn [v]
+                                (let [[v1 a1] (deref v)]
+                                  (bind (deref ((wrap-check mv f) v1))
+                                        (fn [v]
+                                          (let [[v2 a2] (deref v)]
+                                            (do-result-m (Writer. v2 (writer-m-combine a1 a2)))))))))
+                        writer-m))
 
   MonadZero
   (zero [mv]
