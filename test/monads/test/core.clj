@@ -580,15 +580,15 @@
                  (fn [x]
                    (m/bind (writer-f x) writer-g))))))
 
-(deftest write
+(deftest write-writer
   (is (= [nil #{:written}]
          @(m/write-writer writer+set :written))))
 
-(deftest listen
+(deftest listen-writer
   (is (= [[nil #{:written}] #{:written}]
          @(m/listen-writer (m/write-writer writer+set :written)))))
 
-(deftest censor
+(deftest censor-writer
   (is (= [nil #{:new-written}]
          @(m/censor-writer (constantly #{:new-written})
                     (m/write-writer writer+set :written)))))
