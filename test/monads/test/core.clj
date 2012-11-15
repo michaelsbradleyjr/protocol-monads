@@ -1824,6 +1824,25 @@
                 y (writer-t-g x)]
                [x y]))))
 
+(comment
+
+  "Revise per forthcoming implementation of
+   write/listen/censor-writer-t"
+
+  (deftest write-writer-t
+    (is (= [nil #{:written}]
+           @(m/write-writer writer+set :written))))
+
+  (deftest listen-writer-t
+    (is (= [[nil #{:written}] #{:written}]
+           @(m/listen-writer (m/write-writer writer+set :written)))))
+
+  (deftest censor-writer-t
+    (is (= [nil #{:new-written}]
+           @(m/censor-writer (constantly #{:new-written})
+                             (m/write-writer writer+set :written)))))
+  )
+
 (deftest write-listen-censor-writer-t
   (let [writer+vec (m/writer [])
         write-msg (fn [msg]
