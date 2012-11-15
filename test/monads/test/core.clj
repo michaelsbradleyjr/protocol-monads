@@ -1868,16 +1868,16 @@
 
 (deftest maybe-writer+vec-state
   (let [maybe-writer+vec-state (m/state-t (m/writer-t m/maybe []))
-        writer-m (m/writer-t m/maybe [])
+        maybe-writer+vec (m/writer-t m/maybe [])
         write-msg (fn [msg]
-                    (StateTransformer. writer-m
+                    (StateTransformer. maybe-writer+vec
                                        nil
                                        ((m/state-t (m/writer-t m/maybe [msg])) nil)
                                        (constantly (maybe-writer+vec-state nil))
                                        nil
                                        nil))
         listen-msgs (fn [mv]
-                      (StateTransformer. writer-m
+                      (StateTransformer. maybe-writer+vec
                                          nil
                                          (fn [s]
                                            (let [[[_ s] msgs] @@@(mv s)]
@@ -1887,7 +1887,7 @@
                                          nil
                                          nil))
         censor-msgs (fn [f mv]
-                      (StateTransformer. writer-m
+                      (StateTransformer. maybe-writer+vec
                                          nil
                                          (fn [s]
                                            (let [[[v s] msgs] @@@(mv s)]
