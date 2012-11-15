@@ -257,7 +257,7 @@
   (is (= @(do-result-maybe [nil])
          @(m/maybe [nil]))))
 
-(deftest do-result-and-maybe-factory-func-not-equiv-for-nil
+(deftest do-result-and-maybe-factory-func-not-equiv-for-*Nothing*
   (is (not= (do-result-maybe nil)
             (m/maybe nil)))
   (binding [m/*Nothing* {:some ['value]}]
@@ -308,17 +308,18 @@
 ;; Special cases -- ensure we're handling them correctly. The m/maybe
 ;; factory function is not used to generate the monadic value passed
 ;; as the first argument to m/bind, since m/maybe implements
-;; "convenience logic" which short-circuits nil to maybe-zero-val. The
+;; "convenience logic" which short-circuits the value of
+;; monads.core/*Nothing* (default: nil) to maybe-zero-val. The
 ;; protocol method do-result, as implemented for class Maybe, does not
 ;; short-circuit.
-(deftest first-law-maybe-nil
+(deftest first-law-maybe-*Nothing*
   (is (= (m/bind (do-result-maybe nil) (comp m/maybe not))
          ((comp m/maybe not) nil))))
 
 ;; For the same reasons given in the previous comment, m/maybe is not
 ;; used as the monadic function for this test, nor to generate the
 ;; monadic value passed as the first argument to m/bind.
-(deftest second-law-maybe-nil
+(deftest second-law-maybe-*Nothing*
   (is (= (m/bind (do-result-maybe nil) do-result-maybe)
          (do-result-maybe nil))))
 
@@ -1401,18 +1402,29 @@
   (is (= @(do-result-vec-maybe [nil])
          @(vec-maybe [nil]))))
 
-(deftest do-result-and-maybe-t-factory-func-not-equiv-for-nil
+(deftest do-result-and-maybe-t-factory-func-not-equiv-for-*Nothing*
   (is (not= (do-result-vec-maybe nil)
             (vec-maybe nil)))
   (is (not= @(do-result-vec-maybe nil)
-            @(vec-maybe nil))))
+            @(vec-maybe nil)))
+  (binding [m/*Nothing* {:some ['value]}]
+    (is (not= (do-result-vec-maybe {:some ['value]})
+              (vec-maybe {:some ['value]})))
+    (is (not= @(do-result-vec-maybe {:some ['value]})
+              @(vec-maybe {:some ['value]})))))
 
 (deftest zero-val-from-maybe-t-factory-func
   (is (= [m/Nothing]
          @zero-val-vec-maybe
          @(vec-maybe nil)
          @(vec-maybe nil nil nil)
-         @(vec-maybe))))
+         @(vec-maybe)))
+  (binding [m/*Nothing* {:some ['value]}]
+   (is (= [m/Nothing]
+          @zero-val-vec-maybe
+          @(vec-maybe {:some ['value]})
+          @(vec-maybe {:some ['value]} {:some ['value]} {:some ['value]})
+          @(vec-maybe)))))
 
 (defn maybe-t-f [& ns]
   (apply vec-maybe (map #(when % (inc %)) ns)))
@@ -1446,16 +1458,17 @@
 ;; vec-maybe factory function (returned by m/maybe-t) is not used to
 ;; generate the monadic value passed as the first argument to m/bind,
 ;; since m/maybe-t implements "convenience logic" which short-circuits
-;; nil to maybe-zero-val. The protocol method do-result, as implemented
-;; for class MaybeTransformer, does not short-circuit.
-(deftest first-law-maybe-t-nil
+;; the value of monads.core/*Nothing* (default: nil) to
+;; maybe-zero-val. The protocol method do-result, as implemented for
+;; class MaybeTransformer, does not short-circuit.
+(deftest first-law-maybe-t-*Nothing*
   (is (= (m/bind (do-result-vec-maybe nil) (comp vec-maybe not))
          ((comp vec-maybe not) nil))))
 
 ;; For the same reasons given in the previous comment, vec-maybe is
 ;; not used as the monadic function for this test, nor to generate the
 ;; monadic value passed as the first argument to m/bind.
-(deftest second-law-maybe-t-nil
+(deftest second-law-maybe-t-*Nothing*
   (is (= (m/bind (do-result-vec-maybe nil) do-result-vec-maybe)
          (do-result-vec-maybe nil))))
 
