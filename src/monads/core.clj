@@ -113,8 +113,6 @@
           return-val
           (cond
             (and warn-on-mismatch (not throw-on-mismatch))
-            ;; let is used in place of do, since standard do has
-            ;; been excluded from this namespace
             (let []
               (println (mismatch-message mv mv-types return-val))
               return-val)
@@ -128,6 +126,15 @@
               *warn-on-mismatch*)
     f
     (check-return-type mv f *warn-on-mismatch* *throw-on-mismatch*)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;; The "dummy value" [nil] is used in several expressions below to
+;; couple calls to bind, zero and do-result to a particular
+;; protocol-monad, as determined by the return type of the monadic
+;; value factory function.
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -316,9 +323,14 @@
 ;; represented by monads.core/Nothing, any other value is considered
 ;; valid. As soon as a step returns monads.core/Nothing, the whole
 ;; computation will yield monads.core/Nothing as well. For convenience
-;; `(monads.core/maybe nil)` returns monads.core/Nothing, but this is
-;; not the case for constructor call `(monads.core.Maybe. nil)` in
-;; order to satisfy the first Monad Law for all values.
+;; `(monads.core/maybe monads.core/*Nothing*)` returns
+;; monads.core/Nothing, but this is not the case for constructor call
+;; `(monads.core.Maybe. monads.core/*Nothing*)` in order to satisfy
+;; the First Monad Law for all values. The default value for
+;; monads.core/*Nothing* is nil. Instances of monads.core.Maybe can be
+;; dereferenced to yield the values they encapsulate;
+;; monads.core/Nothing is a special case - when dereferenced, it
+;; returns the value bound to monads.core/*Nothing*.
 
 (def ^:dynamic *Nothing* nil)
 
@@ -730,10 +742,6 @@
    bindings that can be used in the following steps. "
   [mv-factory bindings expr]
   (let [steps (partition 2 bindings)]
-    ;; The "dummy value" [nil] is used in several expressions below to
-    ;; couple calls to bind, zero and do-result to a particular
-    ;; protocol-monad, as determined by the return type of the monadic
-    ;; value factory function.
     `(monads.core/bind (~mv-factory [nil])
                        (fn [_#]
                          ~(reduce (fn [expr [sym mv]]
@@ -774,8 +782,6 @@
   "'Executes' the monadic values in 'mvs' and returns a sequence of the
    basic values contained in them."
   ([mvs]
-     ;; let is used in place of do, since standard do has been
-     ;; excluded from this namespace.
      (assert
       (seq* mvs)
       (str
@@ -1573,20 +1579,20 @@
 (defn write-writer-t
   []
   (fn [writer-factory val-to-write]
-     (let [[_ a] (deref (writer-factory [nil]))]
-       (Writer. nil
-                (writer-m-add a val-to-write)))))
+    (let [[_ a] (deref (writer-factory [nil]))]
+      (Writer. nil
+               (writer-m-add a val-to-write)))))
 
 (defn listen-writer-t
   []
   (fn [writer-mv]
-     (let [[v a :as va] (deref writer-mv)]
-       (Writer. va
-                a))))
+    (let [[v a :as va] (deref writer-mv)]
+      (Writer. va
+               a))))
 
 (defn censor-writer-t
   []
   (fn [f writer-mv]
-     (let [[v a] (deref writer-mv)]
-       (Writer. v
-                (f a)))))
+    (let [[v a] (deref writer-mv)]
+      (Writer. v
+               (f a)))))
