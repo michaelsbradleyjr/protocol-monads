@@ -1679,8 +1679,8 @@
   (set-writer+vec (+ n 5)))
 
 #_(deftest first-law-writer-t
-  (is (= @(first @(m/bind (set-writer+vec 10) writer-t-f))
-         @(first @(writer-t-f 10)))))
+    (is (= @(first @(m/bind (set-writer+vec 10) writer-t-f))
+           @(first @(writer-t-f 10)))))
 
 (comment
 

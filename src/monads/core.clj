@@ -417,9 +417,13 @@
 
   Monad
   (do-result [_ v]
-    (State. v nil nil))
+    (State. v
+            nil
+            nil))
   (bind [mv f]
-    (State. nil mv (wrap-check mv f)))
+    (State. nil
+            mv
+            (wrap-check mv f)))
 
   MonadDev
   (val-types [_]
@@ -432,9 +436,13 @@
 
 (defn state
   ([v]
-     (State. v nil nil))
+     (State. v
+             nil
+             nil))
   ([mv f]
-     (State. nil mv f)))
+     (State. nil
+             mv
+             f)))
 
 (defn update-state
   "Return a State monad value that replaces the current state by the
@@ -458,9 +466,13 @@
 
     Monad
     (do-result [_ v]
-      (State. v nil nil))
+      (State. v
+              nil
+              nil))
     (bind [mv f]
-      (State. nil mv (wrap-check mv f)))
+      (State. nil
+              mv
+              (wrap-check mv f)))
 
     MonadDev
     (val-types [_]
@@ -557,9 +569,13 @@
 
   Monad
   (do-result [_ v]
-    (Continuation. v nil nil))
+    (Continuation. v
+                   nil
+                   nil))
   (bind [mv f]
-    (Continuation. nil mv (wrap-check mv f)))
+    (Continuation. nil
+                   mv
+                   (wrap-check mv f)))
 
   MonadDev
   (val-types [_]
@@ -569,7 +585,9 @@
 
 (defn cont
   [v]
-  (Continuation. v nil nil))
+  (Continuation. v
+                 nil
+                 nil))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -628,11 +646,13 @@
 
   Monad
   (do-result [_ v]
-    (Writer. v (writer-m-empty accumulator)))
+    (Writer. v
+             (writer-m-empty accumulator)))
   (bind [mv f]
     (let [[v1 a1] (deref mv)
           [v2 a2] (deref ((wrap-check mv f) v1))]
-      (Writer. v2 (writer-m-combine a1 a2))))
+      (Writer. v2
+               (writer-m-combine a1 a2))))
 
   MonadDev
   (val-types [_]
@@ -643,19 +663,23 @@
 (defn writer
   [accumulator]
   (fn [v]
-    (Writer. v accumulator)))
+    (Writer. v
+             accumulator)))
 
 (defn write [writer-factory val-to-write]
   (let [[_ a] (deref (writer-factory [nil]))]
-    (Writer. nil (writer-m-add a val-to-write))))
+    (Writer. nil
+             (writer-m-add a val-to-write))))
 
 (defn listen [mv]
   (let [[v a :as va] (deref mv)]
-    (Writer. va a)))
+    (Writer. va
+             a)))
 
 (defn censor [f mv]
   (let [[v a] (deref mv)]
-    (Writer. v (f a))))
+    (Writer. v
+             (f a))))
 
 (extend-type java.lang.String
   MonadWriter
@@ -809,23 +833,26 @@
 
   Monad
   (do-result [_ v]
-    (ListTransformer. do-result-m (do-result-m (list v))))
+    (ListTransformer. do-result-m
+                      (do-result-m (list v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (ListTransformer. do-result-m (bind v (fn [xs]
-                                              (if (seq* xs)
-                                                (->> xs
-                                                     (map (comp deref (wrap-check mv f)))
-                                                     (fmap plus))
-                                                (do-result-m (list))))))))
+      (ListTransformer. do-result-m
+                        (bind v (fn [xs]
+                                  (if (seq* xs)
+                                    (->> xs
+                                         (map (comp deref (wrap-check mv f)))
+                                         (fmap plus))
+                                    (do-result-m (list))))))))
   MonadZero
   (zero [_]
-    (ListTransformer. do-result-m (do-result-m (list))))
+    (ListTransformer. do-result-m
+                      (do-result-m (list))))
   (plus-step [mv mvs]
-    (ListTransformer.
-     do-result-m (apply
-                  (lift (fn [& vs] (plus vs)))
-                  (map* deref (cons mv mvs)))))
+    (ListTransformer. do-result-m
+                      (apply
+                       (lift (fn [& vs] (plus vs)))
+                       (map* deref (cons mv mvs)))))
 
   MonadDev
   (val-types [_]
@@ -848,7 +875,8 @@
                                        (list %))
                                     (vec vs)))))))
       (fn [& vs]
-        (ListTransformer. do-result-m (do-result-m (apply list vs)))))))
+        (ListTransformer. do-result-m
+                          (do-result-m (apply list vs)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -878,24 +906,27 @@
 
   Monad
   (do-result [_ v]
-    (VectorTransformer. do-result-m (do-result-m [v])))
+    (VectorTransformer. do-result-m
+                        (do-result-m [v])))
   (bind [mv f]
     (let [v (deref mv)]
-      (VectorTransformer. do-result-m (bind v (fn [xs]
-                                                (if (seq* xs)
-                                                  (->> xs
-                                                       (map (comp deref (wrap-check mv f)))
-                                                       (fmap plus))
-                                                  (do-result-m [])))))))
+      (VectorTransformer. do-result-m
+                          (bind v (fn [xs]
+                                    (if (seq* xs)
+                                      (->> xs
+                                           (map (comp deref (wrap-check mv f)))
+                                           (fmap plus))
+                                      (do-result-m [])))))))
 
   MonadZero
   (zero [_]
-    (VectorTransformer. do-result-m (do-result-m [])))
+    (VectorTransformer. do-result-m
+                        (do-result-m [])))
   (plus-step [mv mvs]
-    (VectorTransformer.
-     do-result-m (apply
-                  (lift (fn [& vs] (plus vs)))
-                  (map* deref (cons mv mvs)))))
+    (VectorTransformer. do-result-m
+                        (apply
+                         (lift (fn [& vs] (plus vs)))
+                         (map* deref (cons mv mvs)))))
 
   MonadDev
   (val-types [_]
@@ -918,7 +949,8 @@
                                          [%])
                                       (vec vs)))))))
       (fn [& vs]
-        (VectorTransformer. do-result-m (do-result-m (vec vs)))))))
+        (VectorTransformer. do-result-m
+                            (do-result-m (vec vs)))))))
 
 (def vec-t vector-t)
 
@@ -950,24 +982,27 @@
 
   Monad
   (do-result [_ v]
-    (LazySeqTransformer. do-result-m (do-result-m (lazy-seq* v))))
+    (LazySeqTransformer. do-result-m
+                         (do-result-m (lazy-seq* v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (LazySeqTransformer. do-result-m (bind v (fn [xs]
-                                                 (if (seq* xs)
-                                                   (->> xs
-                                                        (map (comp deref (wrap-check mv f)))
-                                                        (fmap plus))
-                                                   (do-result-m (lazy-seq))))))))
+      (LazySeqTransformer. do-result-m
+                           (bind v (fn [xs]
+                                     (if (seq* xs)
+                                       (->> xs
+                                            (map (comp deref (wrap-check mv f)))
+                                            (fmap plus))
+                                       (do-result-m (lazy-seq))))))))
 
   MonadZero
   (zero [_]
-    (LazySeqTransformer. do-result-m (do-result-m (lazy-seq))))
+    (LazySeqTransformer. do-result-m
+                         (do-result-m (lazy-seq))))
   (plus-step [mv mvs]
-    (LazySeqTransformer.
-     do-result-m (apply
-                  (lift (fn [& vs] (plus vs)))
-                  (map* deref (cons mv mvs)))))
+    (LazySeqTransformer. do-result-m
+                         (apply
+                          (lift (fn [& vs] (plus vs)))
+                          (map* deref (cons mv mvs)))))
 
   MonadDev
   (val-types [_]
@@ -990,7 +1025,8 @@
                                           (lazy-seq* %))
                                        (vec vs)))))))
       (fn [& vs]
-        (LazySeqTransformer. do-result-m (do-result-m (lazy-seq vs)))))))
+        (LazySeqTransformer. do-result-m
+                             (do-result-m (lazy-seq vs)))))))
 
 (def lazy-t lazy-seq-t)
 
@@ -1022,24 +1058,27 @@
 
   Monad
   (do-result [_ v]
-    (SetTransformer. do-result-m (do-result-m #{v})))
+    (SetTransformer. do-result-m
+                     (do-result-m #{v})))
   (bind [mv f]
     (let [v (deref mv)]
-      (SetTransformer. do-result-m (bind v (fn [xs]
-                                             (if (seq* xs)
-                                               (->> xs
-                                                    (map (comp deref (wrap-check mv f)))
-                                                    (fmap plus))
-                                               (do-result-m #{})))))))
+      (SetTransformer. do-result-m
+                       (bind v (fn [xs]
+                                 (if (seq* xs)
+                                   (->> xs
+                                        (map (comp deref (wrap-check mv f)))
+                                        (fmap plus))
+                                   (do-result-m #{})))))))
 
   MonadZero
   (zero [_]
-    (SetTransformer. do-result-m (do-result-m #{})))
+    (SetTransformer. do-result-m
+                     (do-result-m #{})))
   (plus-step [mv mvs]
-    (SetTransformer.
-     do-result-m (apply
-                  (lift (fn [& vs] (plus vs)))
-                  (map* deref (cons mv mvs)))))
+    (SetTransformer. do-result-m
+                     (apply
+                      (lift (fn [& vs] (plus vs)))
+                      (map* deref (cons mv mvs)))))
 
   MonadDev
   (val-types [_]
@@ -1062,7 +1101,8 @@
                                       #{%})
                                    (vec vs)))))))
       (fn [& vs]
-        (SetTransformer. do-result-m (do-result-m (apply hash-set vs)))))))
+        (SetTransformer. do-result-m
+                         (do-result-m (apply hash-set vs)))))))
 
 (def hash-set-t set-t)
 
@@ -1094,7 +1134,8 @@
 
   Monad
   (do-result [_ v]
-    (MaybeTransformer. do-result-m (do-result-m (Maybe. v))))
+    (MaybeTransformer. do-result-m
+                       (do-result-m (Maybe. v))))
   (bind [mv f]
     (let [v (deref mv)]
       (MaybeTransformer. do-result-m
@@ -1110,20 +1151,21 @@
 
   MonadZero
   (zero [_]
-    (MaybeTransformer. do-result-m (do-result-m Nothing)))
+    (MaybeTransformer. do-result-m
+                       (do-result-m Nothing)))
   (plus-step [mv mvs]
-    (MaybeTransformer.
-     do-result-m (bind (deref mv)
-                       (fn [x]
-                         (cond
-                           (and (= x Nothing) (empty? mvs))
-                           (do-result-m Nothing)
+    (MaybeTransformer. do-result-m
+                       (bind (deref mv)
+                             (fn [x]
+                               (cond
+                                 (and (= x Nothing) (empty? mvs))
+                                 (do-result-m Nothing)
 
-                           (= x Nothing)
-                           (deref (plus mvs))
+                                 (= x Nothing)
+                                 (deref (plus mvs))
 
-                           :else
-                           (do-result-m x))))))
+                                 :else
+                                 (do-result-m x))))))
 
   MonadDev
   (val-types [_]
@@ -1186,8 +1228,10 @@
       ;; enough and sometimes aren't (apparently owing to sequence
       ;; chunking).  If laziness is desirable, then one should use
       ;; plus* / plus-step*.
-      alts (plus-step ((first alts) s) (doall (map* #(% s) (second alts))))
-      lzalts (plus-step* ((first lzalts) s) (map* #(fn [] ((%) s)) (second lzalts)))
+      alts (plus-step ((first alts) s)
+                      (doall (map* #(% s) (second alts))))
+      lzalts (plus-step* ((first lzalts) s)
+                         (map* #(fn [] ((%) s)) (second lzalts)))
       f (bind (mv s)
               (fn [[v ss]]
                 ((f v) ss)))
@@ -1197,9 +1241,19 @@
 
   Monad
   (do-result [_ v]
-    (StateTransformer. do-result-m v nil nil nil nil))
+    (StateTransformer. do-result-m
+                       v
+                       nil
+                       nil
+                       nil
+                       nil))
   (bind [mv f]
-    (StateTransformer. do-result-m nil mv (wrap-check mv f) nil nil))
+    (StateTransformer. do-result-m
+                       nil
+                       mv
+                       (wrap-check mv f)
+                       nil
+                       nil))
 
   MonadZero
   (zero [_]
@@ -1211,9 +1265,19 @@
                        nil
                        nil))
   (plus-step [mv mvs]
-    (StateTransformer. do-result-m nil nil nil (list mv mvs) nil))
+    (StateTransformer. do-result-m
+                       nil
+                       nil
+                       nil
+                       (list mv mvs)
+                       nil))
   (plus-step* [mv mvs]
-    (StateTransformer. do-result-m nil nil nil nil (list mv mvs)))
+    (StateTransformer. do-result-m
+                       nil
+                       nil
+                       nil
+                       nil
+                       (list mv mvs)))
 
   MonadDev
   (val-types [_]
@@ -1231,14 +1295,34 @@
       (fn
         ([v]
            (let [v (if (= *Nothing* v) Nothing v)]
-             (StateTransformer. do-result-m v nil nil nil nil)))
+             (StateTransformer. do-result-m
+                                v
+                                nil
+                                nil
+                                nil
+                                nil)))
         ([mv f]
-           (StateTransformer. do-result-m nil mv f nil nil)))
+           (StateTransformer. do-result-m
+                              nil
+                              mv
+                              f
+                              nil
+                              nil)))
       (fn
         ([v]
-           (StateTransformer. do-result-m v nil nil nil nil))
+           (StateTransformer. do-result-m
+                              v
+                              nil
+                              nil
+                              nil
+                              nil))
         ([mv f]
-           (StateTransformer. do-result-m nil mv f nil nil))))))
+           (StateTransformer. do-result-m
+                              nil
+                              mv
+                              f
+                              nil
+                              nil))))))
 
 (defn update-state-t
   "Return a function that returns a StateTransformer monad value (for
@@ -1267,9 +1351,19 @@
 
         Monad
         (do-result [_ v]
-          (StateTransformer. do-result-m v nil nil nil nil))
+          (StateTransformer. do-result-m
+                             v
+                             nil
+                             nil
+                             nil
+                             nil))
         (bind [mv f]
-          (StateTransformer. do-result-m nil mv (wrap-check mv f) nil nil))
+          (StateTransformer. do-result-m
+                             nil
+                             mv
+                             (wrap-check mv f)
+                             nil
+                             nil))
 
         MonadZero
         (zero [_]
@@ -1281,9 +1375,18 @@
                              nil
                              nil))
         (plus-step [mv mvs]
-          (StateTransformer. do-result-m nil nil nil (list mv mvs) nil))
+          (StateTransformer. do-result-m
+                             nil
+                             nil
+                             nil
+                             (list mv mvs)
+                             nil))
         (plus-step* [mv mvs]
-          (StateTransformer. do-result-m nil nil nil nil (list mv mvs)))
+          (StateTransformer. do-result-m
+                             nil
+                             nil
+                             nil
+                             nil (list mv mvs)))
 
         MonadDev
         (val-types [_]
@@ -1398,18 +1501,19 @@
 
   Monad
   (do-result [_ v]
-    (WriterTransformer.
-     do-result-m (do-result-m (writer-m v)) writer-m))
+    (WriterTransformer. do-result-m
+                        (do-result-m (writer-m v))
+                        writer-m))
   (bind [mv f]
     (let [mv (deref mv)]
-      (WriterTransformer.
-       do-result-m (bind mv (fn [v]
-                              (let [[v1 a1] (deref v)]
-                                (bind (deref ((wrap-check mv f) v1))
-                                      (fn [v]
-                                        (let [[v2 a2] (deref v)]
-                                          (do-result-m (Writer. v2 (writer-m-combine a1 a2)))))))))
-       writer-m)))
+      (WriterTransformer. do-result-m
+                          (bind mv (fn [v]
+                                     (let [[v1 a1] (deref v)]
+                                       (bind (deref ((wrap-check mv f) v1))
+                                             (fn [v]
+                                               (let [[v2 a2] (deref v)]
+                                                 (do-result-m (Writer. v2 (writer-m-combine a1 a2)))))))))
+                          writer-m)))
 
   MonadZero
   (zero [mv]
