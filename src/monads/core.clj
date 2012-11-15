@@ -337,7 +337,9 @@
 
   clojure.lang.IDeref
   (deref [mv]
-    (if (= Nothing mv) mv v))
+    (if (= Nothing mv)
+      *Nothing*
+      v))
 
   Monad
   (do-result [_ v]

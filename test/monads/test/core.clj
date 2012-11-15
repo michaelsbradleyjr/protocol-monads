@@ -260,10 +260,11 @@
 (deftest do-result-and-maybe-factory-func-not-equiv-for-nil
   (is (not= (do-result-maybe nil)
             (m/maybe nil)))
-  (is (not= @(do-result-maybe nil)
-            @(m/maybe nil))))
+  (binding [m/*Nothing* {:some ['value]}]
+    (is (not= (do-result-maybe {:some ['value]})
+              (m/maybe {:some ['value]})))))
 
-(deftest zero-val-from-maybe-factory-func
+(deftest zero-val-maybe-from-maybe-factory-func
   (is (= m/Nothing
          zero-val-maybe
          (m/maybe nil)))
@@ -271,6 +272,19 @@
     (is (= m/Nothing
            zero-val-maybe
            (m/maybe {:some ['value]})))))
+
+(deftest zero-val-maybe-deref-dynamic
+  (is (= nil
+         m/*Nothing*
+         @m/Nothing
+         @(m/maybe nil)
+         @(do-result-maybe nil)))
+  (binding [m/*Nothing* {:some ['value]}]
+    (is (= {:some ['value]}
+           m/*Nothing*
+           @m/Nothing
+           @(m/maybe {:some ['value]})
+           @(do-result-maybe {:some ['value]})))))
 
 (defn maybe-f [n]
   (m/maybe (inc n)))
