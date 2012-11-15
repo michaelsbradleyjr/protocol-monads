@@ -1288,7 +1288,12 @@
                        nil
                        (fn [s] (zero (do-result-m [nil])))
                        (fn [v]
-                         (StateTransformer. do-result-m v nil nil nil nil))
+                         (StateTransformer. do-result-m
+                                            v
+                                            nil
+                                            nil
+                                            nil
+                                            nil))
                        nil
                        nil))
   (plus-step [mv mvs]
@@ -1398,7 +1403,12 @@
                              nil
                              (fn [s] (zero (do-result-m [nil])))
                              (fn [v]
-                               (StateTransformer. do-result-m v nil nil nil nil))
+                               (StateTransformer. do-result-m
+                                                  v
+                                                  nil
+                                                  nil
+                                                  nil
+                                                  nil))
                              nil
                              nil))
         (plus-step [mv mvs]
@@ -1539,7 +1549,8 @@
                                   (bind (deref ((wrap-check mv f) v1))
                                         (fn [v]
                                           (let [[v2 a2] (deref v)]
-                                            (do-result-m (Writer. v2 (writer-m-combine a1 a2)))))))))
+                                            (do-result-m (Writer. v2
+                                                                  (writer-m-combine a1 a2)))))))))
                         writer-m))
 
   MonadZero
