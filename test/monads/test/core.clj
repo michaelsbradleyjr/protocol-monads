@@ -342,7 +342,7 @@
 (deftest state-equality
   "Equality testing for monads.core.State instances is limited owing to
    the fact that those instances may contain function values which
-   may not be reliably tested for equality, i.e. if they are anonyomous
+   may not be reliably tested for equality, i.e. if they are anonymous
    functions."
   (is (= (m/state 1) (m/state 1)))
   (is (= (m/state {:a 1}) (m/state {:a 1})))
@@ -481,7 +481,7 @@
   "Equality testing for monads.core.Continuation instances is limited
    owing to the fact that those instances may contain function values
    which may not be reliably tested for equality, i.e. if they are
-   anonyomous functions."
+   anonymous functions."
   (is (= (m/cont 1) (m/cont 1)))
   (is (= (m/cont {:a 1}) (m/cont {:a 1})))
   (is (not= (m/cont 1) (m/cont :1)))
@@ -1533,7 +1533,7 @@
   "Equality testing for monads.core.StateTransformer instances is
    limited owing to the fact that those instances may contain function
    values which may not be reliably tested for equality, i.e. if they
-   are anonyomous functions."
+   are anonymous functions."
   (is (= (vec-state 1) (vec-state 1)))
   (is (= (vec-state {:a 1}) (vec-state {:a 1})))
   (is (not= (vec-state 1) (vec-state :1)))
