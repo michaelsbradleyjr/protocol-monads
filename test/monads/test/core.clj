@@ -500,7 +500,7 @@
     (is (= (mv1 identity) (mv2 identity)))))
 
 (deftest second-law-cont
-  (let [mv1 (m/bind (do-result-cont 10) m/cont)
+  (let [mv1 (m/bind (do-result-cont 10) do-result-cont)
         mv2 (do-result-cont 10)]
     (is (= (mv1 identity) (mv2 identity)))))
 
@@ -537,10 +537,10 @@
   (is (not= (writer+set 1) (writer+set 2)))
   (is (not= (writer+set {:a 1}) (writer+set {:a 2}))))
 
-(def do-result-writer (partial m/do-result (writer+set [nil])))
+(def do-result-writer+set (partial m/do-result (writer+set [nil])))
 
 (deftest do-result-and-writer-factory-func-equiv
-  (is (= (do-result-writer [nil])
+  (is (= (do-result-writer+set [nil])
          (writer+set [nil]))))
 
 (defn writer-f [n]
@@ -550,12 +550,12 @@
   (writer+set (+ n 5)))
 
 (deftest first-law-writer
-  (is (= (m/bind (writer+set 10) writer-f)
+  (is (= (m/bind (do-result-writer+set 10) writer-f)
          (writer-f 10))))
 
 (deftest second-law-writer
-  (is (= (m/bind (writer+set 10) writer+set)
-         (writer+set 10))))
+  (is (= (m/bind (do-result-writer+set 10) do-result-writer+set)
+         (do-result-writer+set 10))))
 
 (deftest third-law-writer
   (is (= (m/bind (m/bind (writer+set 3) writer-f) writer-g)
@@ -1104,7 +1104,7 @@
 
 (deftest second-law-vector-t
   (is (= (m/bind (do-result-set-vec 10) do-result-set-vec)
-         (set-vec 10))))
+         (do-result-set-vec 10))))
 
 (deftest second-law-vector-t-factory
   (is (= (m/bind (set-vec 10 11 12) set-vec)
@@ -1304,7 +1304,7 @@
 
 (deftest second-law-set-t
   (is (= (m/bind (do-result-vec-set 10) do-result-vec-set)
-         (vec-set 10))))
+         (do-result-vec-set 10))))
 
 (deftest second-law-set-t-factory
   (is (= (m/bind (vec-set 10 11 12) vec-set)
@@ -1413,7 +1413,7 @@
          (maybe-t-f 10 nil 11))))
 
 (deftest second-law-maybe-t
-  (is (= (m/bind (do-result-vec-maybe 10) vec-maybe)
+  (is (= (m/bind (do-result-vec-maybe 10) do-result-vec-maybe)
          (do-result-vec-maybe 10))))
 
 (deftest second-law-maybe-t-factory
@@ -1544,8 +1544,8 @@
     (is (= (mv1 {}) (mv2 {})))))
 
 (deftest second-law-state-t
-  (let [mv1 (m/bind (do-result-vec-state 10) vec-state)
-        mv2 (vec-state 10)]
+  (let [mv1 (m/bind (do-result-vec-state 10) do-result-vec-state)
+        mv2 (do-result-vec-state 10)]
     (is (= (mv1 :state-t) (mv2 :state-t)))))
 
 (deftest third-law-state-t
@@ -1750,12 +1750,12 @@
   (set-writer+vec (+ n 5)))
 
 (deftest first-law-writer-t
-  (is (= (m/bind (set-writer+vec 10) writer-t-f)
+  (is (= (m/bind (do-result-set-writer+vec 10) writer-t-f)
          (writer-t-f 10))))
 
 (deftest second-law-writer-t
-  (is (= (m/bind (set-writer+vec 10) set-writer+vec)
-         (set-writer+vec 10))))
+  (is (= (m/bind (do-result-set-writer+vec 10) do-result-set-writer+vec)
+         (do-result-set-writer+vec 10))))
 
 (deftest third-law-writer-t
   (is (= (m/bind (m/bind (set-writer+vec 4) writer-t-f) writer-t-g)
