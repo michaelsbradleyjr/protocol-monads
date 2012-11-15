@@ -1213,8 +1213,8 @@
 (deftest third-law-lazy-seq-t
   (is (= (m/bind (m/bind (set-lazy-seq 4 5 6) lazy-seq-t-f) lazy-seq-t-g)
          (m/bind (set-lazy-seq 4 5 6)
-                  (fn [x]
-                    (m/bind (lazy-seq-t-f x) lazy-seq-t-g))))))
+                 (fn [x]
+                   (m/bind (lazy-seq-t-f x) lazy-seq-t-g))))))
 
 (deftest plus-lazy-seq-t
   (let [plus-lazy-seq-t (m/plus [(set-lazy-seq 1 2) (set-lazy-seq) (set-lazy-seq 3 4)])]
@@ -1241,9 +1241,9 @@
 (deftest do-lazy-seq-t
   (let [do-lazy-seq-t
         (m/do set-lazy-seq
-               [x (lazy-seq-t-f 9 8 7)
-                y (lazy-seq-t-g x)]
-               [x y])]
+              [x (lazy-seq-t-f 9 8 7)
+               y (lazy-seq-t-g x)]
+              [x y])]
     (is (= #{(list [10 15] [9 14] [8 13])}
            @do-lazy-seq-t))
     (is (= monads.core.LazySeqTransformer
@@ -1313,8 +1313,8 @@
 (deftest third-law-set-t
   (is (= (m/bind (m/bind (vec-set 4 5 6) set-t-f) set-t-g)
          (m/bind (vec-set 4 5 6)
-                  (fn [x]
-                    (m/bind (set-t-f x) set-t-g))))))
+                 (fn [x]
+                   (m/bind (set-t-f x) set-t-g))))))
 
 (deftest plus-set-t
   (let [plus-set-t (m/plus [(vec-set 1 2) (vec-set 1 2) (vec-set) (vec-set 2 3 4) (vec-set 2 3 4)])]
@@ -1341,9 +1341,9 @@
 (deftest do-set-t
   (let [do-set-t
         (m/do vec-set
-               [x (set-t-f 9 8 7)
-                y (set-t-g x)]
-               (list x y))]
+              [x (set-t-f 9 8 7)
+               y (set-t-g x)]
+              (list x y))]
     (is (= [#{(list 10 15) (list 9 14) (list 8 13)}]
            @do-set-t))
     (is (= monads.core.SetTransformer
@@ -1763,68 +1763,81 @@
                  (fn [x]
                    (m/bind (writer-t-f x) writer-t-g))))))
 
+(deftest plus-writer-t
+  (let [plus-writer-t (m/plus [(set-writer+vec 1) (set-writer+vec 2)])
+        writer+vec (m/writer [])]
+    (is (= #{(writer+vec 1) (writer+vec 2)}
+           @plus-writer-t))
+    (is (= monads.core.WriterTransformer
+           (class plus-writer-t)))
+    (is (= clojure.lang.PersistentHashSet
+           (class @plus-writer-t)))
+    (is (= monads.core.Writer
+           (class (first @plus-writer-t))))
+    (is (= clojure.lang.PersistentVector
+           (class @(first @plus-writer-t))))))
+
+(deftest zero-laws-writer-t
+  (is (= #{} @zero-val-set-writer+vec))
+  (is (= (m/bind zero-val-set-writer+vec writer-t-f)
+         zero-val-set-writer+vec))
+  (is (= (m/bind (set-writer+vec 4) (constantly zero-val-set-writer+vec))
+         zero-val-set-writer+vec))
+  (is (= (m/plus [(set-writer+vec 4) zero-val-set-writer+vec])
+         (set-writer+vec 4)))
+  (is (= (m/plus [zero-val-set-writer+vec (set-writer+vec 4)])
+         (set-writer+vec 4))))
+
+(deftest more-tests-for-set-writer+vec
+  (let [writer+vec (m/writer [])
+        write-msg (fn [msg]
+                    (WriterTransformer. hash-set
+                                        (hash-set ((m/writer [msg]) nil))
+                                        writer+vec))
+        listen-msgs (fn [mv]
+                      (WriterTransformer. hash-set
+                                          (->> @mv
+                                               (map #(m/listen %))
+                                               set)
+                                          writer+vec))
+        censor-msgs (fn [f mv]
+                      (WriterTransformer. hash-set
+                                          (->> @mv
+                                               (map #(m/censor f %))
+                                               set)
+                                          writer+vec))]
+
+    (is (= [nil [:msg1]] @(first @(write-msg :msg1))))
+
+    (is (= [[nil [:msg3]] [:msg3]] @(first @(listen-msgs (write-msg :msg3)))))
+
+    (is (= [[nil [nil [:msg3]] nil] [:msg1 :msg3 :msg2 :msg4]]
+           (->> (m/seq [(write-msg :msg1)
+                        (listen-msgs (write-msg :msg3))
+                        (write-msg :msg2)])
+                (censor-msgs #(conj % :msg4))
+                deref
+                first
+                deref)))
+
+    (is (= #{[5 [:msg3]] [nil [:msg1 :msg3]]}
+           (->> (m/plus [(write-msg :msg1)
+                         (m/zero (set-writer+vec nil))
+                         (m/zero (write-msg :msg2))
+                         (set-writer+vec 5)])
+                (censor-msgs #(conj % :msg3))
+                deref
+                (map deref)
+                set)))))
+
+(deftest do-writer-t
+  (is (= (set-writer+vec [10 15])
+         (m/do set-writer+vec
+               [x (writer-t-f 9)
+                y (writer-t-g x)]
+               [x y]))))
+
 (comment
-
-  (deftest zero-laws-writer-t
-    (is (= #{} @(m/zero (vec-writer nil))))
-    (is (= @(m/bind (m/zero (vec-writer nil)) writer-t-f)
-           @(m/zero (vec-writer nil))))
-    (is (= @(m/bind (vec-writer 4) (constantly (m/zero (vec-writer nil))))
-           @(m/zero (vec-writer nil))))
-    (is (= @(first @(m/plus [(vec-writer 4) (m/zero (vec-writer nil))]))
-           @(first @(vec-writer 4))))
-    (is (= @(first @(m/plus [(m/zero (vec-writer nil)) (vec-writer 4)]))
-           @(first @(vec-writer 4)))))
-
-  (deftest do-writer-t
-    (is (= @(first @(vec-writer [10 15]))
-           @(first @(m/do vec-writer
-                          [x (writer-t-f 9)
-                           y (writer-t-g x)]
-                          [x y])))))
-
-  #_(deftest test-hash-set-writer
-      (let [set-writer (m/writer-t hash-set [])
-            writer-m (m/writer [])
-            write-msg (fn [msg]
-                        (WriterTransformer. hash-set
-                                            (hash-set ((m/writer [msg]) nil))
-                                            writer-m))
-            listen-msgs (fn [mv]
-                          (WriterTransformer. hash-set
-                                              (->> @mv
-                                                   (map #(m/listen %))
-                                                   set)
-                                              writer-m))
-            censor-msgs (fn [f mv]
-                          (WriterTransformer. hash-set
-                                              (->> @mv
-                                                   (map #(m/censor f %))
-                                                   set)
-                                              writer-m))]
-
-        (is (= [nil [:msg1]] @(first @(write-msg :msg1))))
-
-        (is (= [[nil [:msg3]] [:msg3]] @(first @(listen-msgs (write-msg :msg3)))))
-
-        (is (= [[nil [nil [:msg3]] nil] [:msg1 :msg3 :msg2 :msg4]]
-               (->> (m/seq [(write-msg :msg1)
-                            (listen-msgs (write-msg :msg3))
-                            (write-msg :msg2)])
-                    (censor-msgs #(conj % :msg4))
-                    deref
-                    first
-                    deref)))
-
-        (is (= #{[5 [:msg3]] [nil [:msg1 :msg3]]}
-               (->> (m/plus [(write-msg :msg1)
-                             (m/zero (set-writer nil))
-                             (m/zero (write-msg :msg2))
-                             (set-writer 5)])
-                    (censor-msgs #(conj % :msg3))
-                    deref
-                    (map deref)
-                    set)))))
 
   #_(deftest test-state-writer-maybe
       (let [maybe-writer-state (m/state-t (m/writer-t m/maybe []))
