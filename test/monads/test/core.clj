@@ -567,16 +567,16 @@
 
 (deftest write
   (is (= [nil #{:written}]
-         @(m/write writer+set :written))))
+         @(m/write-writer writer+set :written))))
 
 (deftest listen
   (is (= [[nil #{:written}] #{:written}]
-         @(m/listen (m/write writer+set :written)))))
+         @(m/listen-writer (m/write-writer writer+set :written)))))
 
 (deftest censor
   (is (= [nil #{:new-written}]
-         @(m/censor (constantly #{:new-written})
-                    (m/write writer+set :written)))))
+         @(m/censor-writer (constantly #{:new-written})
+                    (m/write-writer writer+set :written)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1806,13 +1806,13 @@
         listen-msgs (fn [mv]
                       (WriterTransformer. hash-set
                                           (->> @mv
-                                               (map #(m/listen %))
+                                               (map #(m/listen-writer %))
                                                set)
                                           writer+vec))
         censor-msgs (fn [f mv]
                       (WriterTransformer. hash-set
                                           (->> @mv
-                                               (map #(m/censor f %))
+                                               (map #(m/censor-writer f %))
                                                set)
                                           writer+vec))]
 

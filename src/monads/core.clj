@@ -336,8 +336,8 @@
          (= (.v that) v)))
 
   clojure.lang.IDeref
-  (deref [_]
-    v)
+  (deref [mv]
+    (if (= Nothing mv) mv v))
 
   Monad
   (do-result [_ v]
@@ -380,6 +380,15 @@
   (if (= *Nothing* v)
     Nothing
     (Maybe. v)))
+
+(let [pr-on (ns-resolve 'clojure.core 'pr-on)
+      print-sequential (ns-resolve 'clojure.core 'print-sequential)]
+  (defmethod print-method monads.core.Maybe [o ^java.io.Writer w]
+    (print-sequential (format "#<%s@%x%s: "
+                              (.getSimpleName (class o))
+                              (System/identityHashCode o)
+                              "")
+                      pr-on, "", ">", (list (.v o)), w)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -666,18 +675,21 @@
     (Writer. v
              accumulator)))
 
-(defn write [writer-factory val-to-write]
+(defn write-writer
+  [writer-factory val-to-write]
   (let [[_ a] (deref (writer-factory [nil]))]
     (Writer. nil
              (writer-m-add a val-to-write))))
 
-(defn listen [mv]
-  (let [[v a :as va] (deref mv)]
+(defn listen-writer
+  [writer-mv]
+  (let [[v a :as va] (deref writer-mv)]
     (Writer. va
              a)))
 
-(defn censor [f mv]
-  (let [[v a] (deref mv)]
+(defn censor-writer
+  [f writer-mv]
+  (let [[v a] (deref writer-mv)]
     (Writer. v
              (f a))))
 
@@ -1548,3 +1560,24 @@
           (WriterTransformer. do-result-m
                               mv
                               writer-m))))))
+
+(defn write-writer-t
+  []
+  (fn [writer-factory val-to-write]
+     (let [[_ a] (deref (writer-factory [nil]))]
+       (Writer. nil
+                (writer-m-add a val-to-write)))))
+
+(defn listen-writer-t
+  []
+  (fn [writer-mv]
+     (let [[v a :as va] (deref writer-mv)]
+       (Writer. va
+                a))))
+
+(defn censor-writer-t
+  []
+  (fn [f writer-mv]
+     (let [[v a] (deref writer-mv)]
+       (Writer. v
+                (f a)))))
