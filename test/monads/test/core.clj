@@ -1840,29 +1840,14 @@
                              (m/write-writer set-writer+vec :written))))))
 
 (deftest write-listen-censor-writer-t
-  (let [writer+vec (m/writer [])
-        write-msg (fn [msg]
-                    (WriterTransformer. hash-set
-                                        (hash-set ((m/writer [msg]) nil))
-                                        writer+vec))
-        listen-msgs (fn [mv]
-                      (WriterTransformer. hash-set
-                                          (->> @mv
-                                               (map #(m/listen-writer %))
-                                               set)
-                                          writer+vec))
-        censor-msgs (fn [f mv]
-                      (WriterTransformer. hash-set
-                                          (->> @mv
-                                               (map #(m/censor-writer f %))
-                                               set)
-                                          writer+vec))]
-
-    (is (= [nil [:msg1]] @(first @(write-msg :msg1))))
-
-    (is (= [[nil [:msg3]] [:msg3]] @(first @(listen-msgs (write-msg :msg3)))))
-
-    (is (= [[nil [nil [:msg3]] nil] [:msg1 :msg3 :msg2 :msg4]]
+  (let [write-msg (fn [msg] (m/write-writer set-writer+vec msg))
+        listen-msgs (fn [mv] (m/listen-writer mv))
+        censor-msgs (fn [f mv] (m/censor-writer f mv))]
+    (is (= [nil [:msg1]]
+           @(first @(write-msg :msg1))))
+    (is (= [[nil [:msg3]] [:msg3]]
+           @(first @(listen-msgs (write-msg :msg3)))))
+    (is (= [(list nil [nil [:msg3]] nil) [:msg1 :msg3 :msg2 :msg4]]
            (->> (m/seq [(write-msg :msg1)
                         (listen-msgs (write-msg :msg3))
                         (write-msg :msg2)])
@@ -1870,7 +1855,6 @@
                 deref
                 first
                 deref)))
-
     (is (= #{[5 [:msg3]] [nil [:msg1 :msg3]]}
            (->> (m/plus [(write-msg :msg1)
                          (m/zero (set-writer+vec nil))
