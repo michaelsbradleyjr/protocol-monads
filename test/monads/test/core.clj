@@ -40,30 +40,31 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (deftest monads-core-seq*-and-clojure-core-seq-equiv
-  (is (= (m/seq* (list 1 2 3))
-         (seq (list 1 2 3)))))
+  (let [seq* (ns-resolve 'monads.core 'seq*)]
+    (is (= (seq* (list 1 2 3))
+           (seq (list 1 2 3))))))
 
 (deftest monads-core-map*-and-clojure-core-map-equiv
-  (is (= (m/map* identity [1 2 3])
-         (map identity [1 2 3]))))
+  (let [map* (ns-resolve 'monads.core 'map*)]
+    (is (= (map* identity [1 2 3])
+           (map identity [1 2 3])))))
 
 (deftest lazy-concat-laziness
-  (is (= clojure.lang.LazySeq
-         (class (m/lazy-concat (m/lazy-seq* (/ 1 0)
+  (let [lazy-concat (ns-resolve 'monads.core 'lazy-concat)]
+    (is (= clojure.lang.LazySeq
+           (class (lazy-concat (m/lazy-seq* (/ 1 0)
                                             (/ 1 0))
                                (m/lazy-seq* (m/lazy-seq* (/ 1 0)
                                                          (/ 1 0)
-                                                         (/ 1 0))))))))
-
-(deftest lazy-concat-return
-  (is (= (m/lazy-seq* (/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5))
-         (m/lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
-         (lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
-         (m/lazy-concat (m/lazy-seq* (/ 1 1)
+                                                         (/ 1 0)))))))
+    (is (= (m/lazy-seq* (/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5))
+           (m/lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
+           (lazy-seq [(/ 1 1) (/ 1 2) (/ 1 3) (/ 1 4) (/ 1 5)])
+           (lazy-concat (m/lazy-seq* (/ 1 1)
                                      (/ 1 2))
                         (m/lazy-seq* (m/lazy-seq* (/ 1 3)
                                                   (/ 1 4)
-                                                  (/ 1 5)))))))
+                                                  (/ 1 5))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -591,7 +592,7 @@
 (deftest censor-writer
   (is (= [nil #{:new-written}]
          @(m/censor-writer (constantly #{:new-written})
-                    (m/write-writer writer+set :written)))))
+                           (m/write-writer writer+set :written)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -729,59 +730,57 @@
 ;;  monads.core/comprehend
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftest comprehend-list
-  (let [do-list
-        (m/do list
-              [x (list 1 2)
-               y (list 3 4)
-               z (list 5 6)]
-              (apply list (map inc
-                               [x y z])))
-        comprehend-list
-        (m/comprehend
-         #(apply list ((partial map inc) %))
-         [(list 1 2) (list 3 4) (list 5 6)])]
-    (is (= do-list
-           comprehend-list))
-    (is (= clojure.lang.PersistentList
-           (class do-list)
-           (class comprehend-list)))
-    (is (= clojure.lang.PersistentList
-           (class (first do-list))
-           (class (first comprehend-list))))))
+(let [comprehend (ns-resolve 'monads.core 'comprehend)]
+  (deftest comprehend-list
+    (let [do-list
+          (m/do list
+                [x (list 1 2)
+                 y (list 3 4)
+                 z (list 5 6)]
+                (apply list (map inc
+                                 [x y z])))
+          comprehend-list (comprehend
+                           #(apply list ((partial map inc) %))
+                           [(list 1 2) (list 3 4) (list 5 6)])]
+      (is (= do-list
+             comprehend-list))
+      (is (= clojure.lang.PersistentList
+             (class do-list)
+             (class comprehend-list)))
+      (is (= clojure.lang.PersistentList
+             (class (first do-list))
+             (class (first comprehend-list))))))
 
-(deftest comprehend-vector
-  (let [comprehend-vector
-        (m/comprehend
-         #(vec ((partial map inc) %))
-         [[1 2] [3 4] [5 6]])]
-    (is (= clojure.lang.PersistentVector
-           (class comprehend-vector)))
-    (is (= clojure.lang.PersistentVector
-           (class (first comprehend-vector))))))
+  (deftest comprehend-vector
+    (let [comprehend-vector (comprehend
+                             #(vec ((partial map inc) %))
+                             [[1 2] [3 4] [5 6]])]
+      (is (= clojure.lang.PersistentVector
+             (class comprehend-vector)))
+      (is (= clojure.lang.PersistentVector
+             (class (first comprehend-vector))))))
 
-(deftest comprehend-state
-  (let [do-state
-        (m/do m/state
-              [x (m/state 1)
-               y (m/state 2)
-               z (m/state 3)]
-              (vec (map inc
-                        [x y z])))
-        comprehend-state
-        (m/comprehend
-         #(vec ((partial map inc) %))
-         [(m/state 1) (m/state 2) (m/state 3)])]
-    (is (= (do-state
-            :state)
-           (comprehend-state
-            :state)))
-    (is (= monads.core.State
-           (class do-state)
-           (class comprehend-state)))
-    (is (= clojure.lang.PersistentVector
-           (class (first (do-state :state)))
-           (class (first (comprehend-state :state)))))))
+  (deftest comprehend-state
+    (let [do-state
+          (m/do m/state
+                [x (m/state 1)
+                 y (m/state 2)
+                 z (m/state 3)]
+                (vec (map inc
+                          [x y z])))
+          comprehend-state (comprehend
+                            #(vec ((partial map inc) %))
+                            [(m/state 1) (m/state 2) (m/state 3)])]
+      (is (= (do-state
+              :state)
+             (comprehend-state
+              :state)))
+      (is (= monads.core.State
+             (class do-state)
+             (class comprehend-state)))
+      (is (= clojure.lang.PersistentVector
+             (class (first (do-state :state)))
+             (class (first (comprehend-state :state))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/seq
@@ -1420,11 +1419,11 @@
          @(vec-maybe nil nil nil)
          @(vec-maybe)))
   (binding [m/*Nothing* {:some ['value]}]
-   (is (= [m/Nothing]
-          @zero-val-vec-maybe
-          @(vec-maybe {:some ['value]})
-          @(vec-maybe {:some ['value]} {:some ['value]} {:some ['value]})
-          @(vec-maybe)))))
+    (is (= [m/Nothing]
+           @zero-val-vec-maybe
+           @(vec-maybe {:some ['value]})
+           @(vec-maybe {:some ['value]} {:some ['value]} {:some ['value]})
+           @(vec-maybe)))))
 
 (defn maybe-t-f [& ns]
   (apply vec-maybe (map #(when % (inc %)) ns)))
@@ -1824,24 +1823,21 @@
                 y (writer-t-g x)]
                [x y]))))
 
-(comment
-
-  "Revise per forthcoming implementation of
-   write/listen/censor-writer-t"
-
+(let [writer+vec (m/writer [])]
   (deftest write-writer-t
-    (is (= [nil #{:written}]
-           @(m/write-writer writer+set :written))))
+    (is (= #{(m/write-writer writer+vec :written)}
+           @(m/write-writer set-writer+vec :written))))
 
   (deftest listen-writer-t
-    (is (= [[nil #{:written}] #{:written}]
-           @(m/listen-writer (m/write-writer writer+set :written)))))
+    (is (= #{(m/listen-writer (m/write-writer writer+vec :written))}
+           @(m/listen-writer (m/write-writer set-writer+vec :written)))))
 
   (deftest censor-writer-t
-    (is (= [nil #{:new-written}]
+    (is (= #_[nil #{:new-written}]
+           #{(m/censor-writer (constantly #{:new-written})
+                              (m/write-writer writer+vec :written))}
            @(m/censor-writer (constantly #{:new-written})
-                             (m/write-writer writer+set :written)))))
-  )
+                             (m/write-writer set-writer+vec :written))))))
 
 (deftest write-listen-censor-writer-t
   (let [writer+vec (m/writer [])

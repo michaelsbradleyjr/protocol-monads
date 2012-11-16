@@ -60,11 +60,11 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def seq* clojure.core/seq)
+(def ^:private seq* clojure.core/seq)
 
-(def map* clojure.core/map)
+(def ^:private map* clojure.core/map)
 
-(defn lazy-concat
+(defn- lazy-concat
   ([l] l)
   ([l ls]
      (lazy-seq
@@ -750,7 +750,7 @@
   [[mv & mvs]]
   `(plus-step* ~mv (list ~@(map* (fn [m] `(fn thunk [] ~m)) mvs))))
 
-(defn comprehend [f mvs]
+(defn- comprehend [f mvs]
   (let [mv (first mvs)
         rest-steps (reduce (fn [steps mv]
                              (fn [acc x]
@@ -1585,8 +1585,13 @@
 
 (defmethod write-writer*
   WriterTransformer
-  [writer-mv val-to-write]
-  "implement me!")
+  [writer-t-mv val-to-write]
+  (let [do-result-m (.do-result-m writer-t-mv)
+        mv (bind (deref writer-t-mv)
+                 (fn [writer-mv] (do-result-m (write-writer* writer-mv val-to-write))))]
+    (WriterTransformer. do-result-m
+                        mv
+                        (.writer-m writer-t-mv))))
 
 (defn write-writer
   [writer-factory val-to-write]
@@ -1605,8 +1610,13 @@
 
 (defmethod listen-writer
   WriterTransformer
-  [writer-mv]
-  "implement me!")
+  [writer-t-mv]
+  (let [do-result-m (.do-result-m writer-t-mv)
+        mv (bind (deref writer-t-mv)
+                 (fn [writer-mv] (do-result-m (listen-writer writer-mv))))]
+    (WriterTransformer. do-result-m
+                        mv
+                        (.writer-m writer-t-mv))))
 
 (defn- censor-writer*
   [f writer-mv]
@@ -1624,5 +1634,10 @@
 
 (defmethod censor-writer
   WriterTransformer
-  [f writer-mv]
-  "implement me!")
+  [f writer-t-mv]
+  (let [do-result-m (.do-result-m writer-t-mv)
+        mv (bind (deref writer-t-mv)
+                 (fn [writer-mv] (do-result-m (censor-writer f writer-mv))))]
+    (WriterTransformer. do-result-m
+                        mv
+                        (.writer-m writer-t-mv))))
