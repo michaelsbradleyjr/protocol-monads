@@ -1,6 +1,6 @@
 (ns monads.core
-  (:refer-clojure :exclude [do seq map list vector vec lazy-seq hash-set])
-  (:require [clojure.set :as set]
+  (:refer-clojure :exclude [do seq map list vector vec lazy-seq hash-set set])
+  (:require [clojure.set :as cset]
             [clojure.string :as string]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -51,6 +51,8 @@
   `(lazy-seq (list ~@vs)))
 
 (def hash-set clojure.core/hash-set)
+
+(def set clojure.core/set)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -290,17 +292,15 @@
   (do-result [_ v]
     #{v})
   (bind [mv f]
-    (apply hash-set
-           (apply set/union
-                  (map* (wrap-check mv f) mv))))
+    (set (apply cset/union (map* (wrap-check mv f) mv))))
 
   MonadZero
   (zero [_]
     #{})
   (plus-step [mv mvs]
-    (apply set/union mv mvs))
+    (apply cset/union mv mvs))
   (plus-step* [mv mvs]
-    (apply set/union mv (map* #(%) mvs)))
+    (apply cset/union mv (map* #(%) mvs)))
 
   MonadDev
   (val-types [_]
@@ -311,7 +311,7 @@
   MonadWriter
   (writer-m-empty [_] #{})
   (writer-m-add [c v] (conj c v))
-  (writer-m-combine [c1 c2] (clojure.set/union c1 c2)))
+  (writer-m-combine [c1 c2] (cset/union c1 c2)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -695,24 +695,6 @@
   (fn [v]
     (Writer. v
              accumulator)))
-
-(defn write-writer
-  [writer-factory val-to-write]
-  (let [[_ a] (deref (writer-factory [nil]))]
-    (Writer. nil
-             (writer-m-add a val-to-write))))
-
-(defn listen-writer
-  [writer-mv]
-  (let [[v a :as va] (deref writer-mv)]
-    (Writer. va
-             a)))
-
-(defn censor-writer
-  [f writer-mv]
-  (let [[v a] (deref writer-mv)]
-    (Writer. v
-             (f a))))
 
 (extend-type java.lang.String
   MonadWriter
@@ -1587,23 +1569,60 @@
                               mv
                               writer-m))))))
 
-(defn write-writer-t
-  []
-  (fn [writer-factory val-to-write]
-    (let [[_ a] (deref (writer-factory [nil]))]
-      (Writer. nil
-               (writer-m-add a val-to-write)))))
+(defn- write-writer**
+  [writer-mv val-to-write]
+  (class writer-mv))
 
-(defn listen-writer-t
-  []
-  (fn [writer-mv]
-    (let [[v a :as va] (deref writer-mv)]
-      (Writer. va
-               a))))
+(defmulti ^:private write-writer*
+  #'write-writer**)
 
-(defn censor-writer-t
-  []
-  (fn [f writer-mv]
-    (let [[v a] (deref writer-mv)]
-      (Writer. v
-               (f a)))))
+(defmethod write-writer*
+  Writer
+  [writer-mv val-to-write]
+  (let [[_ a] (deref writer-mv)]
+    (Writer. nil
+             (writer-m-add a val-to-write))))
+
+(defmethod write-writer*
+  WriterTransformer
+  [writer-mv val-to-write]
+  "implement me!")
+
+(defn write-writer
+  [writer-factory val-to-write]
+  (write-writer* (writer-factory [nil])
+                 val-to-write))
+
+(defmulti listen-writer
+  class)
+
+(defmethod listen-writer
+  Writer
+  [writer-mv]
+  (let [[v a :as va] (deref writer-mv)]
+    (Writer. va
+             a)))
+
+(defmethod listen-writer
+  WriterTransformer
+  [writer-mv]
+  "implement me!")
+
+(defn- censor-writer*
+  [f writer-mv]
+  (class writer-mv))
+
+(defmulti censor-writer
+  #'censor-writer*)
+
+(defmethod censor-writer
+  Writer
+  [f writer-mv]
+  (let [[v a] (deref writer-mv)]
+    (Writer. v
+             (f a))))
+
+(defmethod censor-writer
+  WriterTransformer
+  [f writer-mv]
+  "implement me!")
