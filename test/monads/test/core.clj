@@ -437,33 +437,37 @@
        [2 {:a {:b 3}}]      {:a {:b 2}}  [:a :b]  [inc]
        [nil {:a {:b [1]}}]  {:a nil}     [:a :b]  [(fnil conj []) 1]))
 
-(defn state-f-2-ary-factory [n]
+(defn state-f-2+-ary-factory [n]
   (m/state (m/update-state (fn [s] (conj s `["increment" ~n])))
-           (fn [_] (m/state (inc n)))))
+           (fn [_] (m/update-state (fn [s] (conj s ["update-f!"]))))
+           (fn [_] (m/state (inc n)))
+           (fn [v] (m/state (inc v)))))
 
-(defn state-g-2-ary-factory [n]
+(defn state-g-2+-ary-factory [n]
   (m/state (m/update-state (fn [s] (conj s `["plus-five" ~n])))
-           (fn [_] (m/state (+ n 5)))))
+           (fn [_] (m/update-state (fn [s] (conj s ["update-g!"]))))
+           (fn [_] (m/state (+ n 5)))
+           (fn [v] (m/state (+ v 5)))))
 
-(deftest first-law-state-2-ary
-  (let [mv1 (m/bind (do-result-state 10) state-f-2-ary-factory)
-        mv2 (state-f-2-ary-factory 10)]
+(deftest first-law-state-2+-ary
+  (let [mv1 (m/bind (do-result-state 10) state-f-2+-ary-factory)
+        mv2 (state-f-2+-ary-factory 10)]
     (is (= (mv1 []) (mv2 [])))))
 
-(deftest third-law-state-2-ary
-  (let [mv1 (m/bind (m/bind (m/state 4) state-f-2-ary-factory) state-g-2-ary-factory)
+(deftest third-law-state-2+-ary
+  (let [mv1 (m/bind (m/bind (m/state 4) state-f-2+-ary-factory) state-g-2+-ary-factory)
         mv2 (m/bind (m/state 4)
                     (fn [x]
-                      (m/bind (state-f-2-ary-factory x) state-g-2-ary-factory)))]
+                      (m/bind (state-f-2+-ary-factory x) state-g-2+-ary-factory)))]
     (is (= (mv1 []) (mv2 [])))))
 
-(deftest state-equality-2-ary-factory
+(deftest state-equality-2+-ary-factory
   "The following assertions demonstrate the limitations of testing
    equality for monads.core.State instances. See the docstring for
    test 'state-equality' defined above."
-  (is (not= (state-f-2-ary-factory 1) (state-f-2-ary-factory 1)))
-  (is (not= (state-f-2-ary-factory {:a 1})
-            (state-f-2-ary-factory {:a 1}))))
+  (is (not= (state-f-2+-ary-factory 1) (state-f-2+-ary-factory 1)))
+  (is (not= (state-f-2+-ary-factory {:a 1})
+            (state-f-2+-ary-factory {:a 1}))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1638,34 +1642,38 @@
          [[2 {:a {:b 3}}]]      {:a {:b 2}}  [:a :b]  [inc]
          [[nil {:a {:b [1]}}]]  {:a nil}     [:a :b]  [(fnil conj []) 1])))
 
-(defn state-t-f-2-ary-factory [n]
+(defn state-t-f-2+-ary-factory [n]
   (vec-state (update-vec-state (fn [s] (conj s `["increment" ~n])))
-             (fn [_] (vec-state (inc n)))))
+             (fn [_] (update-vec-state (fn [s] (conj s ["update-f!"]))))
+             (fn [_] (vec-state (inc n)))
+             (fn [v] (vec-state (inc v)))))
 
-(defn state-t-g-2-ary-factory [n]
+(defn state-t-g-2+-ary-factory [n]
   (vec-state (update-vec-state (fn [s] (conj s `["plus-five" ~n])))
-             (fn [_] (vec-state (+ n 5)))))
+             (fn [_] (update-vec-state (fn [s] (conj s ["update-g!"]))))
+             (fn [_] (vec-state (+ n 5)))
+             (fn [v] (vec-state (+ v 5)))))
 
-(deftest first-law-state-2-ary
-  (let [mv1 (m/bind (do-result-state 10) state-t-f-2-ary-factory)
-        mv2 (state-t-f-2-ary-factory 10)]
+(deftest first-law-state-2+-ary
+  (let [mv1 (m/bind (do-result-state 10) state-t-f-2+-ary-factory)
+        mv2 (state-t-f-2+-ary-factory 10)]
     (is (= (mv1 []) (mv2 [])))))
 
-(deftest third-law-state-2-ary
-  (let [mv1 (m/bind (m/bind (vec-state 4) state-t-f-2-ary-factory) state-t-g-2-ary-factory)
+(deftest third-law-state-2+-ary
+  (let [mv1 (m/bind (m/bind (vec-state 4) state-t-f-2+-ary-factory) state-t-g-2+-ary-factory)
         mv2 (m/bind (vec-state 4)
                     (fn [x]
-                      (m/bind (state-t-f-2-ary-factory x) state-t-g-2-ary-factory)))]
+                      (m/bind (state-t-f-2+-ary-factory x) state-t-g-2+-ary-factory)))]
     (is (= (mv1 []) (mv2 [])))))
 
-(deftest state-t-equality-2-ary-factory
+(deftest state-t-equality-2+-ary-factory
   "The following assertions demonstrate the limitations of testing
    equality for monads.core.StateTransformer instances. See the
    docstring for test 'state-t-equality' defined above."
-  (is (not= (state-t-f-2-ary-factory 1)
-            (state-t-f-2-ary-factory 1)))
-  (is (not= (state-t-f-2-ary-factory {:a 1})
-            (state-t-f-2-ary-factory {:a 1}))))
+  (is (not= (state-t-f-2+-ary-factory 1)
+            (state-t-f-2+-ary-factory 1)))
+  (is (not= (state-t-f-2+-ary-factory {:a 1})
+            (state-t-f-2+-ary-factory {:a 1}))))
 
 (deftest plus-state-t
   (let [maybe-state (m/state-t m/maybe)]

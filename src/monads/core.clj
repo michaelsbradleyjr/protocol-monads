@@ -472,7 +472,19 @@
   ([mv f]
      (State. nil
              mv
-             f)))
+             f))
+  ([mv f & fs]
+     (let [f* (first fs)]
+       (if-let [fs (seq* (rest fs))]
+         (apply state (concat
+                       [(State. nil
+                                mv
+                                f)
+                        f*] fs))
+         (state (State. nil
+                        mv
+                        f)
+                f*)))))
 
 (defn update-state
   "Return a State monad value that replaces the current state by the
@@ -1305,38 +1317,43 @@
 (defn state-t
   [mv-factory]
   (let [do-result-m (partial do-result (mv-factory [nil]))]
-    (if (= mv-factory maybe)
-      (fn
-        ([v]
-           (let [v (if (= *Nothing* v) Nothing v)]
-             (StateTransformer. do-result-m
-                                v
-                                nil
-                                nil
-                                nil
-                                nil)))
-        ([mv f]
-           (StateTransformer. do-result-m
-                              nil
-                              mv
-                              f
-                              nil
-                              nil)))
-      (fn
-        ([v]
+    (fn state-t*
+      ([v]
+         (let [v (if (and (= mv-factory maybe)
+                          (= *Nothing* v))
+                   Nothing
+                   v)]
            (StateTransformer. do-result-m
                               v
                               nil
                               nil
                               nil
-                              nil))
-        ([mv f]
-           (StateTransformer. do-result-m
-                              nil
-                              mv
-                              f
-                              nil
-                              nil))))))
+                              nil)))
+      ([mv f]
+         (StateTransformer. do-result-m
+                            nil
+                            mv
+                            f
+                            nil
+                            nil))
+      ([mv f & fs]
+         (let [f* (first fs)]
+           (if-let [fs (seq* (rest fs))]
+             (apply state-t* (concat
+                              [(StateTransformer. do-result-m
+                                                  nil
+                                                  mv
+                                                  f
+                                                  nil
+                                                  nil)
+                               f*] fs))
+             (state-t* (StateTransformer. do-result-m
+                                          nil
+                                          mv
+                                          f
+                                          nil
+                                          nil)
+                       f*)))))))
 
 (defn update-state-t
   "Return a function that returns a StateTransformer monad value (for
