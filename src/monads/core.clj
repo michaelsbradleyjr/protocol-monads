@@ -1357,11 +1357,11 @@
 
 (defn update-state-t
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by mv-factory) that replaces the current state by
+   the monad specified by state-t-factory) that replaces the current state by
    the result of f applied to the current state and that returns the old
    state."
-  [mv-factory]
-  (let [do-result-m (partial do-result (mv-factory [nil]))]
+  [state-t-factory]
+  (let [do-result-m (.do-result-m (state-t-factory [nil]))]
     (fn [f]
       (reify
         clojure.lang.IHashEq
@@ -1435,77 +1435,77 @@
 
 (defn set-state-t
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by mv-factory) that replaces the current state by
+   the monad specified by state-t-factory) that replaces the current state by
    s and returns the previous state."
-  [mv-factory]
-  (let [u (update-state-t mv-factory)]
+  [state-t-factory]
+  (let [u (update-state-t state-t-factory)]
     (fn [s]
       (u (constantly s)))))
 
 (defn get-state-t
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by mv-factory) that returns the current state
+   the monad specified by state-t-factory) that returns the current state
    and does not modify it."
-  [mv-factory]
-  (let [u (update-state-t mv-factory)]
+  [state-t-factory]
+  (let [u (update-state-t state-t-factory)]
     (fn []
       (u identity))))
 
 (defn get-state-t-val
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by mv-factory) that assumes the state to be a map
+   the monad specified by state-t-factory) that assumes the state to be a map
    and returns the value corresponding to the given key. The state is
    not modified."
-  [mv-factory]
-  (let [g (get-state-t mv-factory)
-        do-result-m-state (partial do-result ((state-t mv-factory) [nil]))]
+  [state-t-factory]
+  (let [g (get-state-t state-t-factory)
+        do-result-m-state (partial do-result (state-t-factory [nil]))]
     (fn [key]
       (bind (g)
             #(do-result-m-state (get % key))))))
 
 (defn update-state-t-val
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by mv-factory) that assumes the state to be a map
+   the monad specified by state-t-factory) that assumes the state to be a map
    and replaces the value associated with the given key by the return
    value of f applied to the old value and args. The old value is
    returned."
-  [mv-factory]
-  (let [u (update-state-t mv-factory)
-        do-result-m-state (partial do-result ((state-t mv-factory) [nil]))]
+  [state-t-factory]
+  (let [u (update-state-t state-t-factory)
+        do-result-m-state (partial do-result (state-t-factory [nil]))]
     (fn [key f & args]
       (bind (u #(apply update-in % [key] f args))
             #(do-result-m-state (get % key))))))
 
 (defn set-state-t-val
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by mv-factory) that assumes the state to be a map
+   the monad specified by state-t-factory) that assumes the state to be a map
    and replaces the value associated with key by val. The old value is
    returned."
-  [mv-factory]
-  (let [uv (update-state-t-val mv-factory)]
+  [state-t-factory]
+  (let [uv (update-state-t-val state-t-factory)]
     (fn [key val]
       (uv key (constantly val)))))
 
 (defn get-in-state-t-val
-  [mv-factory]
-  (let [g (get-state-t mv-factory)
-        do-result-m-state (partial do-result ((state-t mv-factory) [nil]))]
+  [state-t-factory]
+  (let [g (get-state-t state-t-factory)
+        do-result-m-state (partial do-result (state-t-factory [nil]))]
     (fn [path & [default]]
       (bind (g)
             #(do-result-m-state (get-in % path default))))))
 
 (defn assoc-in-state-t-val
-  [mv-factory]
-  (let [u (update-state-t mv-factory)
-        do-result-m-state (partial do-result ((state-t mv-factory) [nil]))]
+  [state-t-factory]
+  (let [u (update-state-t state-t-factory)
+        do-result-m-state (partial do-result (state-t-factory [nil]))]
     (fn [path val]
       (bind (u #(assoc-in % path val))
             #(do-result-m-state (get-in % path))))))
 
 (defn update-in-state-t-val
-  [mv-factory]
-  (let [u (update-state-t mv-factory)
-        do-result-m-state (partial do-result ((state-t mv-factory) [nil]))]
+  [state-t-factory]
+  (let [u (update-state-t state-t-factory)
+        do-result-m-state (partial do-result (state-t-factory [nil]))]
     (fn [path f & args]
       (bind (u #(apply update-in % path f args))
             #(do-result-m-state (get-in % path))))))

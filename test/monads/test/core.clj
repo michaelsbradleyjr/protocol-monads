@@ -1587,7 +1587,7 @@
                       (m/bind (state-t-f x) state-t-g)))]
     (is (= (mv1 :state-t) (mv2 :state-t)))))
 
-(def update-vec-state (m/update-state-t vector))
+(def update-vec-state (m/update-state-t vec-state))
 
 (deftest update-state-t
   (is (= [[:state :new-state]]
@@ -1605,22 +1605,22 @@
             (update-vec-state (fn [s] s)))))
 
 (deftest get-state-t-val
-  (let [get-vec-state-val (m/get-state-t-val vector)]
+  (let [get-vec-state-val (m/get-state-t-val vec-state)]
     (is (= [[17 {:a 17}]]
            ((get-vec-state-val :a) {:a 17})))))
 
 (deftest set-state-t-val
-  (let [set-vec-state-val (m/set-state-t-val vector)]
+  (let [set-vec-state-val (m/set-state-t-val vec-state)]
     (is (= [[17 {:a 12}]]
            ((set-vec-state-val :a 12) {:a 17})))))
 
 (deftest update-state-t-val
-  (let [update-vec-state-val (m/update-state-t-val vector)]
+  (let [update-vec-state-val (m/update-state-t-val vec-state)]
     (is (= [[5 {:a 19}]]
            ((update-vec-state-val :a + 14) {:a 5})))))
 
 (deftest get-in-state-t-val
-  (let [get-in-vec-state-val (m/get-in-state-t-val vector)
+  (let [get-in-vec-state-val (m/get-in-state-t-val vec-state)
         state {:a {:b 1} :c {:d {:e 2}}}]
     (are [expected args] (is (= expected ((apply get-in-vec-state-val args) state)))
          [[1 state]]      [[:a :b]]
@@ -1630,12 +1630,12 @@
          [[{:b 1} state]] [[:a]])))
 
 (deftest assoc-in-state-t-val
-  (let [assoc-in-vec-state-val (m/assoc-in-state-t-val vector)]
+  (let [assoc-in-vec-state-val (m/assoc-in-state-t-val vec-state)]
     (is (= [[nil {:a {:b {:c 9}}}]]
            ((assoc-in-vec-state-val [:a :b :c] 9) {})))))
 
 (deftest update-in-state-t-val
-  (let [update-in-vec-state-val (m/update-in-state-t-val vector)]
+  (let [update-in-vec-state-val (m/update-in-state-t-val vec-state)]
     (are [expected in-state path args] (is (= expected
                                               ((apply update-in-vec-state-val path args) in-state)))
          [[2 {:a {:b 4}}]]      {:a {:b 2}}  [:a :b]  [* 2]
@@ -1725,10 +1725,11 @@
                   [:when false]
                   :something)
             :state)))
-    (let [maybe-state (m/state-t m/maybe)]
+    (let [maybe-state (m/state-t m/maybe)
+          set-maybe-state-val (m/set-state-t-val maybe-state)]
       (is (= [19 {:val 19}]
              @((m/do maybe-state
-                     [_ ((m/set-state-t-val m/maybe) :val 19)]
+                     [_ (set-maybe-state-val :val 19)]
                      19)
                {}))))))
 
@@ -1874,46 +1875,36 @@
 
 (deftest maybe-writer+vec-state
   (let [maybe-writer+vec-state (m/state-t (m/writer-t m/maybe []))
-        maybe-writer+vec (m/writer-t m/maybe [])
-        write-msg (fn [msg]
-                    (StateTransformer. maybe-writer+vec
-                                       nil
-                                       ((m/state-t (m/writer-t m/maybe [msg])) nil)
-                                       (constantly (maybe-writer+vec-state nil))
-                                       nil
-                                       nil))
-        listen-msgs (fn [mv]
-                      (StateTransformer. maybe-writer+vec
-                                         nil
-                                         (fn [s]
-                                           (let [[[_ s] msgs] @@@(mv s)]
-                                             ((m/writer-t m/maybe msgs) [msgs s])))
-                                         (fn [v]
-                                           (maybe-writer+vec-state v))
-                                         nil
-                                         nil))
-        censor-msgs (fn [f mv]
-                      (StateTransformer. maybe-writer+vec
-                                         nil
-                                         (fn [s]
-                                           (let [[[v s] msgs] @@@(mv s)]
-                                             ((m/writer-t m/maybe (f msgs)) [[v msgs] s])))
-                                         (fn [v]
-                                           (maybe-writer+vec-state v))
-                                         nil
-                                         nil))]
+
+        write-msg (fn [msg] ((m/state-t (m/writer-t m/maybe [msg])) nil))
+
+        ;; write-msg (fn [msg] (maybe-writer+vec-state
+        ;;                      ((m/state-t (m/writer-t m/maybe [msg])) nil)
+        ;;                      (constantly (maybe-writer+vec-state nil))))
+
+        listen-msgs (fn [mv] (maybe-writer+vec-state
+                              (fn [s]
+                                (let [[[_ s] msgs] @@@(mv s)]
+                                  ((m/writer-t m/maybe msgs) [msgs s])))
+                              (fn [v]
+                                (maybe-writer+vec-state v))))
+        censor-msgs (fn [f mv] (maybe-writer+vec-state
+                                (fn [s]
+                                  (let [[[v s] msgs] @@@(mv s)]
+                                    ((m/writer-t m/maybe (f msgs)) [[v msgs] s])))
+                                (fn [v]
+                                  (maybe-writer+vec-state v))))]
     (is (= [[nil :state] [:msg]]
            @@@((write-msg :msg) :state)))
-
     (is (= [[:result :state] [:msg]]
            @@@((m/bind (write-msg :msg)
                        (fn [x]
                          (is (nil? x))
                          (maybe-writer+vec-state :result)))
                :state)))
-    (is (= [[[nil nil] :state] [:msg1 :msg2]]
-           @@@((m/seq [(write-msg :msg1)
-                       (write-msg :msg2)])
+    (is (= [[(list nil nil) :state] [:msg1 :msg2]]
+           @@@((m/seq [(write-msg :msg1++)
+                       (write-msg :msg2++)])
                :state)))
     (is (= [[nil :state] [:msg1]]
            @@@((m/plus [(write-msg :msg1)
@@ -1923,17 +1914,15 @@
            @@@((m/plus [(m/zero (maybe-writer+vec-state nil))
                         (write-msg :msg2)])
                :state)))
-
     (is (= [[[:msg3] :state] [:msg3]]
            @@@((listen-msgs (write-msg :msg3)) :state)))
 
-    (is (= [[[[nil [:msg3] nil] [:msg1 :msg3 :msg2]] :state] [:msg1 :msg3 :msg2 :msg4]]
+    (is (= [[[(list nil [:msg3] nil) [:msg1 :msg3 :msg2]] :state] [:msg1 :msg3 :msg2 :msg4]]
            @@@((->> (m/seq [(write-msg :msg1)
                             (listen-msgs (write-msg :msg3))
                             (write-msg :msg2)])
                     (censor-msgs #(conj % :msg4)))
                :state)))
-
     (is (= [[[nil [:msg1]] :state] [:msg1 :msg3]]
            @@@((->> (m/plus [(m/zero (maybe-writer+vec-state nil))
                              (m/zero (write-msg :msg2))
