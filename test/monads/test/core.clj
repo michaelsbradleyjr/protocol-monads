@@ -1856,14 +1856,13 @@
                 first
                 deref)))
     (is (= #{[5 [:msg3]] [nil [:msg1 :msg3]]}
-           (->> (m/plus [(write-msg :msg1)
-                         (m/zero (set-writer+vec nil))
-                         (m/zero (write-msg :msg2))
-                         (set-writer+vec 5)])
-                (censor-msgs #(conj % :msg3))
-                deref
-                (map deref)
-                set)))))
+           (m/fmap (fn [writer-mv] @writer-mv)
+                   (->> (m/plus [(write-msg :msg1)
+                                 (m/zero (set-writer+vec nil))
+                                 (m/zero (write-msg :msg2))
+                                 (set-writer+vec 5)])
+                        (censor-msgs #(conj % :msg3))
+                        deref))))))
 
 (deftest maybe-writer+vec-state
   (let [maybe-writer+vec-state (m/state-t (m/writer-t m/maybe []))
