@@ -110,8 +110,8 @@
 (defex ex9
   (let [ntuples (fn [n xs]
                   (m/seq (repeat n xs)))]
-    {:ntuples-2 (ntuples 2 (range 5))
-     :ntuples-3 (ntuples 3 (range 5))}))
+    [(symbol "(ntuples 2) =>") (ntuples 2 (range 5))
+     (symbol "(ntuples 3) =>") (ntuples 3 (range 5))]))
 
 
 (defex ex10
@@ -146,16 +146,18 @@
     (safe-div one (m+ (safe-div one (m/maybe x))
                       (safe-div one (m/maybe y))))))
 
+
 (defex ex12
-  {(symbol "(some-function 2 3)") @(some-function 2 3)
-   (symbol "(some-function 2 0)") @(some-function 2 0)
-   (symbol "(some-function 2 -2)") (some-function 2 -2)})
+  [(symbol "@(some-function 2 3) =>") @(some-function 2 3)
+   (symbol "@(some-function 2 0) =>") @(some-function 2 0)
+   (symbol "(some-function 2 -2) =>") (some-function 2 -2)])
 
 
 (defex ex13
   (m/plus [(some-function 2 0)
            (some-function 2 -2)
            (some-function 2 3)]))
+
 
 
 
