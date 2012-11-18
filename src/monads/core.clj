@@ -854,6 +854,11 @@
                       (apply
                        (lift (fn [& vs] (plus vs)))
                        (map* deref (cons mv mvs)))))
+  (plus-step* [mv mvs]
+    (ListTransformer. do-result-m
+                      (apply
+                       (lift (fn [& vs] (plus vs)))
+                       (map* deref (cons mv (map* #(%) mvs))))))
 
   MonadDev
   (val-types [_]
@@ -926,6 +931,11 @@
                         (apply
                          (lift (fn [& vs] (plus vs)))
                          (map* deref (cons mv mvs)))))
+  (plus-step* [mv mvs]
+    (VectorTransformer. do-result-m
+                        (apply
+                         (lift (fn [& vs] (plus vs)))
+                         (map* deref (cons mv (map* #(%) mvs))))))
 
   MonadDev
   (val-types [_]
@@ -1000,6 +1010,11 @@
                          (apply
                           (lift (fn [& vs] (plus vs)))
                           (map* deref (cons mv mvs)))))
+  (plus-step* [mv mvs]
+    (LazySeqTransformer. do-result-m
+                         (apply
+                          (lift (fn [& vs] (plus vs)))
+                          (map* deref (cons mv (map* #(%) mvs))))))
 
   MonadDev
   (val-types [_]
@@ -1074,6 +1089,11 @@
                      (apply
                       (lift (fn [& vs] (plus vs)))
                       (map* deref (cons mv mvs)))))
+  (plus-step* [mv mvs]
+    (SetTransformer. do-result-m
+                     (apply
+                      (lift (fn [& vs] (plus vs)))
+                      (map* deref (cons mv (map* #(%) mvs))))))
 
   MonadDev
   (val-types [_]
@@ -1159,6 +1179,20 @@
 
                                  :else
                                  (do-result-m x))))))
+  (plus-step* [mv mvs]
+    (let [mv (fn thunk [] mv)]
+      (MaybeTransformer. do-result-m
+                         (bind (deref (mv))
+                               (fn [x]
+                                 (cond
+                                   (and (= x Nothing) (empty? mvs))
+                                   (do-result-m Nothing)
+
+                                   (= x Nothing)
+                                   (deref (plus mvs))
+
+                                   :else
+                                   (do-result-m x)))))))
 
   MonadDev
   (val-types [_]
@@ -1528,6 +1562,10 @@
   (plus-step [mv mvs]
     (WriterTransformer. do-result-m
                         (plus (map* deref (cons mv mvs)))
+                        writer-m))
+  (plus-step* [mv mvs]
+    (WriterTransformer. do-result-m
+                        (plus (map* deref (cons mv (map* #(%) mvs))))
                         writer-m))
 
   MonadDev

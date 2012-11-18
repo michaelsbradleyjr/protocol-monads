@@ -603,8 +603,8 @@
         AssertionError #"Type mismatch.*"
         (m/bind [1 2 3] #(hash-set %))))
   (binding [m/*check-types* false]
-   (is (= [1 2 3]
-          (m/bind [1 2 3] #(hash-set %))))))
+    (is (= [1 2 3]
+           (m/bind [1 2 3] #(hash-set %))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1045,15 +1045,20 @@
                    (m/bind (list-t-f x) list-t-g))))))
 
 (deftest plus-list-t
-  (let [plus-list-t (m/plus [(set-list 1 2) (set-list) (set-list 3 4)])]
+  (let [plus-list-t (m/plus [(set-list 1 2) (set-list) (set-list 3 4)])
+        plus*-list-t (m/plus* [(set-list 1 2) (set-list) (set-list 3 4)])]
     (is (= #{(list 1 2 3 4)}
-           @plus-list-t))
+           @plus-list-t
+           @plus*-list-t))
     (is (= monads.core.ListTransformer
-           (class plus-list-t)))
+           (class plus-list-t)
+           (class plus*-list-t)))
     (is (= clojure.lang.PersistentHashSet
-           (class @plus-list-t)))
+           (class @plus-list-t)
+           (class @plus*-list-t)))
     (is (= clojure.lang.PersistentList
-           (class (first @plus-list-t))))))
+           (class (first @plus-list-t))
+           (class (first @plus*-list-t))))))
 
 (deftest zero-laws-list-t
   (is (= #{(list)} @zero-val-set-list))
@@ -1145,15 +1150,20 @@
                    (m/bind (vector-t-f x) vector-t-g))))))
 
 (deftest plus-vector-t
-  (let [plus-vector-t (m/plus [(set-vec 1 2) (set-vec) (set-vec 3 4)])]
+  (let [plus-vector-t (m/plus [(set-vec 1 2) (set-vec) (set-vec 3 4)])
+        plus*-vector-t (m/plus* [(set-vec 1 2) (set-vec) (set-vec 3 4)])]
     (is (= #{[1 2 3 4]}
-           @plus-vector-t))
+           @plus-vector-t
+           @plus*-vector-t))
     (is (= monads.core.VectorTransformer
-           (class plus-vector-t)))
+           (class plus-vector-t)
+           (class plus*-vector-t)))
     (is (= clojure.lang.PersistentHashSet
-           (class @plus-vector-t)))
+           (class @plus-vector-t)
+           (class @plus*-vector-t)))
     (is (= clojure.lang.PersistentVector
-           (class (first @plus-vector-t))))))
+           (class (first @plus-vector-t))
+           (class (first @plus*-vector-t))))))
 
 (deftest zero-laws-vector-t
   (is (= #{[]} @zero-val-set-vec))
@@ -1245,15 +1255,20 @@
                    (m/bind (lazy-seq-t-f x) lazy-seq-t-g))))))
 
 (deftest plus-lazy-seq-t
-  (let [plus-lazy-seq-t (m/plus [(set-lazy-seq 1 2) (set-lazy-seq) (set-lazy-seq 3 4)])]
+  (let [plus-lazy-seq-t (m/plus [(set-lazy-seq 1 2) (set-lazy-seq) (set-lazy-seq 3 4)])
+        plus*-lazy-seq-t (m/plus* [(set-lazy-seq 1 2) (set-lazy-seq) (set-lazy-seq 3 4)])]
     (is (= #{(m/lazy-seq* 1 2 3 4)}
-           @plus-lazy-seq-t))
+           @plus-lazy-seq-t
+           @plus*-lazy-seq-t))
     (is (= monads.core.LazySeqTransformer
-           (class plus-lazy-seq-t)))
+           (class plus-lazy-seq-t)
+           (class plus*-lazy-seq-t)))
     (is (= clojure.lang.PersistentHashSet
-           (class @plus-lazy-seq-t)))
+           (class @plus-lazy-seq-t)
+           (class @plus*-lazy-seq-t)))
     (is (= clojure.lang.LazySeq
-           (class (first @plus-lazy-seq-t))))))
+           (class (first @plus-lazy-seq-t))
+           (class (first @plus*-lazy-seq-t))))))
 
 (deftest zero-laws-lazy-seq-t
   (is (= #{(lazy-seq)} @zero-val-set-lazy-seq))
@@ -1345,15 +1360,20 @@
                    (m/bind (set-t-f x) set-t-g))))))
 
 (deftest plus-set-t
-  (let [plus-set-t (m/plus [(vec-set 1 2) (vec-set 1 2) (vec-set) (vec-set 2 3 4) (vec-set 2 3 4)])]
+  (let [plus-set-t (m/plus [(vec-set 1 2) (vec-set 1 2) (vec-set) (vec-set 2 3 4) (vec-set 2 3 4)])
+        plus*-set-t (m/plus* [(vec-set 1 2) (vec-set 1 2) (vec-set) (vec-set 2 3 4) (vec-set 2 3 4)])]
     (is (= [#{1 2 3 4}]
-           @plus-set-t))
+           @plus-set-t
+           @plus*-set-t))
     (is (= monads.core.SetTransformer
-           (class plus-set-t)))
+           (class plus-set-t)
+           (class plus*-set-t)))
     (is (= clojure.lang.PersistentVector
-           (class @plus-set-t)))
+           (class @plus-set-t)
+           (class @plus*-set-t)))
     (is (= clojure.lang.PersistentHashSet
-           (class (first @plus-set-t))))))
+           (class (first @plus-set-t))
+           (class (first @plus*-set-t))))))
 
 (deftest zero-laws-set-t
   (is (= [#{}] @zero-val-vec-set))
@@ -1484,15 +1504,20 @@
          (do-result-vec-maybe nil))))
 
 (deftest plus-maybe-t
-  (let [plus-maybe-t (m/plus [(vec-maybe 1 2) (vec-maybe) (vec-maybe 3 4)])]
+  (let [plus-maybe-t (m/plus [(vec-maybe 1 2) (vec-maybe) (vec-maybe 3 4)])
+        plus*-maybe-t (m/plus* [(vec-maybe 1 2) (vec-maybe) (vec-maybe 3 4)])]
     (is (= (vec-maybe 1 2)
-           plus-maybe-t))
+           plus-maybe-t
+           plus*-maybe-t))
     (is (= monads.core.MaybeTransformer
-           (class plus-maybe-t)))
+           (class plus-maybe-t)
+           (class plus*-maybe-t)))
     (is (= clojure.lang.PersistentVector
-           (class @plus-maybe-t)))
+           (class @plus-maybe-t)
+           (class @plus*-maybe-t)))
     (is (= monads.core.Maybe
-           (class (first @plus-maybe-t))))))
+           (class (first @plus-maybe-t))
+           (class (first @plus*-maybe-t))))))
 
 (deftest zero-laws-maybe-t
   (is (= [m/Nothing] @zero-val-vec-maybe))
@@ -1682,6 +1707,19 @@
             (state-t-f-2+-ary-factory {:a 1}))))
 
 (deftest plus-state-t
+  (let [plus-state-t (m/plus [(vec-state 1) (vec-state 2)])
+        plus-state-t-ret (plus-state-t :state)
+        plus*-state-t (m/plus* [(vec-state 1) (vec-state 2)])
+        plus*-state-t-ret (plus*-state-t :state)]
+    (is (= [[1 :state] [2 :state]]
+           plus-state-t-ret
+           plus*-state-t-ret))
+    (is (= monads.core.StateTransformer
+           (class plus-state-t)
+           (class plus*-state-t)))
+    (is (= clojure.lang.PersistentVector
+           (class plus-state-t-ret)
+           (class plus*-state-t-ret))))
   (let [maybe-state (m/state-t m/maybe)]
     (is (= [:test :state]
            @((m/plus* [(maybe-state nil)
@@ -1808,17 +1846,23 @@
 
 (deftest plus-writer-t
   (let [plus-writer-t (m/plus [(set-writer+vec 1) (set-writer+vec 2)])
+        plus*-writer-t (m/plus* [(set-writer+vec 1) (set-writer+vec 2)])
         writer+vec (m/writer [])]
     (is (= #{(writer+vec 1) (writer+vec 2)}
-           @plus-writer-t))
+           @plus-writer-t
+           @plus*-writer-t))
     (is (= monads.core.WriterTransformer
-           (class plus-writer-t)))
+           (class plus-writer-t)
+           (class plus*-writer-t)))
     (is (= clojure.lang.PersistentHashSet
-           (class @plus-writer-t)))
+           (class @plus-writer-t)
+           (class @plus*-writer-t)))
     (is (= monads.core.Writer
-           (class (first @plus-writer-t))))
+           (class (first @plus-writer-t))
+           (class (first @plus*-writer-t))))
     (is (= clojure.lang.PersistentVector
-           (class @(first @plus-writer-t))))))
+           (class @(first @plus-writer-t))
+           (class @(first @plus*-writer-t))))))
 
 (deftest zero-laws-writer-t
   (is (= #{} @zero-val-set-writer+vec))
