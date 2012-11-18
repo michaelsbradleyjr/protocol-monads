@@ -1875,13 +1875,9 @@
 
 (deftest maybe-writer+vec-state
   (let [maybe-writer+vec-state (m/state-t (m/writer-t m/maybe []))
-
-        write-msg (fn [msg] ((m/state-t (m/writer-t m/maybe [msg])) nil))
-
-        ;; write-msg (fn [msg] (maybe-writer+vec-state
-        ;;                      ((m/state-t (m/writer-t m/maybe [msg])) nil)
-        ;;                      (constantly (maybe-writer+vec-state nil))))
-
+        write-msg (fn [msg] (maybe-writer+vec-state
+                             ((m/state-t (m/writer-t m/maybe [msg])) nil)
+                             (constantly (maybe-writer+vec-state nil))))
         listen-msgs (fn [mv] (maybe-writer+vec-state
                               (fn [s]
                                 (let [[[_ s] msgs] @@@(mv s)]
@@ -1903,8 +1899,8 @@
                          (maybe-writer+vec-state :result)))
                :state)))
     (is (= [[(list nil nil) :state] [:msg1 :msg2]]
-           @@@((m/seq [(write-msg :msg1++)
-                       (write-msg :msg2++)])
+           @@@((m/seq [(write-msg :msg1)
+                       (write-msg :msg2)])
                :state)))
     (is (= [[nil :state] [:msg1]]
            @@@((m/plus [(write-msg :msg1)
