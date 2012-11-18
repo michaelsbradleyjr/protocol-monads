@@ -34,10 +34,11 @@
 
 
 (defex ex2
-  (let [res (m/do vector
-                  [x (range 5)
-                   y (range 3)]
-                  (+ x y))]
+  (let [res
+        (m/do vector
+              [x (range 5)
+               y (range 3)]
+              (+ x y))]
     (println (class res))
     res))
 
