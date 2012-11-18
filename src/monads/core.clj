@@ -449,7 +449,8 @@
 
 (defn update-state
   "Return a State monad value that replaces the current state by the
-   result of f applied to the current state and that returns the old state."
+   result of f applied to the current state and that returns the old
+   state."
   [f]
   (reify
     clojure.lang.IHashEq
