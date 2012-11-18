@@ -1,5 +1,5 @@
 (ns monads.core
-  (:refer-clojure :exclude [do seq map list vector vec lazy-seq hash-set set])
+  (:refer-clojure :exclude [do seq map reduce list vector vec lazy-seq hash-set set])
   (:require [clojure.set :as cset]
             [clojure.string :as string]))
 
@@ -62,6 +62,8 @@
 (def ^:private seq* clojure.core/seq)
 
 (def ^:private map* clojure.core/map)
+
+(def ^:private reduce* clojure.core/reduce)
 
 (defn- lazy-concat
   ([l] l)
@@ -449,8 +451,8 @@
 
 (defn update-state
   "Return a State monad value that replaces the current state by the
-   result of f applied to the current state and that returns the old
-   state."
+  result of f applied to the current state and that returns the old
+  state."
   [f]
   (reify
     clojure.lang.IHashEq
@@ -487,36 +489,36 @@
 
 (defn set-state
   "Return a State monad value that replaces the current state by s and
-   returns the previous state."
+  returns the previous state."
   [s]
   (update-state (constantly s)))
 
 (defn get-state
   "Return a State monad value that returns the current state and does
-   not modify it."
+  not modify it."
   []
   (update-state identity))
 
 (defn get-state-val
   "Return a State monad value that assumes the state to be a map and
-   returns the value corresponding to the given key. The state is not
-   modified."
+  returns the value corresponding to the given key. The state is not
+  modified."
   [key]
   (bind (get-state)
         #(state (get % key))))
 
 (defn update-state-val
   "Return a State monad value that assumes the state to be a map and
-   replaces the value associated with the given key by the return value
-   of f applied to the old value and args. The old value is returned."
+  replaces the value associated with the given key by the return value
+  of f applied to the old value and args. The old value is returned."
   [key f & args]
   (bind (update-state #(apply update-in % [key] f args))
         #(state (get % key))))
 
 (defn set-state-val
   "Return a State monad value that assumes the state to be a map and
-   replaces the value associated with key by val. The old value is
-   returned."
+  replaces the value associated with key by val. The old value is
+  returned."
   [key val]
   (update-state-val key (constantly val)))
 
@@ -680,33 +682,33 @@
 
 (defmacro do
   "Monad comprehension. Takes the name of a monadic value factory
-   function (like vector, hash-set, maybe), a vector of steps given as
-   binding-form/monadic-expression pairs, and a result value specified
-   by expr. The monadic-expression terms can use the binding variables
-   of the previous steps.
+  function (like vector, hash-set, maybe), a vector of steps given as
+  binding-form/monadic-expression pairs, and a result value specified
+  by expr. The monadic-expression terms can use the binding variables
+  of the previous steps.
 
-   If the monad contains a definition of monadic zero, the step list can
-   also contain conditions of the form :when p, where the predicate p
-   can contain the binding variables from all previous steps.
+  If the monad contains a definition of monadic zero, the step list can
+  also contain conditions of the form :when p, where the predicate p
+  can contain the binding variables from all previous steps.
 
-   A clause of the form :let [binding-form expr ...], where the bindings
-   are given as a vector as for the use in let, establishes additional
-   bindings that can be used in the following steps. "
+  A clause of the form :let [binding-form expr ...], where the bindings
+  are given as a vector as for the use in let, establishes additional
+  bindings that can be used in the following steps. "
   [mv-factory bindings expr]
   (let [steps (partition 2 bindings)]
     `(monads.core/bind (~mv-factory [nil])
                        (fn [_#]
-                         ~(reduce (fn [expr [sym mv]]
-                                    (cond
-                                      (= :when sym) `(if ~mv
-                                                       ~expr
-                                                       (monads.core/zero (~mv-factory [nil])))
-                                      (= :let sym) `(let ~mv
-                                                      ~expr)
-                                      :else `(monads.core/bind ~mv (fn [~sym]
-                                                                     ~expr))))
-                                  `(monads.core/do-result (~mv-factory [nil]) ~expr)
-                                  (reverse steps))))))
+                         ~(reduce* (fn [expr [sym mv]]
+                                     (cond
+                                       (= :when sym) `(if ~mv
+                                                        ~expr
+                                                        (monads.core/zero (~mv-factory [nil])))
+                                       (= :let sym) `(let ~mv
+                                                       ~expr)
+                                       :else `(monads.core/bind ~mv (fn [~sym]
+                                                                      ~expr))))
+                                   `(monads.core/do-result (~mv-factory [nil]) ~expr)
+                                   (reverse steps))))))
 
 (defn plus [[mv & mvs]]
   (plus-step mv mvs))
@@ -722,17 +724,17 @@
 
 (defn- comprehend [f mvs]
   (let [mv (first mvs)
-        rest-steps (reduce (fn [steps mv]
-                             (fn [acc x]
-                               (bind mv (partial steps (conj acc x)))))
-                           (fn [acc x]
-                             (do-result mv (f (conj acc x))))
-                           (reverse (rest mvs)))]
+        rest-steps (reduce* (fn [steps mv]
+                              (fn [acc x]
+                                (bind mv (partial steps (conj acc x)))))
+                            (fn [acc x]
+                              (do-result mv (f (conj acc x))))
+                            (reverse (rest mvs)))]
     (bind mv (partial rest-steps []))))
 
 (defn seq
   "'Executes' the monadic values in 'mvs' and returns a sequence of the
-   basic values contained in them."
+  basic values contained in them."
   ([mvs]
      (assert
       (seq* mvs)
@@ -746,43 +748,61 @@
        (do-result (mv-factory [nil]) (list)))))
 
 (defn lift
-  "Converts a function f to a function of monadic arguments
-   returning a monadic value."
+  "Converts a function f to a function of monadic arguments returning a
+  monadic value."
   [f]
   (fn [& mvs]
     (comprehend (partial apply f) mvs)))
 
+(defn reduce
+  "Return the reduction of (monads.core/lift f) over the list of monadic
+  values mvs, with optional initial value
+  (monads.core/do-result (first mvs) val)."
+  ([f mvs]
+     (assert
+      (seq* mvs)
+      "At least one monadic value is required by monads.core/reduce.")
+     (let [lf (lift f)]
+       (reduce* lf mvs)))
+  ([f val mvs]
+     (assert
+      (seq* mvs)
+      "At least one monadic value is required by monads.core/reduce.")
+     (let [lf (lift f)
+           mv (do-result (first mvs) val)]
+       (reduce* lf mv mvs))))
+
 (defn join
   "Converts a monadic value containing a monadic value into a 'simple'
-   monadic value."
+  monadic value."
   [mv]
   (bind mv identity))
 
 (defn fmap
   "Bind the monadic value mv to the function f. Returning (f x) for
-   argument x"
+  argument x"
   [f mv]
   (bind mv (fn [x] (do-result mv (f x)))))
 
 (defn map
   "'Executes' the sequence of monadic values resulting from mapping
-   f onto the values xs. f must return a monadic value."
+  f onto the values xs. f must return a monadic value."
   [f xs]
   (seq (map* f xs)))
 
 (defn chain
   "Chains together monadic computation steps that are each functions
-   of one parameter. Each step is called with the result of the previous
-   step as its argument. (monads.core/chain (step1 step2)) is equivalent
-   to (fn [x] (m/do <mv-factory> [r1 (step1 x) r2 (step2 r1)] r2))."
+  of one parameter. Each step is called with the result of the previous
+  step as its argument. (monads.core/chain (step1 step2)) is equivalent
+  to (fn [x] (m/do <mv-factory> [r1 (step1 x) r2 (step2 r1)] r2))."
   [steps]
   (fn [x]
     (let [mv ((first steps) x)
-          chain (reduce (fn [chain step]
-                          (fn [x]
-                            (bind (step x) chain)))
-                        (partial do-result mv)
-                        (reverse (rest steps)))]
+          chain (reduce* (fn [chain step]
+                           (fn [x]
+                             (bind (step x) chain)))
+                         (partial do-result mv)
+                         (reverse (rest steps)))]
       (bind mv chain))))
 
 (defn- mismatch-message
@@ -1354,9 +1374,9 @@
 
 (defn update-state-t
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that replaces the current
-   state by the result of f applied to the current state and that
-   returns the old state."
+  the monad specified by state-t-factory) that replaces the current
+  state by the result of f applied to the current state and that
+  returns the old state."
   [state-t-factory]
   (let []
     (when *check-types*
@@ -1437,8 +1457,8 @@
 
 (defn set-state-t
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that replaces the current
-   state by s and returns the previous state."
+  the monad specified by state-t-factory) that replaces the current
+  state by s and returns the previous state."
   [state-t-factory]
   (let [u (update-state-t state-t-factory)]
     (fn [s]
@@ -1446,8 +1466,8 @@
 
 (defn get-state-t
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that returns the current
-   state and does not modify it."
+  the monad specified by state-t-factory) that returns the current
+  state and does not modify it."
   [state-t-factory]
   (let [u (update-state-t state-t-factory)]
     (fn []
@@ -1455,9 +1475,9 @@
 
 (defn get-state-t-val
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that assumes the state to be
-   a map and returns the value corresponding to the given key. The state
-   is not modified."
+  the monad specified by state-t-factory) that assumes the state to be
+  a map and returns the value corresponding to the given key. The state
+  is not modified."
   [state-t-factory]
   (let [g (get-state-t state-t-factory)
         do-result-m-state (partial do-result (state-t-factory [nil]))]
@@ -1467,10 +1487,10 @@
 
 (defn update-state-t-val
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that assumes the state to be
-   a map and replaces the value associated with the given key by the
-   return value of f applied to the old value and args. The old value is
-   returned."
+  the monad specified by state-t-factory) that assumes the state to be
+  a map and replaces the value associated with the given key by the
+  return value of f applied to the old value and args. The old value is
+  returned."
   [state-t-factory]
   (let [u (update-state-t state-t-factory)
         do-result-m-state (partial do-result (state-t-factory [nil]))]
@@ -1480,9 +1500,9 @@
 
 (defn set-state-t-val
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that assumes the state to be
-   a map and replaces the value associated with key by val. The old
-   value is returned."
+  the monad specified by state-t-factory) that assumes the state to be
+  a map and replaces the value associated with key by val. The old
+  value is returned."
   [state-t-factory]
   (let [uv (update-state-t-val state-t-factory)]
     (fn [key val]

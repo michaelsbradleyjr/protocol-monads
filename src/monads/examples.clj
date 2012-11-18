@@ -12,8 +12,6 @@
   (:require [monads.core :as m]
             [clojure.algo.monads :as am]))
 
-(alter-var-root (var m/*check-types*) (constantly true))
-
 (defmacro defex
   [name & body]
   `(defn ~name [] ~@body))
@@ -59,22 +57,22 @@
 
 
 (defex ex4b
-  "Will throw an exception since monads.core/*check-types* was bound to
-   true earlier in this program (its default value is false)."
-  (m/do hash-set
-        [x (into [] (range 5))
-         y (into #{} (range 3))]
-        (+ x y)))
-
-
-(defex ex4c
-  "Will not throw an exception since monads.core/*check-types* is
-   dynamically bound to false."
-  (binding [m/*check-types* false]
+  "Will throw an exception since monads.core/*check-types* is
+   dynamically bound to true."
+  (binding [m/*check-types* true]
     (m/do hash-set
           [x (into [] (range 5))
            y (into #{} (range 3))]
           (+ x y))))
+
+
+(defex ex4c
+  "Will not throw an exception since monads.core/*check-types* is bound
+   to false by default."
+  (m/do hash-set
+        [x (into [] (range 5))
+         y (into #{} (range 3))]
+        (+ x y)))
 
 
 (defex ex5
@@ -159,19 +157,62 @@
            (some-function 2 3)]))
 
 
+(def rng
+  (let [m 259200
+        next (m/update-state (fn [seed] (rem (+ 54773 (* 7141 seed)) m)))
+        value (fn [seed] (m/state (/ (float seed) (float m))))]
+    (m/state next value)))
+
+(defn value-seq [f seed]
+  (lazy-seq
+    (let [[value next] (f seed)]
+      (cons value (value-seq f next)))))
+
+(defn sum [xs]  (apply + xs))
+(defn mean [xs]  (/ (sum xs) (count xs)))
+(defn variance [xs]
+  (let [m (mean xs)
+        sq #(* % %)]
+    (mean (for [x xs] (sq (- x m))))))
 
 
+(defex ex14
+  [(symbol "mean =>") (mean (take 1000 (value-seq rng 1)))
+   (symbol "variance =>") (variance (take 1000 (value-seq rng 1)))])
 
 
+(defex ex15
+  (let [gaussian (m/do m/state
+                       [x1  rng
+                        x2  rng
+                        x3  rng
+                        x4  rng
+                        x5  rng
+                        x6  rng
+                        x7  rng
+                        x8  rng
+                        x9  rng
+                        x10 rng
+                        x11 rng
+                        x12 rng]
+                       (- (+ x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12) 6.))]
+    [(symbol "mean =>") (mean (take 1000 (value-seq gaussian 1)))
+     (symbol "variance =>") (variance (take 1000 (value-seq gaussian 1)))]))
 
 
+(defex ex16
+  (let [gaussian (m/do m/state
+                       [sum12 (reduce (m/lift +) (repeat 12 rng))]
+                       (- sum12 6.))]
+    [(symbol "mean =>") (mean (take 1000 (value-seq gaussian 1)))
+     (symbol "variance =>") (variance (take 1000 (value-seq gaussian 1)))]))
 
 
-
-
-
-
-
+(defex ex17
+  (let [gaussian ((m/lift #(- % 6.))
+                  (m/reduce + (repeat 12 rng)))]
+    [(symbol "mean =>") (mean (take 1000 (value-seq gaussian 1)))
+     (symbol "variance =>") (variance (take 1000 (value-seq gaussian 1)))]))
 
 
 
