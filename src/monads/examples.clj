@@ -12,6 +12,8 @@
   (:require [monads.core :as m]
             [clojure.algo.monads :as am]))
 
+(alter-var-root (var m/*check-types*) (constantly true))
+
 (defmacro defex
   [name & body]
   `(defn ~name [] ~@body))
@@ -26,34 +28,28 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(alter-var-root (var m/*check-types*) (constantly true))
-
 (defex ex1
   (m/do list
-        [x (into '() (range 5))
-         y (into '() (range 3))]
+        [x (range 5)
+         y (range 3)]
         (+ x y)))
 
 (defex ex2
   (m/do vector
-        [x (vec (range 5))
-         y (vec (range 3))]
+        [x (range 5)
+         y (range 3)]
         (+ x y)))
 
 (defex ex3
-  (m/do hash-set
-        [x (into #{} (range 5))
-         y (into #{} (range 3))]
+  (m/do lazy-seq
+        [x (range 5)
+         y (range 3)]
         (+ x y)))
 
 (defex ex4
-  ;; Dynamic typing necessitates careful implementation of monadic
-  ;; functions, else one may get unexpected results sans compiler or
-  ;; runtime errors; the key consideration here is that
-  ;; `clojure.set/union` will happily operate on non hash-set values.
   (m/do hash-set
         [x (into #{} (range 5))
-         y (into [] (range 3))]
+         y (into #{} (range 3))]
         (+ x y)))
 
 (defex ex5
