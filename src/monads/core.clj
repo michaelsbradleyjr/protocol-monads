@@ -19,9 +19,8 @@
   (plus-step* [mv mvs]))
 
 (defprotocol MonadDev
-  "Used in conjunction with the return type checker."
-  (val-types [_])
-  (name-monad [_]))
+  "Used in conjunction with the type checkers."
+  (val-types [_]))
 
 (defprotocol MonadWriter
   "Accumulation of values into containers."
@@ -80,54 +79,30 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:dynamic *throw-on-mismatch* false)
-(def ^:dynamic *warn-on-mismatch*  false)
+(def ^:dynamic *check-types* false)
 
-(defn- mismatch-message [mv mv-types return-val]
-  (let [return-type (class return-val)
-        tw (if (= 1 (count mv-types))
-             "type"
-             "types")]
-    (str "Type mismatch between bound monadic value and return value of monadic function. "
-         "Function returned type "
-         (second (string/split (str return-type) #" "))
-         ". The protocol-monad "
-         (str "<" (name-monad mv) ">")
-         " specifies value "
-         tw
-         " "
-         (str mv-types)
-         #_(string/join ", " (map* #(second (string/split (str %) #" ")) mv-types))
-         ".")))
+(declare mismatch-message)
 
-(defn- check-return-type [mv f warn-on-mismatch throw-on-mismatch]
+(defn- check-return-type [mv f check-types]
   (fn [v]
     (let [return-val (f v)
           mv-types (val-types mv)]
       (if-not (seq* mv-types)
         return-val
-        (if (some identity
-                  (map* (fn [icps]
-                          (every? (fn [icp]
-                                    (instance? icp return-val))
-                                  icps))
-                        mv-types))
-          return-val
-          (cond
-            (and warn-on-mismatch (not throw-on-mismatch))
-            (let []
-              (println (mismatch-message mv mv-types return-val))
-              return-val)
-            throw-on-mismatch
-            (throw (Exception. (mismatch-message mv mv-types return-val)))
-            :else
-            return-val))))))
+        (let []
+          (assert (some identity
+                        (map* (fn [icps]
+                                (every? (fn [icp]
+                                          (instance? icp return-val))
+                                        icps))
+                              mv-types))
+                  (mismatch-message mv mv-types return-val))
+          return-val)))))
 
 (defn- wrap-check [mv f]
-  (if-not (or *throw-on-mismatch*
-              *warn-on-mismatch*)
+  (if-not *check-types*
     f
-    (check-return-type mv f *warn-on-mismatch* *throw-on-mismatch*)))
+    (check-return-type mv f *check-types*)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -165,8 +140,6 @@
   MonadDev
   (val-types [_]
     [[java.util.List]])
-  (name-monad [_]
-    "list")
 
   MonadWriter
   (writer-m-empty [_] (list))
@@ -200,8 +173,6 @@
   MonadDev
   (val-types [_]
     [[java.util.List]])
-  (name-monad [_]
-    "list")
 
   MonadWriter
   (writer-m-empty [_] (list))
@@ -235,8 +206,6 @@
   MonadDev
   (val-types [_]
     [[java.util.List]])
-  (name-monad [_]
-    "vector")
 
   MonadWriter
   (writer-m-empty [_] [])
@@ -270,8 +239,6 @@
   MonadDev
   (val-types [_]
     [[java.util.List]])
-  (name-monad [_]
-    "lazy-seq")
 
   MonadWriter
   (writer-m-empty [_] (lazy-seq))
@@ -305,8 +272,6 @@
   MonadDev
   (val-types [_]
     [[java.util.Set]])
-  (name-monad [_]
-    "hash-set")
 
   MonadWriter
   (writer-m-empty [_] #{})
@@ -383,9 +348,7 @@
 
   MonadDev
   (val-types [_]
-    [[Maybe]])
-  (name-monad [_]
-    "maybe"))
+    [[Maybe]]))
 
 (def Nothing (Maybe. ::Nothing))
 
@@ -458,8 +421,6 @@
   MonadDev
   (val-types [_]
     [[monads.core.IState]])
-  (name-monad [_]
-    "state")
 
   IState
   (i-state [_]))
@@ -519,8 +480,6 @@
     MonadDev
     (val-types [_]
       [[monads.core.IState]])
-    (name-monad [_]
-      "state")
 
     IState
     (i-state [_])))
@@ -621,9 +580,7 @@
 
   MonadDev
   (val-types [_]
-    [[Continuation]])
-  (name-monad [_]
-    "cont"))
+    [[Continuation]]))
 
 (defn cont
   [v]
@@ -698,9 +655,7 @@
 
   MonadDev
   (val-types [_]
-    [[Writer]])
-  (name-monad [_]
-    "writer"))
+    [[Writer]]))
 
 (defn writer
   [accumulator]
@@ -826,6 +781,28 @@
                         (reverse (rest steps)))]
       (bind mv chain))))
 
+(defn- mismatch-message
+  [mv mv-types return-val]
+  (str
+   "Type mismatch between bound monadic value "
+   mv
+   " and monadic function return value "
+   return-val
+   ". Function returned type "
+   (#(second (string/split (str %) #" ")) (class return-val))
+   ". The protocol-monad for "
+   (class mv)
+   " specifies: "
+   (string/join " or "
+                (fmap (fn [v]
+                        (let [cnt (count v)
+                              als (string/join " and " v)]
+                          (if (> cnt 1)
+                            (str "(" als ")")
+                            als)))
+                      mv-types))
+   "."))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;;  List transformer
@@ -877,9 +854,7 @@
 
   MonadDev
   (val-types [_]
-    [[ListTransformer]])
-  (name-monad [_]
-    "list-t"))
+    [[ListTransformer]]))
 
 (defn list-t
   [mv-factory]
@@ -951,9 +926,7 @@
 
   MonadDev
   (val-types [_]
-    [[VectorTransformer]])
-  (name-monad [_]
-    "vector-t"))
+    [[VectorTransformer]]))
 
 (defn vector-t
   [mv-factory]
@@ -1027,9 +1000,7 @@
 
   MonadDev
   (val-types [_]
-    [[LazySeqTransformer]])
-  (name-monad [_]
-    "lazy-seq-t"))
+    [[LazySeqTransformer]]))
 
 (defn lazy-seq-t
   [mv-factory]
@@ -1103,9 +1074,7 @@
 
   MonadDev
   (val-types [_]
-    [[SetTransformer]])
-  (name-monad [_]
-    "set-t"))
+    [[SetTransformer]]))
 
 (defn set-t
   [mv-factory]
@@ -1190,9 +1159,7 @@
 
   MonadDev
   (val-types [_]
-    [[MaybeTransformer]])
-  (name-monad [_]
-    "maybe-t"))
+    [[MaybeTransformer]]))
 
 (defn maybe-t
   [mv-factory]
@@ -1308,8 +1275,6 @@
   MonadDev
   (val-types [_]
     [[monads.core.IState]])
-  (name-monad [_]
-    "state-t")
 
   IState
   (i-state [_]))
@@ -1427,8 +1392,6 @@
         MonadDev
         (val-types [_]
           [[monads.core.IState]])
-        (name-monad [_]
-          "state-t")
 
         IState
         (i-state [_])))))
@@ -1565,9 +1528,7 @@
 
   MonadDev
   (val-types [_]
-    [[WriterTransformer]])
-  (name-monad [_]
-    "writer-t"))
+    [[WriterTransformer]]))
 
 (defn writer-t [mv-factory accumulator]
   (let [do-result-m (partial do-result (mv-factory [nil]))

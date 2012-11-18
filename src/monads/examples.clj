@@ -26,8 +26,7 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(alter-var-root (var m/*throw-on-mismatch*) (constantly false))
-(alter-var-root (var m/*warn-on-mismatch*) (constantly true))
+(alter-var-root (var m/*check-types*) (constantly true))
 
 (defex ex1
   (m/do list

@@ -1,10 +1,8 @@
 (ns monads.test.core
   (:use [clojure.test])
-  (:require [monads.core :as m])
-  (:import [monads.core WriterTransformer StateTransformer]))
+  (:require [monads.core :as m]))
 
-(alter-var-root (var m/*throw-on-mismatch*) (constantly true))
-(alter-var-root (var m/*warn-on-mismatch*) (constantly false))
+(alter-var-root (var m/*check-types*) (constantly true))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -350,13 +348,11 @@
   (is (not= (m/state 1) (m/state :1)))
   (is (not= (m/state 1) (m/state 2)))
   (is (not= (m/state {:a 1}) (m/state {:a 2})))
-  (binding [m/*throw-on-mismatch* false
-            m/*warn-on-mismatch* false]
+  (binding [m/*check-types* false]
     (let [f #(m/state (inc %))]
       (is (= (m/bind (m/state 1) f)
              (m/bind (m/state 1) f)))))
-  (binding [m/*throw-on-mismatch* false
-            m/*warn-on-mismatch* false]
+  (binding [m/*check-types* false]
     (is (not= (m/bind (m/state 1) #(m/state (inc %)))
               (m/bind (m/state 1) #(m/state (inc %)))))))
 
@@ -492,13 +488,11 @@
   (is (not= (m/cont 1) (m/cont :1)))
   (is (not= (m/cont 1) (m/cont 2)))
   (is (not= (m/cont {:a 1}) (m/cont {:a 2})))
-  (binding [m/*throw-on-mismatch* false
-            m/*warn-on-mismatch* false]
+  (binding [m/*check-types* false]
     (let [f #(m/cont (inc %))]
       (is (= (m/bind (m/cont 1) f)
              (m/bind (m/cont 1) f)))))
-  (binding [m/*throw-on-mismatch* false
-            m/*warn-on-mismatch* false]
+  (binding [m/*check-types* false]
     (is (not= (m/bind (m/cont 1) #(m/cont (inc %)))
               (m/bind (m/cont 1) #(m/cont (inc %)))))))
 
@@ -597,6 +591,20 @@
   (is (= [nil #{:new-written}]
          @(m/censor-writer (constantly #{:new-written})
                            (m/write-writer writer+set :written)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;
+;;  Return type checker
+;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftest check-return-type
+  (is (thrown-with-msg?
+        AssertionError #"Type mismatch.*"
+        (m/bind [1 2 3] #(hash-set %))))
+  (binding [m/*check-types* false]
+   (is (= [1 2 3]
+          (m/bind [1 2 3] #(hash-set %))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1542,13 +1550,11 @@
   (is (not= (vec-state 1) (vec-state :1)))
   (is (not= (vec-state 1) (vec-state 2)))
   (is (not= (vec-state {:a 1}) (vec-state {:a 2})))
-  (binding [m/*throw-on-mismatch* false
-            m/*warn-on-mismatch* false]
+  (binding [m/*check-types* false]
     (let [f #(vec-state (inc %))]
       (is (= (m/bind (vec-state 1) f)
              (m/bind (vec-state 1) f)))))
-  (binding [m/*throw-on-mismatch* false
-            m/*warn-on-mismatch* false]
+  (binding [m/*check-types* false]
     (is (not= (m/bind (vec-state 1) #(vec-state (inc %)))
               (m/bind (vec-state 1) #(vec-state (inc %)))))))
 
