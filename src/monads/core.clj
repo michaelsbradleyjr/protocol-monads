@@ -19,7 +19,7 @@
   (plus-step* [mv mvs]))
 
 (defprotocol MonadDev
-  "Used in conjunction with the type checkers."
+  "Used in conjunction with the type checker."
   (val-types [_]))
 
 (defprotocol MonadWriter
@@ -491,14 +491,15 @@
   (update-state (constantly s)))
 
 (defn get-state
-  "Return a State monad value that returns the current state and does not
-   modify it."
+  "Return a State monad value that returns the current state and does
+   not modify it."
   []
   (update-state identity))
 
 (defn get-state-val
   "Return a State monad value that assumes the state to be a map and
-   returns the value corresponding to the given key. The state is not modified."
+   returns the value corresponding to the given key. The state is not
+   modified."
   [key]
   (bind (get-state)
         #(state (get % key))))
@@ -513,7 +514,8 @@
 
 (defn set-state-val
   "Return a State monad value that assumes the state to be a map and
-   replaces the value associated with key by val. The old value is returned."
+   replaces the value associated with key by val. The old value is
+   returned."
   [key val]
   (update-state-val key (constantly val)))
 
@@ -756,7 +758,8 @@
   (bind mv identity))
 
 (defn fmap
-  "Bind the monadic value mv to the function f. Returning (f x) for argument x"
+  "Bind the monadic value mv to the function f. Returning (f x) for
+   argument x"
   [f mv]
   (bind mv (fn [x] (do-result mv (f x)))))
 
@@ -1210,14 +1213,8 @@
   clojure.lang.IFn
   (invoke [_ s]
     (cond
-      ;; Use of doall "enforces" the non-laziness of regular plus /
-      ;; plus-step. Otherwise you can end up with monadic computations
-      ;; that make use of plus / plus-step which sometimes are lazy
-      ;; enough and sometimes aren't (apparently owing to sequence
-      ;; chunking).  If laziness is desirable, then one should use
-      ;; plus* / plus-step*.
       alts (plus-step ((first alts) s)
-                      (doall (map* #(% s) (second alts))))
+                      (map* #(% s) (second alts)))
       lzalts (plus-step* ((first lzalts) s)
                          (map* #(fn [] ((%) s)) (second lzalts)))
       f (bind (mv s)
@@ -1322,84 +1319,91 @@
 
 (defn update-state-t
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that replaces the current state by
-   the result of f applied to the current state and that returns the old
-   state."
+   the monad specified by state-t-factory) that replaces the current
+   state by the result of f applied to the current state and that
+   returns the old state."
   [state-t-factory]
-  (let [do-result-m (.do-result-m (state-t-factory [nil]))]
-    (fn [f]
-      (reify
-        clojure.lang.IHashEq
-        (hasheq [this]
-          (bit-xor (hash (str (class this)))
-                   (.hashCode this)))
-        (hashCode [_]
-          (bit-xor (hash do-result-m)
-                   (hash f)))
-        (equals [this that]
-          (and (= (class this) (class that))
-               (= (.hashCode this)
-                  (.hashCode that))))
+  (let []
+    (when *check-types*
+      (assert (instance? StateTransformer
+                         (state-t-factory [nil]))
+              (str "monads.core/update-state-t should be called with a "
+                   "function that returns an instance of "
+                   "monads.core.StateTransformer.")))
+    (let [do-result-m (.do-result-m (state-t-factory [nil]))]
+      (fn [f]
+        (reify
+          clojure.lang.IHashEq
+          (hasheq [this]
+            (bit-xor (hash (str (class this)))
+                     (.hashCode this)))
+          (hashCode [_]
+            (bit-xor (hash do-result-m)
+                     (hash f)))
+          (equals [this that]
+            (and (= (class this) (class that))
+                 (= (.hashCode this)
+                    (.hashCode that))))
 
-        clojure.lang.IFn
-        (invoke [_ s]
-          (do-result-m [s (f s)]))
+          clojure.lang.IFn
+          (invoke [_ s]
+            (do-result-m [s (f s)]))
 
-        Monad
-        (do-result [_ v]
-          (StateTransformer. do-result-m
-                             v
-                             nil
-                             nil
-                             nil
-                             nil))
-        (bind [mv f]
-          (StateTransformer. do-result-m
-                             nil
-                             mv
-                             (wrap-check mv f)
-                             nil
-                             nil))
+          Monad
+          (do-result [_ v]
+            (StateTransformer. do-result-m
+                               v
+                               nil
+                               nil
+                               nil
+                               nil))
+          (bind [mv f]
+            (StateTransformer. do-result-m
+                               nil
+                               mv
+                               (wrap-check mv f)
+                               nil
+                               nil))
 
-        MonadZero
-        (zero [_]
-          (StateTransformer. do-result-m
-                             nil
-                             (fn [s] (zero (do-result-m [nil])))
-                             (fn [v]
-                               (StateTransformer. do-result-m
-                                                  v
-                                                  nil
-                                                  nil
-                                                  nil
-                                                  nil))
-                             nil
-                             nil))
-        (plus-step [mv mvs]
-          (StateTransformer. do-result-m
-                             nil
-                             nil
-                             nil
-                             (list mv mvs)
-                             nil))
-        (plus-step* [mv mvs]
-          (StateTransformer. do-result-m
-                             nil
-                             nil
-                             nil
-                             nil (list mv mvs)))
+          MonadZero
+          (zero [_]
+            (StateTransformer. do-result-m
+                               nil
+                               (fn [s] (zero (do-result-m [nil])))
+                               (fn [v]
+                                 (StateTransformer. do-result-m
+                                                    v
+                                                    nil
+                                                    nil
+                                                    nil
+                                                    nil))
+                               nil
+                               nil))
+          (plus-step [mv mvs]
+            (StateTransformer. do-result-m
+                               nil
+                               nil
+                               nil
+                               (list mv mvs)
+                               nil))
+          (plus-step* [mv mvs]
+            (StateTransformer. do-result-m
+                               nil
+                               nil
+                               nil
+                               nil (list mv mvs)))
 
-        MonadDev
-        (val-types [_]
-          [[monads.core.IState]])
+          MonadDev
+          (val-types [_]
+            [[monads.core.IState]])
 
-        IState
-        (i-state [_])))))
+          IState
+          (i-state [_]))))))
 
 (defn set-state-t
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that replaces the current state by
-   s and returns the previous state."
+   the monad specified by state-t-factory) that replaces the current
+   state by s and returns the previous state."
   [state-t-factory]
   (let [u (update-state-t state-t-factory)]
     (fn [s]
@@ -1407,8 +1411,8 @@
 
 (defn get-state-t
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that returns the current state
-   and does not modify it."
+   the monad specified by state-t-factory) that returns the current
+   state and does not modify it."
   [state-t-factory]
   (let [u (update-state-t state-t-factory)]
     (fn []
@@ -1416,9 +1420,9 @@
 
 (defn get-state-t-val
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that assumes the state to be a map
-   and returns the value corresponding to the given key. The state is
-   not modified."
+   the monad specified by state-t-factory) that assumes the state to be
+   a map and returns the value corresponding to the given key. The state
+   is not modified."
   [state-t-factory]
   (let [g (get-state-t state-t-factory)
         do-result-m-state (partial do-result (state-t-factory [nil]))]
@@ -1428,9 +1432,9 @@
 
 (defn update-state-t-val
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that assumes the state to be a map
-   and replaces the value associated with the given key by the return
-   value of f applied to the old value and args. The old value is
+   the monad specified by state-t-factory) that assumes the state to be
+   a map and replaces the value associated with the given key by the
+   return value of f applied to the old value and args. The old value is
    returned."
   [state-t-factory]
   (let [u (update-state-t state-t-factory)
@@ -1441,9 +1445,9 @@
 
 (defn set-state-t-val
   "Return a function that returns a StateTransformer monad value (for
-   the monad specified by state-t-factory) that assumes the state to be a map
-   and replaces the value associated with key by val. The old value is
-   returned."
+   the monad specified by state-t-factory) that assumes the state to be
+   a map and replaces the value associated with key by val. The old
+   value is returned."
   [state-t-factory]
   (let [uv (update-state-t-val state-t-factory)]
     (fn [key val]
