@@ -279,7 +279,7 @@
         odds (apply list-maybe
                     (for [n (range 10)] (when (odd? n) n)))
         evens (apply list-maybe
-                    (for [n (range 10)] (when (even? n) n)))]
+                     (for [n (range 10)] (when (even? n) n)))]
     (m/fmap #(deref %)
             @(m/do list-maybe
                    [x odds
@@ -310,9 +310,9 @@
 
 (defex ex28
   @(m/do m/cont
-        [x (m/cont 1)
-         y (m/cont 2)]
-        (+ x y)))
+         [x (m/cont 1)
+          y (m/cont 2)]
+         (+ x y)))
 
 
 (comment
