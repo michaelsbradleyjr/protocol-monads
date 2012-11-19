@@ -9,8 +9,7 @@
 
 (ns #^{:doc "Examples for using protocol-monads"}
   monads.examples
-  (:require [monads.core :as m]
-            [clojure.algo.monads :as am]))
+  (:require [monads.core :as m]))
 
 (defmacro defex
   [name & body]
