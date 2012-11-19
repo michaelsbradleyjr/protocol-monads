@@ -851,6 +851,29 @@
            ((apply lifted-list (map m/state (range 4))) :state)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;  monads.core/reduce
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(deftest monadic-reduce
+  (is (thrown-with-msg?
+        AssertionError #"At least one monadic value.*"
+        (m/reduce + [])))
+  (is (thrown-with-msg?
+        AssertionError #"At least one monadic value.*"
+        (m/reduce + 1 [])))
+  (is (= (m/reduce + [(list 1 2) (list 3 4) (list 5 6)])
+         (for [x (list 1 2)
+               y (list 3 4)
+               z (list 5 6)]
+           (reduce + (list x y z)))))
+  (is (= (m/reduce + 1 [(list 2) (list 3) (list 4)])
+         (for [a (list 1)
+               x (list 2)
+               y (list 3)
+               z (list 4)]
+           (reduce + (list a x y z))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/join
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
