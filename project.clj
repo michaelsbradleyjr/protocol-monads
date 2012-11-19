@@ -1,4 +1,3 @@
-(defproject monads "1.0.0"
-  :description "A protocol based implementation of monads"
-  :dependencies [[org.clojure/algo.monads "0.1.0"]
-                 [org.clojure/clojure "1.4.0"]])
+(defproject org.clojars.michaelsbradleyjr/monads "1.1.0-SNAPSHOT"
+  :description "A protocol based monads library for Clojure"
+  :dependencies [[org.clojure/clojure "1.4.0"]])
