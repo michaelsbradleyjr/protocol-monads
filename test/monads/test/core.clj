@@ -47,6 +47,11 @@
     (is (= (map* identity [1 2 3])
            (map identity [1 2 3])))))
 
+(deftest monads-core-reduce*-and-clojure-core-reduce-equiv
+  (let [reduce* (ns-resolve 'monads.core 'reduce*)]
+    (is (= (reduce* + [1 2 3])
+           (reduce + [1 2 3])))))
+
 (deftest lazy-concat-laziness
   (let [lazy-concat (ns-resolve 'monads.core 'lazy-concat)]
     (is (= clojure.lang.LazySeq
