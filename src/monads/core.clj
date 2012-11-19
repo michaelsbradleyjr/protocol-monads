@@ -449,43 +449,14 @@
                         f)
                 f*)))))
 
+(defn- state*
+  [v]
+  (state v))
+
 (defn update-state
-  "Return a State monad value that replaces the current state by the
-  result of f applied to the current state and that returns the old
-  state."
   [f]
-  (reify
-    clojure.lang.IHashEq
-    (hasheq [this]
-      (bit-xor (hash (str (class this)))
-               (.hashCode this)))
-    (hashCode [_]
-      (hash f))
-    (equals [this that]
-      (and (= (class this) (class that))
-           (= (.hashCode this)
-              (.hashCode that))))
-
-    clojure.lang.IFn
-    (invoke [_ s]
-      [s (f s)])
-
-    Monad
-    (do-result [_ v]
-      (State. v
-              nil
-              nil))
-    (bind [mv f]
-      (State. nil
-              mv
-              (wrap-check mv f)))
-
-    MonadDev
-    (val-types [_]
-      [[monads.core.IState]])
-
-    IState
-    (i-state [_])))
+  (state (fn [s] [s (f s)])
+         state*))
 
 (defn set-state
   "Return a State monad value that replaces the current state by s and
@@ -1244,7 +1215,7 @@
 ;; Monad transformer that transforms a monad into a monad of stateful
 ;; computations that have the base monad type as their result.
 
-(deftype StateTransformer [do-result-m v mv f alts lzalts]
+(deftype StateTransformer [do-result-m v mv f alts lzalts up?]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str StateTransformer))
@@ -1255,7 +1226,8 @@
              (hash mv)
              (hash f)
              (hash alts)
-             (hash lzalts)))
+             (hash lzalts)
+             (hash up?)))
   (equals [this that]
     (and (= StateTransformer (class that))
          (and (= (.do-result-m that) do-result-m)
@@ -1263,7 +1235,8 @@
               (= (.mv that) mv)
               (= (.f that) f)
               (= (.alts that) alts)
-              (= (.lzalts that) lzalts))))
+              (= (.lzalts that) lzalts)
+              (= (.up? that) up?))))
 
   clojure.lang.IFn
   (invoke [_ s]
@@ -1275,7 +1248,8 @@
       f (bind (mv s)
               (fn [[v ss]]
                 ((f v) ss)))
-      :else (if (= v (zero (do-result-m [nil])))
+      :else (if (and (not up?)
+                     (= v (zero (do-result-m [nil]))))
               v
               (do-result-m [v s]))))
 
@@ -1286,12 +1260,14 @@
                        nil
                        nil
                        nil
+                       nil
                        nil))
   (bind [mv f]
     (StateTransformer. do-result-m
                        nil
                        mv
                        (wrap-check mv f)
+                       nil
                        nil
                        nil))
 
@@ -1306,7 +1282,9 @@
                                             nil
                                             nil
                                             nil
+                                            nil
                                             nil))
+                       nil
                        nil
                        nil))
   (plus-step [mv mvs]
@@ -1315,6 +1293,7 @@
                        nil
                        nil
                        (list mv mvs)
+                       nil
                        nil))
   (plus-step* [mv mvs]
     (StateTransformer. do-result-m
@@ -1322,7 +1301,8 @@
                        nil
                        nil
                        nil
-                       (list mv mvs)))
+                       (list mv mvs)
+                       nil))
 
   MonadDev
   (val-types [_]
@@ -1345,12 +1325,14 @@
                               nil
                               nil
                               nil
+                              nil
                               nil)))
       ([mv f]
          (StateTransformer. do-result-m
                             nil
                             mv
                             f
+                            nil
                             nil
                             nil))
       ([mv f & fs]
@@ -1362,6 +1344,7 @@
                                                   mv
                                                   f
                                                   nil
+                                                  nil
                                                   nil)
                                f*] fs))
              (state-t* (StateTransformer. do-result-m
@@ -1369,91 +1352,30 @@
                                           mv
                                           f
                                           nil
+                                          nil
                                           nil)
                        f*)))))))
 
 (defn update-state-t
-  "Return a function that returns a StateTransformer monad value (for
-  the monad specified by state-t-factory) that replaces the current
-  state by the result of f applied to the current state and that
-  returns the old state."
   [state-t-factory]
   (let []
     (when *check-types*
       (assert (instance? StateTransformer
                          (state-t-factory [nil]))
-              (str "monads.core/update-state-t should be called with a "
-                   "function that returns an instance of "
+              (str "Type mismatch: monads.core/update-state-t should be "
+                   "called with a function that returns an instance of "
                    "monads.core.StateTransformer.")))
-    (let [do-result-m (.do-result-m (state-t-factory [nil]))]
+    (let [do-result-m (.do-result-m (state-t-factory [nil]))
+          state-t* (fn [v] (StateTransformer. do-result-m
+                                              v
+                                              nil
+                                              nil
+                                              nil
+                                              nil
+                                              true))]
       (fn [f]
-        (reify
-          clojure.lang.IHashEq
-          (hasheq [this]
-            (bit-xor (hash (str (class this)))
-                     (.hashCode this)))
-          (hashCode [_]
-            (bit-xor (hash do-result-m)
-                     (hash f)))
-          (equals [this that]
-            (and (= (class this) (class that))
-                 (= (.hashCode this)
-                    (.hashCode that))))
-
-          clojure.lang.IFn
-          (invoke [_ s]
-            (do-result-m [s (f s)]))
-
-          Monad
-          (do-result [_ v]
-            (StateTransformer. do-result-m
-                               v
-                               nil
-                               nil
-                               nil
-                               nil))
-          (bind [mv f]
-            (StateTransformer. do-result-m
-                               nil
-                               mv
-                               (wrap-check mv f)
-                               nil
-                               nil))
-
-          MonadZero
-          (zero [_]
-            (StateTransformer. do-result-m
-                               nil
-                               (fn [s] (zero (do-result-m [nil])))
-                               (fn [v]
-                                 (StateTransformer. do-result-m
-                                                    v
-                                                    nil
-                                                    nil
-                                                    nil
-                                                    nil))
-                               nil
-                               nil))
-          (plus-step [mv mvs]
-            (StateTransformer. do-result-m
-                               nil
-                               nil
-                               nil
-                               (list mv mvs)
-                               nil))
-          (plus-step* [mv mvs]
-            (StateTransformer. do-result-m
-                               nil
-                               nil
-                               nil
-                               nil (list mv mvs)))
-
-          MonadDev
-          (val-types [_]
-            [[monads.core.IState]])
-
-          IState
-          (i-state [_]))))))
+        (state-t-factory (fn [s] (do-result-m [s (f s)]))
+                         state-t*)))))
 
 (defn set-state-t
   "Return a function that returns a StateTransformer monad value (for

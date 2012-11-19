@@ -103,8 +103,8 @@
          zero-val-list)))
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
-          defined in a section below the tests for those monad
-          functions")
+         defined in a section below the tests for those monad
+         functions.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -145,8 +145,8 @@
          zero-val-vector)))
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
-          defined in a section below the tests for those monad
-          functions")
+         defined in a section below the tests for those monad
+         functions.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -187,8 +187,8 @@
          zero-val-lazy-seq)))
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
-          defined in a section below the tests for those monad
-          functions")
+         defined in a section below the tests for those monad
+         functions.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -229,8 +229,8 @@
          zero-val-set)))
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
-          defined in a section below the tests for those monad
-          functions")
+         defined in a section below the tests for those monad
+         functions.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -329,8 +329,8 @@
          zero-val-maybe)))
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
-          defined in a section below the tests for those monad
-          functions")
+         defined in a section below the tests for those monad
+         functions.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -340,9 +340,9 @@
 
 (deftest state-equality
   "Equality testing for monads.core.State instances is limited owing to
-   the fact that those instances may contain function values which
-   may not be reliably tested for equality, i.e. if they are anonymous
-   functions."
+  the fact that those instances may contain function values which
+  may not be reliably tested for equality, i.e. if they are anonymous
+  functions."
   (is (= (m/state 1) (m/state 1)))
   (is (= (m/state {:a 1}) (m/state {:a 1})))
   (is (not= (m/state 1) (m/state :1)))
@@ -392,10 +392,11 @@
 
 (deftest update-state-equality
   "The following assertions demonstrate the limitations of testing
-   equality for monads.core.State instances. See the docstring for
-   test 'state-equality' defined above."
-  (is (= (m/update-state identity)
-         (m/update-state identity)))
+  equality for monads.core.State instances, with respect to the
+  implementation of monads.core/update-state. See the docstring for test
+  'state-equality' defined above."
+  (is (not= (m/update-state identity)
+            (m/update-state identity)))
   (is (not= (m/update-state identity)
             (m/update-state inc)))
   (is (not= (m/update-state (fn [s] s))
@@ -459,8 +460,8 @@
 
 (deftest state-equality-2+-ary-factory
   "The following assertions demonstrate the limitations of testing
-   equality for monads.core.State instances. See the docstring for
-   test 'state-equality' defined above."
+  equality for monads.core.State instances. See the docstring for
+  test 'state-equality' defined above."
   (is (not= (state-f-2+-ary-factory 1) (state-f-2+-ary-factory 1)))
   (is (not= (state-f-2+-ary-factory {:a 1})
             (state-f-2+-ary-factory {:a 1}))))
@@ -480,9 +481,9 @@
 
 (deftest cont-equality
   "Equality testing for monads.core.Continuation instances is limited
-   owing to the fact that those instances may contain function values
-   which may not be reliably tested for equality, i.e. if they are
-   anonymous functions."
+  owing to the fact that those instances may contain function values
+  which may not be reliably tested for equality, i.e. if they are
+  anonymous functions."
   (is (= (m/cont 1) (m/cont 1)))
   (is (= (m/cont {:a 1}) (m/cont {:a 1})))
   (is (not= (m/cont 1) (m/cont :1)))
@@ -735,8 +736,8 @@
          @(m/maybe :test))))
 
 (comment "Tests for monads.core/plus and monads.core/plus* for the
-          various monad transformers are defined in the sections below
-          for their respective transformer.")
+         various monad transformers are defined in the sections below
+         for their respective transformer.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;  monads.core/comprehend
@@ -824,8 +825,8 @@
 (comment
 
   "The following will throw runtime excpetions since
-   clojure.core/lazy-seq, monads.core/lazy-seq and
-   monads.core/lazy-seq* are macros."
+  clojure.core/lazy-seq, monads.core/lazy-seq and
+  monads.core/lazy-seq* are macros."
 
   (m/seq lazy-seq [])
   (m/seq m/lazy-seq [])
@@ -981,7 +982,7 @@
          @(m/maybe 6))))
 
 (comment "Zero Laws tests for the various monad transformers are defined
-          in the sections below for their respective transformer.")
+         in the sections below for their respective transformer.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1567,9 +1568,9 @@
 
 (deftest state-t-equality
   "Equality testing for monads.core.StateTransformer instances is
-   limited owing to the fact that those instances may contain function
-   values which may not be reliably tested for equality, i.e. if they
-   are anonymous functions."
+  limited owing to the fact that those instances may contain function
+  values which may not be reliably tested for equality, i.e. if they
+  are anonymous functions."
   (is (= (vec-state 1) (vec-state 1)))
   (is (= (vec-state {:a 1}) (vec-state {:a 1})))
   (is (not= (vec-state 1) (vec-state :1)))
@@ -1626,10 +1627,11 @@
 
 (deftest update-state-t-equality
   "The following assertions demonstrate the limitations of testing
-   equality for monads.core.StateTransformer instances. See the
-   docstring for test 'state-t-equality' defined above."
-  (is (= (update-vec-state identity)
-         (update-vec-state identity)))
+  equality for monads.core.StateTransformer instances, with respect to
+  the implementation of monads.core/update-state-t. See the docstring
+  for test 'state-t-equality' defined above."
+  (is (not= (update-vec-state identity)
+            (update-vec-state identity)))
   (is (not= (update-vec-state identity)
             (update-vec-state inc)))
   (is (not= (update-vec-state (fn [s] s))
@@ -1699,8 +1701,8 @@
 
 (deftest state-t-equality-2+-ary-factory
   "The following assertions demonstrate the limitations of testing
-   equality for monads.core.StateTransformer instances. See the
-   docstring for test 'state-t-equality' defined above."
+  equality for monads.core.StateTransformer instances. See the
+  docstring for test 'state-t-equality' defined above."
   (is (not= (state-t-f-2+-ary-factory 1)
             (state-t-f-2+-ary-factory 1)))
   (is (not= (state-t-f-2+-ary-factory {:a 1})

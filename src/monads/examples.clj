@@ -59,7 +59,7 @@
 
 (defex ex4b
   "Will throw an exception since monads.core/*check-types* is
-   dynamically bound to true."
+  dynamically bound to true."
   (binding [m/*check-types* true]
     (m/do hash-set
           [x (into [] (range 5))
@@ -69,7 +69,7 @@
 
 (defex ex4c
   "Will not throw an exception since monads.core/*check-types* is bound
-   to false by default."
+  to false by default."
   (m/do hash-set
         [x (into [] (range 5))
          y (into #{} (range 3))]
