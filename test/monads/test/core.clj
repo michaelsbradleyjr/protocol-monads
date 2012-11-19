@@ -109,7 +109,7 @@
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
          defined in a section below the tests for those monad
-         functions.")
+         utilities.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -151,7 +151,7 @@
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
          defined in a section below the tests for those monad
-         functions.")
+         utilities.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -193,7 +193,7 @@
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
          defined in a section below the tests for those monad
-         functions.")
+         utilities.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -235,7 +235,7 @@
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
          defined in a section below the tests for those monad
-         functions.")
+         utilities.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -335,7 +335,7 @@
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
          defined in a section below the tests for those monad
-         functions.")
+         utilities.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
