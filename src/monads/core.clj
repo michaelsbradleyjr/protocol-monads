@@ -1151,7 +1151,7 @@
                            (if-not (coll? bres)
                              bres
                              (if-let [filt (seq* (filter #(not= % Nothing) bres))]
-                               (into (zero bres) filt)
+                               (plus (map* do-result-m filt))
                                (do-result-m Nothing)))))))
 
   MonadZero
