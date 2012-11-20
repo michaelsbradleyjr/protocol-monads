@@ -385,9 +385,6 @@
 ;; Monad describing stateful computations. The monadic values have the
 ;; structure (fn [old-state] [result new-state]).
 
-(defprotocol IState
-  (i-state [_]))
-
 (deftype State [v mv f]
   clojure.lang.IHashEq
   (hasheq [this]
@@ -422,10 +419,7 @@
 
   MonadDev
   (val-types [_]
-    [[monads.core.IState]])
-
-  IState
-  (i-state [_]))
+    [[State]]))
 
 (declare state-mv-dummy)
 
@@ -1310,10 +1304,7 @@
 
   MonadDev
   (val-types [_]
-    [[monads.core.IState]])
-
-  IState
-  (i-state [_]))
+    [[StateTransformer]]))
 
 (defn state-t
   [mv-factory]
