@@ -1761,12 +1761,12 @@
              (fn [_] (vec-state (+ n 5)))
              (fn [v] (vec-state (+ v 5)))))
 
-(deftest first-law-state-2+-ary
-  (let [mv1 (m/bind (do-result-state 10) state-t-f-2+-ary-factory)
+(deftest first-law-state-t-2+-ary
+  (let [mv1 (m/bind (do-result-vec-state 10) state-t-f-2+-ary-factory)
         mv2 (state-t-f-2+-ary-factory 10)]
     (is (= (mv1 []) (mv2 [])))))
 
-(deftest third-law-state-2+-ary
+(deftest third-law-state-t-2+-ary
   (let [mv1 (m/bind (m/bind (vec-state 4) state-t-f-2+-ary-factory) state-t-g-2+-ary-factory)
         mv2 (m/bind (vec-state 4)
                     (fn [x]
