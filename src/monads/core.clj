@@ -427,7 +427,7 @@
   IState
   (i-state [_]))
 
-(declare state-mv)
+(declare state-mv-dummy)
 
 (defn state
   ([v]
@@ -437,21 +437,21 @@
   ([mv f]
      (State. nil
              mv
-             (wrap-check state-mv f)))
+             (wrap-check state-mv-dummy f)))
   ([mv f & fs]
      (let [f* (first fs)]
        (if-let [fs (seq* (rest fs))]
          (apply state (concat
                        [(State. nil
                                 mv
-                                (wrap-check state-mv f))
+                                (wrap-check state-mv-dummy f))
                         f*] fs))
          (state (State. nil
                         mv
-                        (wrap-check state-mv f))
+                        (wrap-check state-mv-dummy f))
                 f*)))))
 
-(def ^:private state-mv (state [nil]))
+(def ^:private state-mv-dummy (state [nil]))
 
 (defn- state*
   [v]
@@ -1318,13 +1318,13 @@
 (defn state-t
   [mv-factory]
   (let [do-result-m (partial do-result (mv-factory [nil]))
-        state-t-mv (StateTransformer. do-result-m
-                                      nil
-                                      nil
-                                      nil
-                                      nil
-                                      nil
-                                      nil)]
+        state-t-mv-dummy (StateTransformer. do-result-m
+                                            [nil]
+                                            nil
+                                            nil
+                                            nil
+                                            nil
+                                            nil)]
     (fn state-t*
       ([v]
          (let [v (if (and (= mv-factory maybe)
@@ -1342,7 +1342,7 @@
          (StateTransformer. do-result-m
                             nil
                             mv
-                            (wrap-check state-t-mv f)
+                            (wrap-check state-t-mv-dummy f)
                             nil
                             nil
                             nil))
@@ -1353,7 +1353,7 @@
                               [(StateTransformer. do-result-m
                                                   nil
                                                   mv
-                                                  (wrap-check state-t-mv f)
+                                                  (wrap-check state-t-mv-dummy f)
                                                   nil
                                                   nil
                                                   nil)
@@ -1361,7 +1361,7 @@
              (state-t* (StateTransformer. do-result-m
                                           nil
                                           mv
-                                          (wrap-check state-t-mv f)
+                                          (wrap-check state-t-mv-dummy f)
                                           nil
                                           nil
                                           nil)
