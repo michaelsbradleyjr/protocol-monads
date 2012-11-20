@@ -610,7 +610,53 @@
         (m/bind [1 2 3] #(hash-set %))))
   (binding [m/*check-types* false]
     (is (= [1 2 3]
-           (m/bind [1 2 3] #(hash-set %))))))
+           (m/bind [1 2 3] #(hash-set %)))))
+  (is (thrown-with-msg?
+        AssertionError #"Type mismatch.*"
+        ((m/state (fn [s] [1 s]) (fn [v] (fn [s] [v s])))
+         :state)))
+  (is (thrown-with-msg?
+        AssertionError #"Type mismatch.*"
+        ((m/state (m/set-state 1) (fn [v] (fn [s] [v s])))
+         :state)))
+  (is (thrown-with-msg?
+        AssertionError #"Type mismatch.*"
+        ((m/state (fn [s] [1 s])
+                  (fn [v] (fn [s] [v s]))
+                  (fn [v] (fn [s] [v s])))
+         :state)))
+  (is (thrown-with-msg?
+        AssertionError #"Type mismatch.*"
+        ((m/state (fn [s] [1 s])
+                  (fn [v] (m/state v))
+                  (fn [v] (fn [s] [v s])))
+         :state)))
+  (is (thrown-with-msg?
+        AssertionError #"Type mismatch.*"
+        ((m/state (fn [s] [1 s])
+                  (fn [v] (fn [s] [v s]))
+                  (fn [v] (m/state v)))
+         :state)))
+  (binding [m/*check-types* false]
+    (is (= [:state 1]
+           ((m/state (fn [s] [s 1]) (fn [v] (fn [s] [v s])))
+            :state)
+           ((m/state (fn [s] [s 1]) (fn [v] (m/state v)))
+            :state)
+           ((m/state (m/set-state 1) (fn [v] (fn [s] [v s])))
+            :state)
+           ((m/state (fn [s] [s 1])
+                     (fn [v] (fn [s] [v s]))
+                     (fn [v] (fn [s] [v s])))
+            :state)
+           ((m/state (fn [s] [s 1])
+                     (fn [v] (m/state v))
+                     (fn [v] (fn [s] [v s])))
+            :state)
+           ((m/state (m/set-state 1)
+                     (fn [v] (fn [s] [v s]))
+                     (fn [v] (m/state v)))
+            :state)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1735,6 +1781,54 @@
             (state-t-f-2+-ary-factory 1)))
   (is (not= (state-t-f-2+-ary-factory {:a 1})
             (state-t-f-2+-ary-factory {:a 1}))))
+
+(deftest check-return-type-state-t-2+-ary-factory
+  (is (thrown-with-msg?
+        AssertionError #"Type mismatch.*"
+        ((vec-state (fn [s] [[s 1]]) (fn [v] (fn [s] [[v s]])))
+         :state)))
+  (is (thrown-with-msg?
+        AssertionError #"Type mismatch.*"
+        ((vec-state ((m/set-state-t vec-state) 1) (fn [v] (fn [s] [[v s]])))
+         :state)))
+  (is (thrown-with-msg?
+        AssertionError #"Type mismatch.*"
+        ((vec-state (fn [s] [[s 1]])
+                    (fn [v] (fn [s] [[v s]]))
+                    (fn [v] (fn [s] [[v s]])))
+         :state)))
+  (is (thrown-with-msg?
+        AssertionError #"Type mismatch.*"
+        ((vec-state (fn [s] [[s 1]])
+                    (fn [v] (vec-state v))
+                    (fn [v] (fn [s] [[v s]])))
+         :state)))
+  (is (thrown-with-msg?
+        AssertionError #"Type mismatch.*"
+        ((vec-state (fn [s] [[s 1]])
+                    (fn [v] (fn [s] [[v s]]))
+                    (fn [v] (vec-state v)))
+         :state)))
+  (binding [m/*check-types* false]
+    (is (= [[:state 1]]
+           ((vec-state (fn [s] [[s 1]]) (fn [v] (fn [s] [[v s]])))
+            :state)
+           ((vec-state (fn [s] [[s 1]]) (fn [v] (vec-state v)))
+            :state)
+           ((vec-state ((m/set-state-t vec-state) 1) (fn [v] (fn [s] [[v s]])))
+            :state)
+           ((vec-state (fn [s] [[s 1]])
+                       (fn [v] (fn [s] [[v s]]))
+                       (fn [v] (fn [s] [[v s]])))
+            :state)
+           ((vec-state (fn [s] [[s 1]])
+                       (fn [v] (vec-state v))
+                       (fn [v] (fn [s] [[v s]])))
+            :state)
+           ((vec-state ((m/set-state-t vec-state) 1)
+                       (fn [v] (fn [s] [[v s]]))
+                       (fn [v] (vec-state v)))
+            :state)))))
 
 (deftest plus-state-t
   (let [plus-state-t (m/plus [(vec-state 1) (vec-state 2)])
