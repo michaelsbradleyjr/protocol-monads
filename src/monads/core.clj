@@ -18,6 +18,10 @@
   (plus-step [mv mvs])
   (plus-step* [mv mvs]))
 
+(defprotocol MonadTransformer
+  (default-do-result-m [_])
+  (default-plus [_]))
+
 (defprotocol MonadDev
   "Used in conjunction with the type checker."
   (val-types [_]))
@@ -1213,7 +1217,7 @@
 ;; Monad transformer that transforms a monad into a monad of stateful
 ;; computations that have the base monad type as their result.
 
-(deftype StateTransformer [do-result-m v mv f alts lzalts up?]
+(deftype StateTransformer [do-result-m v mv f alts lzalts update? m-zero?]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str StateTransformer))
@@ -1225,7 +1229,8 @@
              (hash f)
              (hash alts)
              (hash lzalts)
-             (hash up?)))
+             (hash update?)
+             (hash m-zero?)))
   (equals [this that]
     (and (= StateTransformer (class that))
          (and (= (.do-result-m that) do-result-m)
@@ -1234,7 +1239,8 @@
               (= (.f that) f)
               (= (.alts that) alts)
               (= (.lzalts that) lzalts)
-              (= (.up? that) up?))))
+              (= (.update? that) update?)
+              (= (.m-zero? that) m-zero?))))
 
   clojure.lang.IFn
   (invoke [_ s]
@@ -1246,7 +1252,8 @@
       f (bind (mv s)
               (fn [[v ss]]
                 ((f v) ss)))
-      :else (if (and (not up?)
+      :else (if (and (not update?)
+                     m-zero?
                      (= v (zero (do-result-m [nil]))))
               v
               (do-result-m [v s]))))
@@ -1259,7 +1266,8 @@
                        nil
                        nil
                        nil
-                       nil))
+                       nil
+                       m-zero?))
   (bind [mv f]
     (StateTransformer. do-result-m
                        nil
@@ -1267,7 +1275,8 @@
                        (wrap-check mv f)
                        nil
                        nil
-                       nil))
+                       nil
+                       m-zero?))
 
   MonadZero
   (zero [_]
@@ -1281,10 +1290,12 @@
                                             nil
                                             nil
                                             nil
-                                            nil))
+                                            nil
+                                            m-zero?))
                        nil
                        nil
-                       nil))
+                       nil
+                       m-zero?))
   (plus-step [mv mvs]
     (StateTransformer. do-result-m
                        nil
@@ -1292,7 +1303,8 @@
                        nil
                        (list mv mvs)
                        nil
-                       nil))
+                       nil
+                       m-zero?))
   (plus-step* [mv mvs]
     (StateTransformer. do-result-m
                        nil
@@ -1300,81 +1312,111 @@
                        nil
                        nil
                        (list mv mvs)
-                       nil))
+                       nil
+                       m-zero?))
+
+  MonadTransformer
+  (default-do-result-m [_]
+    :do-result)
 
   MonadDev
   (val-types [_]
     [[StateTransformer]]))
 
 (defn state-t
-  [mv-factory]
-  (let [do-result-m (partial do-result (mv-factory [nil]))
-        state-t-mv-dummy (StateTransformer. do-result-m
-                                            [nil]
-                                            nil
-                                            nil
-                                            nil
-                                            nil
-                                            nil)]
-    (fn state-t*
-      ([v]
-         (let [v (if (and (= mv-factory maybe)
-                          (= *Nothing* v))
-                   Nothing
-                   v)]
-           (StateTransformer. do-result-m
-                              v
-                              nil
-                              nil
-                              nil
-                              nil
-                              nil)))
-      ([mv f]
-         (StateTransformer. do-result-m
-                            nil
-                            mv
-                            (wrap-check state-t-mv-dummy f)
-                            nil
-                            nil
-                            nil))
-      ([mv f & fs]
-         (let [f* (first fs)]
-           (if-let [fs (seq* (rest fs))]
-             (apply state-t* (concat
-                              [(StateTransformer. do-result-m
-                                                  nil
-                                                  mv
-                                                  (wrap-check state-t-mv-dummy f)
-                                                  nil
-                                                  nil
-                                                  nil)
-                               f*] fs))
-             (state-t* (StateTransformer. do-result-m
-                                          nil
-                                          mv
-                                          (wrap-check state-t-mv-dummy f)
-                                          nil
-                                          nil
-                                          nil)
-                       f*)))))))
+  ([mv-factory]
+     (state-t mv-factory (default-do-result-m (StateTransformer. nil
+                                                                 nil
+                                                                 nil
+                                                                 nil
+                                                                 nil
+                                                                 nil
+                                                                 nil
+                                                                 nil))))
+  ([mv-factory which-do-result-m]
+     (let [mv-dummy (mv-factory [nil])
+           do-result-m (case which-do-result-m
+                         :do-result
+                         (partial do-result mv-dummy)
+                         :factory
+                         mv-factory)
+           maybe? (let [c (class mv-dummy)]
+                    (or (= c Maybe)
+                        (= c MaybeTransformer)))
+           m-zero? (satisfies? MonadZero mv-dummy)
+           state-t-mv-dummy (StateTransformer. do-result-m
+                                               [nil]
+                                               nil
+                                               nil
+                                               nil
+                                               nil
+                                               nil
+                                               m-zero?)]
+       (fn state-t*
+         ([v]
+            (if (and maybe?
+                     (= (maybe v) Nothing))
+              (state-t* (fn [s] (zero mv-dummy))
+                        (fn [v] (state-t* v)))
+              (StateTransformer. do-result-m
+                                 v
+                                 nil
+                                 nil
+                                 nil
+                                 nil
+                                 nil
+                                 m-zero?)))
+         ([mv f]
+            (StateTransformer. do-result-m
+                               nil
+                               mv
+                               (wrap-check state-t-mv-dummy f)
+                               nil
+                               nil
+                               nil
+                               m-zero?))
+         ([mv f & fs]
+            (let [f* (first fs)]
+              (if-let [fs (seq* (rest fs))]
+                (apply state-t* (concat
+                                 [(StateTransformer. do-result-m
+                                                     nil
+                                                     mv
+                                                     (wrap-check state-t-mv-dummy f)
+                                                     nil
+                                                     nil
+                                                     nil
+                                                     m-zero?)
+                                  f*] fs))
+                (state-t* (StateTransformer. do-result-m
+                                             nil
+                                             mv
+                                             (wrap-check state-t-mv-dummy f)
+                                             nil
+                                             nil
+                                             nil
+                                             m-zero?)
+                          f*))))))))
 
 (defn update-state-t
   [state-t-factory]
-  (let []
+  (let [state-t-mv-dummy (state-t-factory [nil])]
     (when *check-types*
       (assert (instance? StateTransformer
-                         (state-t-factory [nil]))
+                         state-t-mv-dummy)
               (str "Type mismatch: monads.core/update-state-t should be "
                    "called with a function that returns an instance of "
                    "monads.core.StateTransformer.")))
-    (let [do-result-m (.do-result-m (state-t-factory [nil]))
+    (let [do-result-m (.do-result-m state-t-mv-dummy)
+          m-zero? (.m-zero? state-t-mv-dummy)
           state-t* (fn [v] (StateTransformer. do-result-m
                                               v
                                               nil
                                               nil
                                               nil
                                               nil
-                                              true))]
+                                              true
+                                              m-zero?))]
       (fn [f]
         (state-t-factory (fn [s] (do-result-m [s (f s)]))
                          state-t*)))))
@@ -1522,7 +1564,7 @@
         writer-m (writer accumulator)]
     (if (= mv-factory maybe)
       (fn [v]
-        (let [mv (if (= *Nothing* v)
+        (let [mv (if (= (maybe v) Nothing)
                    Nothing
                    (do-result-m (writer-m v)))]
           (WriterTransformer. do-result-m
