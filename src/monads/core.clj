@@ -1213,7 +1213,7 @@
 ;; Monad transformer that transforms a monad into a monad of stateful
 ;; computations that have the base monad type as their result.
 
-(deftype StateTransformer [do-result-m v mv f alts lzalts up?]
+(deftype StateTransformer [do-result-m v mv f alts lzalts up? zero?]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str StateTransformer))
@@ -1225,7 +1225,8 @@
              (hash f)
              (hash alts)
              (hash lzalts)
-             (hash up?)))
+             (hash up?)
+             (hash zero?)))
   (equals [this that]
     (and (= StateTransformer (class that))
          (and (= (.do-result-m that) do-result-m)
@@ -1234,7 +1235,8 @@
               (= (.f that) f)
               (= (.alts that) alts)
               (= (.lzalts that) lzalts)
-              (= (.up? that) up?))))
+              (= (.up? that) up?)
+              (= (.zero? that) zero?))))
 
   clojure.lang.IFn
   (invoke [_ s]
@@ -1247,6 +1249,7 @@
               (fn [[v ss]]
                 ((f v) ss)))
       :else (if (and (not up?)
+                     zero?
                      (= v (zero (do-result-m [nil]))))
               v
               (do-result-m [v s]))))
@@ -1259,7 +1262,8 @@
                        nil
                        nil
                        nil
-                       nil))
+                       nil
+                       zero?))
   (bind [mv f]
     (StateTransformer. do-result-m
                        nil
@@ -1267,7 +1271,8 @@
                        (wrap-check mv f)
                        nil
                        nil
-                       nil))
+                       nil
+                       zero?))
 
   MonadZero
   (zero [_]
@@ -1281,10 +1286,12 @@
                                             nil
                                             nil
                                             nil
-                                            nil))
+                                            nil
+                                            zero?))
                        nil
                        nil
-                       nil))
+                       nil
+                       zero?))
   (plus-step [mv mvs]
     (StateTransformer. do-result-m
                        nil
@@ -1292,7 +1299,8 @@
                        nil
                        (list mv mvs)
                        nil
-                       nil))
+                       nil
+                       zero?))
   (plus-step* [mv mvs]
     (StateTransformer. do-result-m
                        nil
@@ -1300,7 +1308,8 @@
                        nil
                        nil
                        (list mv mvs)
-                       nil))
+                       nil
+                       zero?))
 
   MonadDev
   (val-types [_]
@@ -1308,27 +1317,61 @@
 
 (defn state-t
   [mv-factory]
-  (let [do-result-m (partial do-result (mv-factory [nil]))
+  (let [mv-dummy (mv-factory [nil])
+        do-result-m mv-factory #_(partial do-result mv-dummy)
+        maybe? (let [c (class mv-dummy)]
+                 (or (= c Maybe)
+                     (= c MaybeTransformer)))
+        zero? (satisfies? MonadZero mv-dummy)
         state-t-mv-dummy (StateTransformer. do-result-m
                                             [nil]
                                             nil
                                             nil
                                             nil
                                             nil
-                                            nil)]
+                                            nil
+                                            zero?)]
     (fn state-t*
       ([v]
-         (let [v (if (and (= mv-factory maybe)
-                          (= *Nothing* v))
-                   Nothing
-                   v)]
+         (if (and maybe?
+                  (= (maybe v) Nothing))
+           (StateTransformer. do-result-m
+                              nil
+                              (fn [s] (zero (do-result-m [nil])))
+                              (fn [v]
+                                (StateTransformer. do-result-m
+                                                   v
+                                                   nil
+                                                   nil
+                                                   nil
+                                                   nil
+                                                   nil
+                                                   zero?))
+                              nil
+                              nil
+                              nil
+                              zero?)
            (StateTransformer. do-result-m
                               v
                               nil
                               nil
                               nil
                               nil
-                              nil)))
+                              nil
+                              zero?)))
+      ;; ([v]
+      ;;    (let [v (if (and maybe?
+      ;;                     (= (maybe v) Nothing))
+      ;;              Nothing
+      ;;              v)]
+      ;;      (StateTransformer. do-result-m
+      ;;                         v
+      ;;                         nil
+      ;;                         nil
+      ;;                         nil
+      ;;                         nil
+      ;;                         nil
+      ;;                         zero?)))
       ([mv f]
          (StateTransformer. do-result-m
                             nil
@@ -1336,7 +1379,8 @@
                             (wrap-check state-t-mv-dummy f)
                             nil
                             nil
-                            nil))
+                            nil
+                            zero?))
       ([mv f & fs]
          (let [f* (first fs)]
            (if-let [fs (seq* (rest fs))]
@@ -1347,7 +1391,8 @@
                                                   (wrap-check state-t-mv-dummy f)
                                                   nil
                                                   nil
-                                                  nil)
+                                                  nil
+                                                  zero?)
                                f*] fs))
              (state-t* (StateTransformer. do-result-m
                                           nil
@@ -1355,7 +1400,8 @@
                                           (wrap-check state-t-mv-dummy f)
                                           nil
                                           nil
-                                          nil)
+                                          nil
+                                          zero?)
                        f*)))))))
 
 (defn update-state-t
@@ -1368,13 +1414,15 @@
                    "called with a function that returns an instance of "
                    "monads.core.StateTransformer.")))
     (let [do-result-m (.do-result-m (state-t-factory [nil]))
+          zero? (satisfies? MonadZero (state-t-factory [nil]))
           state-t* (fn [v] (StateTransformer. do-result-m
                                               v
                                               nil
                                               nil
                                               nil
                                               nil
-                                              true))]
+                                              true
+                                              zero?))]
       (fn [f]
         (state-t-factory (fn [s] (do-result-m [s (f s)]))
                          state-t*)))))
@@ -1522,7 +1570,7 @@
         writer-m (writer accumulator)]
     (if (= mv-factory maybe)
       (fn [v]
-        (let [mv (if (= *Nothing* v)
+        (let [mv (if (= (maybe v) Nothing)
                    Nothing
                    (do-result-m (writer-m v)))]
           (WriterTransformer. do-result-m
