@@ -10,7 +10,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol Monad
-  (do-result [_ v])
+  (return [_ v])
   (bind [mv f]))
 
 (defprotocol MonadZero
@@ -19,7 +19,7 @@
   (plus-step* [mv mvs]))
 
 (defprotocol MonadTransformer
-  (default-do-result-m [_])
+  (default-return-m [_])
   (default-plus [_]))
 
 (defprotocol MonadDev
@@ -113,7 +113,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 ;; The "dummy value" [nil] is used in several expressions below to
-;; couple calls to bind, zero and do-result to a particular
+;; couple calls to bind, zero and return to a particular
 ;; protocol-monad, as determined by the return type of the monadic
 ;; value factory function.
 ;;
@@ -130,7 +130,7 @@
 
 (extend-type clojure.lang.PersistentList
   Monad
-  (do-result [_ v]
+  (return [_ v]
     (list v))
   (bind [mv f]
     (apply list (mapcat (wrap-check mv f) mv)))
@@ -163,7 +163,7 @@
 
 (extend-type clojure.lang.PersistentList$EmptyList
   Monad
-  (do-result [_ v]
+  (return [_ v]
     (list v))
   (bind [mv f]
     (apply list (mapcat (wrap-check mv f) mv)))
@@ -196,7 +196,7 @@
 
 (extend-type clojure.lang.PersistentVector
   Monad
-  (do-result [_ v]
+  (return [_ v]
     [v])
   (bind [mv f]
     (vec (mapcat (wrap-check mv f) mv)))
@@ -229,7 +229,7 @@
 
 (extend-type clojure.lang.LazySeq
   Monad
-  (do-result [_ v]
+  (return [_ v]
     (lazy-seq* v))
   (bind [mv f]
     (lazy-seq (mapcat (wrap-check mv f) mv)))
@@ -262,7 +262,7 @@
 
 (extend-type clojure.lang.PersistentHashSet
   Monad
-  (do-result [_ v]
+  (return [_ v]
     #{v})
   (bind [mv f]
     (set (apply cset/union (map* (wrap-check mv f) mv))))
@@ -325,7 +325,7 @@
       v))
 
   Monad
-  (do-result [_ v]
+  (return [_ v]
     (Maybe. v))
   (bind [mv f]
     (if (= mv Nothing)
@@ -412,7 +412,7 @@
       [v s]))
 
   Monad
-  (do-result [_ v]
+  (return [_ v]
     (State. v
             nil
             nil))
@@ -547,7 +547,7 @@
       (c v)))
 
   Monad
-  (do-result [_ v]
+  (return [_ v]
     (Continuation. v
                    nil
                    nil))
@@ -622,7 +622,7 @@
     [v accumulator])
 
   Monad
-  (do-result [_ v]
+  (return [_ v]
     (Writer. v
              (writer-m-empty accumulator)))
   (bind [mv f]
@@ -680,7 +680,7 @@
                                                        ~expr)
                                        :else `(monads.core/bind ~mv (fn [~sym]
                                                                       ~expr))))
-                                   `(monads.core/do-result (~mv-factory [nil]) ~expr)
+                                   `(monads.core/return (~mv-factory [nil]) ~expr)
                                    (reverse steps))))))
 
 (defn plus [[mv & mvs]]
@@ -701,7 +701,7 @@
                               (fn [acc x]
                                 (bind mv (partial steps (conj acc x)))))
                             (fn [acc x]
-                              (do-result mv (f (conj acc x))))
+                              (return mv (f (conj acc x))))
                             (reverse (rest mvs)))]
     (bind mv (partial rest-steps []))))
 
@@ -718,7 +718,7 @@
   ([mv-factory mvs]
      (if (seq* mvs)
        (comprehend (partial apply list) mvs)
-       (do-result (mv-factory [nil]) (list)))))
+       (return (mv-factory [nil]) (list)))))
 
 (defn lift
   "Converts a function f to a function of monadic arguments returning a
@@ -730,7 +730,7 @@
 (defn reduce
   "Return the reduction of (monads.core/lift f) over the list of monadic
   values mvs, with optional initial value
-  (monads.core/do-result (first mvs) val)."
+  (monads.core/return (first mvs) val)."
   ([f mvs]
      (assert
       (seq* mvs)
@@ -742,7 +742,7 @@
       (seq* mvs)
       "At least one monadic value is required by monads.core/reduce.")
      (let [lf (lift f)
-           mv (do-result (first mvs) val)]
+           mv (return (first mvs) val)]
        (reduce* lf mv mvs))))
 
 (defn join
@@ -755,7 +755,7 @@
   "Bind the monadic value mv to the function f. Returning (f x) for
   argument x"
   [f mv]
-  (bind mv (fn [x] (do-result mv (f x)))))
+  (bind mv (fn [x] (return mv (f x)))))
 
 (defn map
   "'Executes' the sequence of monadic values resulting from mapping
@@ -774,7 +774,7 @@
           chain (reduce* (fn [chain step]
                            (fn [x]
                              (bind (step x) chain)))
-                         (partial do-result mv)
+                         (partial return mv)
                          (reverse (rest steps)))]
       (bind mv chain))))
 
@@ -809,17 +809,17 @@
 ;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are lists.
 
-(deftype ListTransformer [do-result-m v]
+(deftype ListTransformer [return-m v]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str ListTransformer))
              (.hashCode this)))
   (hashCode [_]
-    (bit-xor (hash do-result-m)
+    (bit-xor (hash return-m)
              (hash v)))
   (equals [this that]
     (and (= ListTransformer (class that))
-         (and (= (.do-result-m that) do-result-m)
+         (and (= (.return-m that) return-m)
               (= (.v that) v))))
 
   clojure.lang.IDeref
@@ -827,29 +827,29 @@
     v)
 
   Monad
-  (do-result [_ v]
-    (ListTransformer. do-result-m
-                      (do-result-m (list v))))
+  (return [_ v]
+    (ListTransformer. return-m
+                      (return-m (list v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (ListTransformer. do-result-m
+      (ListTransformer. return-m
                         (bind v (fn [xs]
                                   (if (seq* xs)
                                     (->> xs
                                          (map (comp deref (wrap-check mv f)))
                                          (fmap plus))
-                                    (do-result-m (list))))))))
+                                    (return-m (list))))))))
   MonadZero
   (zero [_]
-    (ListTransformer. do-result-m
-                      (do-result-m (list))))
+    (ListTransformer. return-m
+                      (return-m (list))))
   (plus-step [mv mvs]
-    (ListTransformer. do-result-m
+    (ListTransformer. return-m
                       (apply
                        (lift (fn [& vs] (plus vs)))
                        (map* deref (cons mv mvs)))))
   (plus-step* [mv mvs]
-    (ListTransformer. do-result-m
+    (ListTransformer. return-m
                       (apply
                        (lift (fn [& vs] (plus vs)))
                        (map* deref (cons mv (map* #(%) mvs))))))
@@ -860,11 +860,11 @@
 
 (defn list-t
   [mv-factory]
-  (let [do-result-m (partial do-result (mv-factory [nil]))]
+  (let [return-m (partial return (mv-factory [nil]))]
     (if (= mv-factory maybe)
       (fn [& vs]
-        (ListTransformer. do-result-m
-                          (do-result-m
+        (ListTransformer. return-m
+                          (return-m
                            (if-not (seq* vs)
                              (list)
                              (plus (fmap
@@ -873,8 +873,8 @@
                                        (list %))
                                     (vec vs)))))))
       (fn [& vs]
-        (ListTransformer. do-result-m
-                          (do-result-m (apply list vs)))))))
+        (ListTransformer. return-m
+                          (return-m (apply list vs)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -885,17 +885,17 @@
 ;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are vectors.
 
-(deftype VectorTransformer [do-result-m v]
+(deftype VectorTransformer [return-m v]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str VectorTransformer))
              (.hashCode this)))
   (hashCode [_]
-    (bit-xor (hash do-result-m)
+    (bit-xor (hash return-m)
              (hash v)))
   (equals [this that]
     (and (= VectorTransformer (class that))
-         (and (= (.do-result-m that) do-result-m)
+         (and (= (.return-m that) return-m)
               (= (.v that) v))))
 
   clojure.lang.IDeref
@@ -903,30 +903,30 @@
     v)
 
   Monad
-  (do-result [_ v]
-    (VectorTransformer. do-result-m
-                        (do-result-m [v])))
+  (return [_ v]
+    (VectorTransformer. return-m
+                        (return-m [v])))
   (bind [mv f]
     (let [v (deref mv)]
-      (VectorTransformer. do-result-m
+      (VectorTransformer. return-m
                           (bind v (fn [xs]
                                     (if (seq* xs)
                                       (->> xs
                                            (map (comp deref (wrap-check mv f)))
                                            (fmap plus))
-                                      (do-result-m [])))))))
+                                      (return-m [])))))))
 
   MonadZero
   (zero [_]
-    (VectorTransformer. do-result-m
-                        (do-result-m [])))
+    (VectorTransformer. return-m
+                        (return-m [])))
   (plus-step [mv mvs]
-    (VectorTransformer. do-result-m
+    (VectorTransformer. return-m
                         (apply
                          (lift (fn [& vs] (plus vs)))
                          (map* deref (cons mv mvs)))))
   (plus-step* [mv mvs]
-    (VectorTransformer. do-result-m
+    (VectorTransformer. return-m
                         (apply
                          (lift (fn [& vs] (plus vs)))
                          (map* deref (cons mv (map* #(%) mvs))))))
@@ -937,11 +937,11 @@
 
 (defn vector-t
   [mv-factory]
-  (let [do-result-m (partial do-result (mv-factory [nil]))]
+  (let [return-m (partial return (mv-factory [nil]))]
     (if (= mv-factory maybe)
       (fn [& vs]
-        (VectorTransformer. do-result-m
-                            (do-result-m
+        (VectorTransformer. return-m
+                            (return-m
                              (if-not (seq* vs)
                                []
                                (plus (fmap
@@ -950,8 +950,8 @@
                                          [%])
                                       (vec vs)))))))
       (fn [& vs]
-        (VectorTransformer. do-result-m
-                            (do-result-m (vec vs)))))))
+        (VectorTransformer. return-m
+                            (return-m (vec vs)))))))
 
 (def vec-t vector-t)
 
@@ -964,17 +964,17 @@
 ;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are lazy sequences.
 
-(deftype LazySeqTransformer [do-result-m v]
+(deftype LazySeqTransformer [return-m v]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str LazySeqTransformer))
              (.hashCode this)))
   (hashCode [_]
-    (bit-xor (hash do-result-m)
+    (bit-xor (hash return-m)
              (hash v)))
   (equals [this that]
     (and (= LazySeqTransformer (class that))
-         (and (= (.do-result-m that) do-result-m)
+         (and (= (.return-m that) return-m)
               (= (.v that) v))))
 
   clojure.lang.IDeref
@@ -982,30 +982,30 @@
     v)
 
   Monad
-  (do-result [_ v]
-    (LazySeqTransformer. do-result-m
-                         (do-result-m (lazy-seq* v))))
+  (return [_ v]
+    (LazySeqTransformer. return-m
+                         (return-m (lazy-seq* v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (LazySeqTransformer. do-result-m
+      (LazySeqTransformer. return-m
                            (bind v (fn [xs]
                                      (if (seq* xs)
                                        (->> xs
                                             (map (comp deref (wrap-check mv f)))
                                             (fmap plus))
-                                       (do-result-m (lazy-seq))))))))
+                                       (return-m (lazy-seq))))))))
 
   MonadZero
   (zero [_]
-    (LazySeqTransformer. do-result-m
-                         (do-result-m (lazy-seq))))
+    (LazySeqTransformer. return-m
+                         (return-m (lazy-seq))))
   (plus-step [mv mvs]
-    (LazySeqTransformer. do-result-m
+    (LazySeqTransformer. return-m
                          (apply
                           (lift (fn [& vs] (plus vs)))
                           (map* deref (cons mv mvs)))))
   (plus-step* [mv mvs]
-    (LazySeqTransformer. do-result-m
+    (LazySeqTransformer. return-m
                          (apply
                           (lift (fn [& vs] (plus vs)))
                           (map* deref (cons mv (map* #(%) mvs))))))
@@ -1016,11 +1016,11 @@
 
 (defn lazy-seq-t
   [mv-factory]
-  (let [do-result-m (partial do-result (mv-factory [nil]))]
+  (let [return-m (partial return (mv-factory [nil]))]
     (if (= mv-factory maybe)
       (fn [& vs]
-        (LazySeqTransformer. do-result-m
-                             (do-result-m
+        (LazySeqTransformer. return-m
+                             (return-m
                               (if-not (seq* vs)
                                 (lazy-seq)
                                 (plus (fmap
@@ -1029,8 +1029,8 @@
                                           (lazy-seq* %))
                                        (vec vs)))))))
       (fn [& vs]
-        (LazySeqTransformer. do-result-m
-                             (do-result-m (lazy-seq vs)))))))
+        (LazySeqTransformer. return-m
+                             (return-m (lazy-seq vs)))))))
 
 (def lazy-t lazy-seq-t)
 
@@ -1043,17 +1043,17 @@
 ;; Monad transformer that transforms a monad into a monad in which
 ;; the base values are sets.
 
-(deftype SetTransformer [do-result-m v]
+(deftype SetTransformer [return-m v]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str SetTransformer))
              (.hashCode this)))
   (hashCode [_]
-    (bit-xor (hash do-result-m)
+    (bit-xor (hash return-m)
              (hash v)))
   (equals [this that]
     (and (= SetTransformer (class that))
-         (and (= (.do-result-m that) do-result-m)
+         (and (= (.return-m that) return-m)
               (= (.v that) v))))
 
   clojure.lang.IDeref
@@ -1061,30 +1061,30 @@
     v)
 
   Monad
-  (do-result [_ v]
-    (SetTransformer. do-result-m
-                     (do-result-m #{v})))
+  (return [_ v]
+    (SetTransformer. return-m
+                     (return-m #{v})))
   (bind [mv f]
     (let [v (deref mv)]
-      (SetTransformer. do-result-m
+      (SetTransformer. return-m
                        (bind v (fn [xs]
                                  (if (seq* xs)
                                    (->> xs
                                         (map (comp deref (wrap-check mv f)))
                                         (fmap plus))
-                                   (do-result-m #{})))))))
+                                   (return-m #{})))))))
 
   MonadZero
   (zero [_]
-    (SetTransformer. do-result-m
-                     (do-result-m #{})))
+    (SetTransformer. return-m
+                     (return-m #{})))
   (plus-step [mv mvs]
-    (SetTransformer. do-result-m
+    (SetTransformer. return-m
                      (apply
                       (lift (fn [& vs] (plus vs)))
                       (map* deref (cons mv mvs)))))
   (plus-step* [mv mvs]
-    (SetTransformer. do-result-m
+    (SetTransformer. return-m
                      (apply
                       (lift (fn [& vs] (plus vs)))
                       (map* deref (cons mv (map* #(%) mvs))))))
@@ -1095,11 +1095,11 @@
 
 (defn set-t
   [mv-factory]
-  (let [do-result-m (partial do-result (mv-factory [nil]))]
+  (let [return-m (partial return (mv-factory [nil]))]
     (if (= mv-factory maybe)
       (fn [& vs]
-        (SetTransformer. do-result-m
-                         (do-result-m
+        (SetTransformer. return-m
+                         (return-m
                           (if-not (seq* vs)
                             #{}
                             (plus (fmap
@@ -1108,8 +1108,8 @@
                                       #{%})
                                    (vec vs)))))))
       (fn [& vs]
-        (SetTransformer. do-result-m
-                         (do-result-m (apply hash-set vs)))))))
+        (SetTransformer. return-m
+                         (return-m (apply hash-set vs)))))))
 
 (def hash-set-t set-t)
 
@@ -1122,17 +1122,17 @@
 ;; Monad transformer that transforms a monad into a monad in which the
 ;; base values can be invalid (represented by monads.core/Nothing).
 
-(deftype MaybeTransformer [do-result-m v]
+(deftype MaybeTransformer [return-m v]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str MaybeTransformer))
              (.hashCode this)))
   (hashCode [_]
-    (bit-xor (hash do-result-m)
+    (bit-xor (hash return-m)
              (hash v)))
   (equals [this that]
     (and (= MaybeTransformer (class that))
-         (and (= (.do-result-m that) do-result-m)
+         (and (= (.return-m that) return-m)
               (= (.v that) v))))
 
   clojure.lang.IDeref
@@ -1140,53 +1140,53 @@
     v)
 
   Monad
-  (do-result [_ v]
-    (MaybeTransformer. do-result-m
-                       (do-result-m (Maybe. v))))
+  (return [_ v]
+    (MaybeTransformer. return-m
+                       (return-m (Maybe. v))))
   (bind [mv f]
     (let [v (deref mv)]
-      (MaybeTransformer. do-result-m
+      (MaybeTransformer. return-m
                          (let [bres (bind v (fn [x]
                                               (if (= x Nothing)
-                                                (do-result-m Nothing)
+                                                (return-m Nothing)
                                                 (deref ((wrap-check mv f) (deref x))))))]
                            (if-not (coll? bres)
                              bres
                              (if-let [filt (seq* (filter #(not= % Nothing) bres))]
-                               (plus (map* do-result-m filt))
-                               (do-result-m Nothing)))))))
+                               (plus (map* return-m filt))
+                               (return-m Nothing)))))))
 
   MonadZero
   (zero [_]
-    (MaybeTransformer. do-result-m
-                       (do-result-m Nothing)))
+    (MaybeTransformer. return-m
+                       (return-m Nothing)))
   (plus-step [mv mvs]
-    (MaybeTransformer. do-result-m
+    (MaybeTransformer. return-m
                        (bind (deref mv)
                              (fn [x]
                                (cond
                                  (and (= x Nothing) (empty? mvs))
-                                 (do-result-m Nothing)
+                                 (return-m Nothing)
 
                                  (= x Nothing)
                                  (deref (plus mvs))
 
                                  :else
-                                 (do-result-m x))))))
+                                 (return-m x))))))
   (plus-step* [mv mvs]
     (let [mv (fn thunk [] mv)]
-      (MaybeTransformer. do-result-m
+      (MaybeTransformer. return-m
                          (bind (deref (mv))
                                (fn [x]
                                  (cond
                                    (and (= x Nothing) (empty? mvs))
-                                   (do-result-m Nothing)
+                                   (return-m Nothing)
 
                                    (= x Nothing)
                                    (deref (plus mvs))
 
                                    :else
-                                   (do-result-m x)))))))
+                                   (return-m x)))))))
 
   MonadDev
   (val-types [_]
@@ -1194,9 +1194,9 @@
 
 (defn maybe-t
   [mv-factory]
-  (let [do-result-m (partial do-result (mv-factory [nil]))]
+  (let [return-m (partial return (mv-factory [nil]))]
     (fn [& vs]
-      (MaybeTransformer. do-result-m
+      (MaybeTransformer. return-m
                          (apply mv-factory
                                 (if-not (seq* vs)
                                   [Nothing]
@@ -1217,13 +1217,13 @@
 ;; Monad transformer that transforms a monad into a monad of stateful
 ;; computations that have the base monad type as their result.
 
-(deftype StateTransformer [do-result-m v mv f alts lzalts update? m-zero?]
+(deftype StateTransformer [return-m v mv f alts lzalts update? m-zero?]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str StateTransformer))
              (.hashCode this)))
   (hashCode [_]
-    (bit-xor (hash do-result-m)
+    (bit-xor (hash return-m)
              (hash v)
              (hash mv)
              (hash f)
@@ -1233,7 +1233,7 @@
              (hash m-zero?)))
   (equals [this that]
     (and (= StateTransformer (class that))
-         (and (= (.do-result-m that) do-result-m)
+         (and (= (.return-m that) return-m)
               (= (.v that) v)
               (= (.mv that) mv)
               (= (.f that) f)
@@ -1254,13 +1254,13 @@
                 ((f v) ss)))
       :else (if (and (not update?)
                      m-zero?
-                     (= v (zero (do-result-m [nil]))))
+                     (= v (zero (return-m [nil]))))
               v
-              (do-result-m [v s]))))
+              (return-m [v s]))))
 
   Monad
-  (do-result [_ v]
-    (StateTransformer. do-result-m
+  (return [_ v]
+    (StateTransformer. return-m
                        v
                        nil
                        nil
@@ -1269,7 +1269,7 @@
                        nil
                        m-zero?))
   (bind [mv f]
-    (StateTransformer. do-result-m
+    (StateTransformer. return-m
                        nil
                        mv
                        (wrap-check mv f)
@@ -1280,11 +1280,11 @@
 
   MonadZero
   (zero [_]
-    (StateTransformer. do-result-m
+    (StateTransformer. return-m
                        nil
-                       (fn [s] (zero (do-result-m [nil])))
+                       (fn [s] (zero (return-m [nil])))
                        (fn [v]
-                         (StateTransformer. do-result-m
+                         (StateTransformer. return-m
                                             v
                                             nil
                                             nil
@@ -1297,7 +1297,7 @@
                        nil
                        m-zero?))
   (plus-step [mv mvs]
-    (StateTransformer. do-result-m
+    (StateTransformer. return-m
                        nil
                        nil
                        nil
@@ -1306,7 +1306,7 @@
                        nil
                        m-zero?))
   (plus-step* [mv mvs]
-    (StateTransformer. do-result-m
+    (StateTransformer. return-m
                        nil
                        nil
                        nil
@@ -1316,8 +1316,8 @@
                        m-zero?))
 
   MonadTransformer
-  (default-do-result-m [_]
-    :do-result)
+  (default-return-m [_]
+    :return)
 
   MonadDev
   (val-types [_]
@@ -1325,7 +1325,7 @@
 
 (defn state-t
   ([mv-factory]
-     (state-t mv-factory (default-do-result-m (StateTransformer. nil
+     (state-t mv-factory (default-return-m (StateTransformer. nil
                                                                  nil
                                                                  nil
                                                                  nil
@@ -1333,18 +1333,18 @@
                                                                  nil
                                                                  nil
                                                                  nil))))
-  ([mv-factory which-do-result-m]
+  ([mv-factory which-return-m]
      (let [mv-dummy (mv-factory [nil])
-           do-result-m (case which-do-result-m
-                         :do-result
-                         (partial do-result mv-dummy)
+           return-m (case which-return-m
+                         :return
+                         (partial return mv-dummy)
                          :factory
                          mv-factory)
            maybe? (let [c (class mv-dummy)]
                     (or (= c Maybe)
                         (= c MaybeTransformer)))
            m-zero? (satisfies? MonadZero mv-dummy)
-           state-t-mv-dummy (StateTransformer. do-result-m
+           state-t-mv-dummy (StateTransformer. return-m
                                                [nil]
                                                nil
                                                nil
@@ -1358,7 +1358,7 @@
                      (= (maybe v) Nothing))
               (state-t* (fn [s] (zero mv-dummy))
                         (fn [v] (state-t* v)))
-              (StateTransformer. do-result-m
+              (StateTransformer. return-m
                                  v
                                  nil
                                  nil
@@ -1367,7 +1367,7 @@
                                  nil
                                  m-zero?)))
          ([mv f]
-            (StateTransformer. do-result-m
+            (StateTransformer. return-m
                                nil
                                mv
                                (wrap-check state-t-mv-dummy f)
@@ -1379,7 +1379,7 @@
             (let [f* (first fs)]
               (if-let [fs (seq* (rest fs))]
                 (apply state-t* (concat
-                                 [(StateTransformer. do-result-m
+                                 [(StateTransformer. return-m
                                                      nil
                                                      mv
                                                      (wrap-check state-t-mv-dummy f)
@@ -1388,7 +1388,7 @@
                                                      nil
                                                      m-zero?)
                                   f*] fs))
-                (state-t* (StateTransformer. do-result-m
+                (state-t* (StateTransformer. return-m
                                              nil
                                              mv
                                              (wrap-check state-t-mv-dummy f)
@@ -1407,9 +1407,9 @@
               (str "Type mismatch: monads.core/update-state-t should be "
                    "called with a function that returns an instance of "
                    "monads.core.StateTransformer.")))
-    (let [do-result-m (.do-result-m state-t-mv-dummy)
+    (let [return-m (.return-m state-t-mv-dummy)
           m-zero? (.m-zero? state-t-mv-dummy)
-          state-t* (fn [v] (StateTransformer. do-result-m
+          state-t* (fn [v] (StateTransformer. return-m
                                               v
                                               nil
                                               nil
@@ -1418,7 +1418,7 @@
                                               true
                                               m-zero?))]
       (fn [f]
-        (state-t-factory (fn [s] (do-result-m [s (f s)]))
+        (state-t-factory (fn [s] (return-m [s (f s)]))
                          state-t*)))))
 
 (defn set-state-t
@@ -1446,10 +1446,10 @@
   is not modified."
   [state-t-factory]
   (let [g (get-state-t state-t-factory)
-        do-result-m-state (partial do-result (state-t-factory [nil]))]
+        return-m-state (partial return (state-t-factory [nil]))]
     (fn [key]
       (bind (g)
-            #(do-result-m-state (get % key))))))
+            #(return-m-state (get % key))))))
 
 (defn update-state-t-val
   "Return a function that returns a StateTransformer monad value (for
@@ -1459,10 +1459,10 @@
   returned."
   [state-t-factory]
   (let [u (update-state-t state-t-factory)
-        do-result-m-state (partial do-result (state-t-factory [nil]))]
+        return-m-state (partial return (state-t-factory [nil]))]
     (fn [key f & args]
       (bind (u #(apply update-in % [key] f args))
-            #(do-result-m-state (get % key))))))
+            #(return-m-state (get % key))))))
 
 (defn set-state-t-val
   "Return a function that returns a StateTransformer monad value (for
@@ -1477,26 +1477,26 @@
 (defn get-in-state-t-val
   [state-t-factory]
   (let [g (get-state-t state-t-factory)
-        do-result-m-state (partial do-result (state-t-factory [nil]))]
+        return-m-state (partial return (state-t-factory [nil]))]
     (fn [path & [default]]
       (bind (g)
-            #(do-result-m-state (get-in % path default))))))
+            #(return-m-state (get-in % path default))))))
 
 (defn assoc-in-state-t-val
   [state-t-factory]
   (let [u (update-state-t state-t-factory)
-        do-result-m-state (partial do-result (state-t-factory [nil]))]
+        return-m-state (partial return (state-t-factory [nil]))]
     (fn [path val]
       (bind (u #(assoc-in % path val))
-            #(do-result-m-state (get-in % path))))))
+            #(return-m-state (get-in % path))))))
 
 (defn update-in-state-t-val
   [state-t-factory]
   (let [u (update-state-t state-t-factory)
-        do-result-m-state (partial do-result (state-t-factory [nil]))]
+        return-m-state (partial return (state-t-factory [nil]))]
     (fn [path f & args]
       (bind (u #(apply update-in % path f args))
-            #(do-result-m-state (get-in % path))))))
+            #(return-m-state (get-in % path))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -1504,18 +1504,18 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(deftype WriterTransformer [do-result-m mv writer-m]
+(deftype WriterTransformer [return-m mv writer-m]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str WriterTransformer))
              (.hashCode this)))
   (hashCode [_]
-    (bit-xor (hash do-result-m)
+    (bit-xor (hash return-m)
              (hash mv)
              (hash writer-m)))
   (equals [this that]
     (and (= WriterTransformer (class that))
-         (and (= (.do-result-m that) do-result-m)
+         (and (= (.return-m that) return-m)
               (= (.mv that) mv)
               (= (.writer-m that) writer-m))))
 
@@ -1524,34 +1524,34 @@
     mv)
 
   Monad
-  (do-result [_ v]
-    (WriterTransformer. do-result-m
-                        (do-result-m (writer-m v))
+  (return [_ v]
+    (WriterTransformer. return-m
+                        (return-m (writer-m v))
                         writer-m))
   (bind [mv f]
-    (WriterTransformer. do-result-m
+    (WriterTransformer. return-m
                         (bind (deref mv)
                               (fn [v]
                                 (let [[v1 a1] (deref v)]
                                   (bind (deref ((wrap-check mv f) v1))
                                         (fn [v]
                                           (let [[v2 a2] (deref v)]
-                                            (do-result-m (Writer. v2
+                                            (return-m (Writer. v2
                                                                   (writer-m-combine a1 a2)))))))))
                         writer-m))
 
   MonadZero
   (zero [mv]
     (let [v (deref mv)]
-      (WriterTransformer. do-result-m
+      (WriterTransformer. return-m
                           (zero v)
                           writer-m)))
   (plus-step [mv mvs]
-    (WriterTransformer. do-result-m
+    (WriterTransformer. return-m
                         (plus (map* deref (cons mv mvs)))
                         writer-m))
   (plus-step* [mv mvs]
-    (WriterTransformer. do-result-m
+    (WriterTransformer. return-m
                         (plus (map* deref (cons mv (map* #(%) mvs))))
                         writer-m))
 
@@ -1560,19 +1560,19 @@
     [[WriterTransformer]]))
 
 (defn writer-t [mv-factory accumulator]
-  (let [do-result-m (partial do-result (mv-factory [nil]))
+  (let [return-m (partial return (mv-factory [nil]))
         writer-m (writer accumulator)]
     (if (= mv-factory maybe)
       (fn [v]
         (let [mv (if (= (maybe v) Nothing)
                    Nothing
-                   (do-result-m (writer-m v)))]
-          (WriterTransformer. do-result-m
+                   (return-m (writer-m v)))]
+          (WriterTransformer. return-m
                               mv
                               writer-m)))
       (fn [v]
-        (let [mv (do-result-m (writer-m v))]
-          (WriterTransformer. do-result-m
+        (let [mv (return-m (writer-m v))]
+          (WriterTransformer. return-m
                               mv
                               writer-m))))))
 
@@ -1593,10 +1593,10 @@
 (defmethod write-writer*
   WriterTransformer
   [writer-t-mv val-to-write]
-  (let [do-result-m (.do-result-m writer-t-mv)
+  (let [return-m (.return-m writer-t-mv)
         mv (bind (deref writer-t-mv)
-                 (fn [writer-mv] (do-result-m (write-writer* writer-mv val-to-write))))]
-    (WriterTransformer. do-result-m
+                 (fn [writer-mv] (return-m (write-writer* writer-mv val-to-write))))]
+    (WriterTransformer. return-m
                         mv
                         (.writer-m writer-t-mv))))
 
@@ -1618,10 +1618,10 @@
 (defmethod listen-writer
   WriterTransformer
   [writer-t-mv]
-  (let [do-result-m (.do-result-m writer-t-mv)
+  (let [return-m (.return-m writer-t-mv)
         mv (bind (deref writer-t-mv)
-                 (fn [writer-mv] (do-result-m (listen-writer writer-mv))))]
-    (WriterTransformer. do-result-m
+                 (fn [writer-mv] (return-m (listen-writer writer-mv))))]
+    (WriterTransformer. return-m
                         mv
                         (.writer-m writer-t-mv))))
 
@@ -1642,9 +1642,9 @@
 (defmethod censor-writer
   WriterTransformer
   [f writer-t-mv]
-  (let [do-result-m (.do-result-m writer-t-mv)
+  (let [return-m (.return-m writer-t-mv)
         mv (bind (deref writer-t-mv)
-                 (fn [writer-mv] (do-result-m (censor-writer f writer-mv))))]
-    (WriterTransformer. do-result-m
+                 (fn [writer-mv] (return-m (censor-writer f writer-mv))))]
+    (WriterTransformer. return-m
                         mv
                         (.writer-m writer-t-mv))))

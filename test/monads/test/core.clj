@@ -81,20 +81,20 @@
 (defn list-g [n]
   (list (+ n 5)))
 
-(def do-result-list (partial m/do-result (list [nil])))
+(def return-list (partial m/return (list [nil])))
 (def zero-val-list (m/zero (list [nil])))
 
-(deftest do-result-and-list-factory-func-equiv
-  (is (= (do-result-list [nil])
+(deftest return-and-list-factory-func-equiv
+  (is (= (return-list [nil])
          (list [nil]))))
 
 (deftest first-law-list
-  (is (= (m/bind (do-result-list 10) list-f)
+  (is (= (m/bind (return-list 10) list-f)
          (list-f 10))))
 
 (deftest second-law-list
-  (is (= (m/bind (do-result-list 10) do-result-list)
-         (do-result-list 10))))
+  (is (= (m/bind (return-list 10) return-list)
+         (return-list 10))))
 
 (deftest third-law-list
   (is (= (m/bind (m/bind '(4 9) list-f) list-g)
@@ -104,7 +104,7 @@
 (deftest zero-laws-list
   (is (= (m/bind zero-val-list list-f)
          zero-val-list))
-  (is (= (m/bind (do-result-list 4) (constantly zero-val-list))
+  (is (= (m/bind (return-list 4) (constantly zero-val-list))
          zero-val-list)))
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
@@ -123,20 +123,20 @@
 (defn vector-g [n]
   (vector (+ n 5)))
 
-(def do-result-vector (partial m/do-result (vector [nil])))
+(def return-vector (partial m/return (vector [nil])))
 (def zero-val-vector (m/zero (vector [nil])))
 
-(deftest do-result-and-vector-factory-func-equiv
-  (is (= (do-result-vector [nil])
+(deftest return-and-vector-factory-func-equiv
+  (is (= (return-vector [nil])
          (vector [nil]))))
 
 (deftest first-law-vector
-  (is (= (m/bind (do-result-vector 10) vector-f)
+  (is (= (m/bind (return-vector 10) vector-f)
          (vector-f 10))))
 
 (deftest second-law-vector
-  (is (= (m/bind (do-result-vector 10) do-result-vector)
-         (do-result-vector 10))))
+  (is (= (m/bind (return-vector 10) return-vector)
+         (return-vector 10))))
 
 (deftest third-law-vector
   (is (= (m/bind (m/bind [4 9] vector-f) vector-g)
@@ -146,7 +146,7 @@
 (deftest zero-laws-vector
   (is (= (m/bind zero-val-vector vector-f)
          zero-val-vector))
-  (is (= (m/bind (do-result-vector 4) (constantly zero-val-vector))
+  (is (= (m/bind (return-vector 4) (constantly zero-val-vector))
          zero-val-vector)))
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
@@ -165,20 +165,20 @@
 (defn lazy-seq-g [n]
   (m/lazy-seq* (+ n 5)))
 
-(def do-result-lazy-seq (partial m/do-result (m/lazy-seq* [nil])))
+(def return-lazy-seq (partial m/return (m/lazy-seq* [nil])))
 (def zero-val-lazy-seq (m/zero (m/lazy-seq* [nil])))
 
-(deftest do-result-and-lazy-seq-factory-func-equiv
-  (is (= (do-result-lazy-seq [nil])
+(deftest return-and-lazy-seq-factory-func-equiv
+  (is (= (return-lazy-seq [nil])
          (m/lazy-seq* [nil]))))
 
 (deftest first-law-lazy-seq
-  (is (= (m/bind (do-result-lazy-seq 10) lazy-seq-f)
+  (is (= (m/bind (return-lazy-seq 10) lazy-seq-f)
          (lazy-seq-f 10))))
 
 (deftest second-law-lazy-seq
-  (is (= (m/bind (do-result-lazy-seq 10) do-result-lazy-seq)
-         (do-result-lazy-seq 10))))
+  (is (= (m/bind (return-lazy-seq 10) return-lazy-seq)
+         (return-lazy-seq 10))))
 
 (deftest third-law-lazy-seq
   (is (= (m/bind (m/bind (m/lazy-seq* 4 9) lazy-seq-f) lazy-seq-g)
@@ -188,7 +188,7 @@
 (deftest zero-laws-lazy-seq
   (is (= (m/bind zero-val-lazy-seq lazy-seq-f)
          zero-val-lazy-seq))
-  (is (= (m/bind (do-result-lazy-seq 4) (constantly zero-val-lazy-seq))
+  (is (= (m/bind (return-lazy-seq 4) (constantly zero-val-lazy-seq))
          zero-val-lazy-seq)))
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
@@ -207,20 +207,20 @@
 (defn set-g [n]
   (hash-set (+ n 5)))
 
-(def do-result-set (partial m/do-result (hash-set [nil])))
+(def return-set (partial m/return (hash-set [nil])))
 (def zero-val-set (m/zero (hash-set [nil])))
 
-(deftest do-result-and-set-factory-func-equiv
-  (is (= (do-result-set [nil])
+(deftest return-and-set-factory-func-equiv
+  (is (= (return-set [nil])
          (hash-set [nil]))))
 
 (deftest first-law-set
-  (is (= (m/bind (do-result-set 10) set-f)
+  (is (= (m/bind (return-set 10) set-f)
          (set-f 10))))
 
 (deftest second-law-set
-  (is (= (m/bind (do-result-set 10) do-result-set)
-         (do-result-set 10))))
+  (is (= (m/bind (return-set 10) return-set)
+         (return-set 10))))
 
 (deftest third-law-set
   (is (= (m/bind (m/bind #{4 9} set-f) set-g)
@@ -230,7 +230,7 @@
 (deftest zero-laws-set
   (is (= (m/bind zero-val-set set-f)
          zero-val-set))
-  (is (= (m/bind (do-result-set 4) (constantly zero-val-set))
+  (is (= (m/bind (return-set 4) (constantly zero-val-set))
          zero-val-set)))
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
@@ -252,20 +252,20 @@
   (is (not= (m/maybe 1) (m/maybe 2)))
   (is (not= (m/maybe {:a 1}) (m/maybe {:a 2}))))
 
-(def do-result-maybe (partial m/do-result (m/maybe [nil])))
+(def return-maybe (partial m/return (m/maybe [nil])))
 (def zero-val-maybe (m/zero (m/maybe [nil])))
 
-(deftest do-result-and-maybe-factory-func-equiv
-  (is (= (do-result-maybe [nil])
+(deftest return-and-maybe-factory-func-equiv
+  (is (= (return-maybe [nil])
          (m/maybe [nil])))
-  (is (= @(do-result-maybe [nil])
+  (is (= @(return-maybe [nil])
          @(m/maybe [nil]))))
 
-(deftest do-result-and-maybe-factory-func-not-equiv-for-*Nothing*
-  (is (not= (do-result-maybe nil)
+(deftest return-and-maybe-factory-func-not-equiv-for-*Nothing*
+  (is (not= (return-maybe nil)
             (m/maybe nil)))
   (binding [m/*Nothing* {:some ['value]}]
-    (is (not= (do-result-maybe {:some ['value]})
+    (is (not= (return-maybe {:some ['value]})
               (m/maybe {:some ['value]})))))
 
 (deftest zero-val-maybe-from-maybe-factory-func
@@ -282,13 +282,13 @@
          m/*Nothing*
          @m/Nothing
          @(m/maybe nil)
-         @(do-result-maybe nil)))
+         @(return-maybe nil)))
   (binding [m/*Nothing* {:some ['value]}]
     (is (= {:some ['value]}
            m/*Nothing*
            @m/Nothing
            @(m/maybe {:some ['value]})
-           @(do-result-maybe {:some ['value]})))))
+           @(return-maybe {:some ['value]})))))
 
 (defn maybe-f [n]
   (m/maybe (inc n)))
@@ -297,12 +297,12 @@
   (m/maybe (+ n 5)))
 
 (deftest first-law-maybe
-  (is (= (m/bind (do-result-maybe 10) maybe-f)
+  (is (= (m/bind (return-maybe 10) maybe-f)
          (maybe-f 10))))
 
 (deftest second-law-maybe
-  (is (= (m/bind (do-result-maybe 10) do-result-maybe)
-         (do-result-maybe 10))))
+  (is (= (m/bind (return-maybe 10) return-maybe)
+         (return-maybe 10))))
 
 (deftest third-law-maybe
   (is (= (m/bind (m/bind (m/maybe 5) maybe-f) maybe-g)
@@ -314,23 +314,23 @@
 ;; as the first argument to m/bind, since m/maybe implements
 ;; "convenience logic" which short-circuits the value of
 ;; monads.core/*Nothing* (default: nil) to maybe-zero-val. The
-;; protocol method do-result, as implemented for class Maybe, does not
+;; protocol method return, as implemented for class Maybe, does not
 ;; short-circuit.
 (deftest first-law-maybe-*Nothing*
-  (is (= (m/bind (do-result-maybe nil) (comp m/maybe not))
+  (is (= (m/bind (return-maybe nil) (comp m/maybe not))
          ((comp m/maybe not) nil))))
 
 ;; For the same reasons given in the previous comment, m/maybe is not
 ;; used as the monadic function for this test, nor to generate the
 ;; monadic value passed as the first argument to m/bind.
 (deftest second-law-maybe-*Nothing*
-  (is (= (m/bind (do-result-maybe nil) do-result-maybe)
-         (do-result-maybe nil))))
+  (is (= (m/bind (return-maybe nil) return-maybe)
+         (return-maybe nil))))
 
 (deftest zero-laws-maybe
   (is (= (m/bind zero-val-maybe maybe-f)
          zero-val-maybe))
-  (is (= (m/bind (do-result-maybe 4) (constantly zero-val-maybe))
+  (is (= (m/bind (return-maybe 4) (constantly zero-val-maybe))
          zero-val-maybe)))
 
 (comment "Zero Laws for monads.core/plus and monads.core/plus* are
@@ -361,10 +361,10 @@
     (is (not= (m/bind (m/state 1) #(m/state (inc %)))
               (m/bind (m/state 1) #(m/state (inc %)))))))
 
-(def do-result-state (partial m/do-result (m/state [nil])))
+(def return-state (partial m/return (m/state [nil])))
 
-(deftest do-result-and-state-factory-func-equiv
-  (let [mv1 (do-result-state [nil])
+(deftest return-and-state-factory-func-equiv
+  (let [mv1 (return-state [nil])
         mv2 (m/state [nil])]
     (is (= (mv1 {}) (mv2 {})))))
 
@@ -375,13 +375,13 @@
   (m/state (+ n 5)))
 
 (deftest first-law-state
-  (let [mv1 (m/bind (do-result-state 10) state-f)
+  (let [mv1 (m/bind (return-state 10) state-f)
         mv2 (state-f 10)]
     (is (= (mv1 {}) (mv2 {})))))
 
 (deftest second-law-state
-  (let [mv1 (m/bind (do-result-state 10) do-result-state)
-        mv2 (do-result-state 10)]
+  (let [mv1 (m/bind (return-state 10) return-state)
+        mv2 (return-state 10)]
     (is (= (mv1 :state) (mv2 :state)))))
 
 (deftest third-law-state
@@ -452,7 +452,7 @@
            (fn [v] (m/state (+ v 5)))))
 
 (deftest first-law-state-2+-ary
-  (let [mv1 (m/bind (do-result-state 10) state-f-2+-ary-factory)
+  (let [mv1 (m/bind (return-state 10) state-f-2+-ary-factory)
         mv2 (state-f-2+-ary-factory 10)]
     (is (= (mv1 []) (mv2 [])))))
 
@@ -502,10 +502,10 @@
     (is (not= (m/bind (m/cont 1) #(m/cont (inc %)))
               (m/bind (m/cont 1) #(m/cont (inc %)))))))
 
-(def do-result-cont (partial m/do-result (m/cont [nil])))
+(def return-cont (partial m/return (m/cont [nil])))
 
-(deftest do-result-and-cont-factory-func-equiv
-  (is (= @(do-result-cont [nil])
+(deftest return-and-cont-factory-func-equiv
+  (is (= @(return-cont [nil])
          @(m/cont [nil]))))
 
 (defn cont-f [n]
@@ -515,13 +515,13 @@
   (m/cont (+ n 5)))
 
 (deftest first-law-cont
-  (let [mv1 (m/bind (do-result-cont 10) cont-f)
+  (let [mv1 (m/bind (return-cont 10) cont-f)
         mv2 (cont-f 10)]
     (is (= (mv1 identity) (mv2 identity)))))
 
 (deftest second-law-cont
-  (let [mv1 (m/bind (do-result-cont 10) do-result-cont)
-        mv2 (do-result-cont 10)]
+  (let [mv1 (m/bind (return-cont 10) return-cont)
+        mv2 (return-cont 10)]
     (is (= (mv1 identity) (mv2 identity)))))
 
 (deftest third-law-cont
@@ -559,10 +559,10 @@
   (is (not= (writer+set 1) (writer+set 2)))
   (is (not= (writer+set {:a 1}) (writer+set {:a 2}))))
 
-(def do-result-writer+set (partial m/do-result (writer+set [nil])))
+(def return-writer+set (partial m/return (writer+set [nil])))
 
-(deftest do-result-and-writer-factory-func-equiv
-  (is (= (do-result-writer+set [nil])
+(deftest return-and-writer-factory-func-equiv
+  (is (= (return-writer+set [nil])
          (writer+set [nil]))))
 
 (defn writer-f [n]
@@ -572,12 +572,12 @@
   (writer+set (+ n 5)))
 
 (deftest first-law-writer
-  (is (= (m/bind (do-result-writer+set 10) writer-f)
+  (is (= (m/bind (return-writer+set 10) writer-f)
          (writer-f 10))))
 
 (deftest second-law-writer
-  (is (= (m/bind (do-result-writer+set 10) do-result-writer+set)
-         (do-result-writer+set 10))))
+  (is (= (m/bind (return-writer+set 10) return-writer+set)
+         (return-writer+set 10))))
 
 (deftest third-law-writer
   (is (= (m/bind (m/bind (writer+set 3) writer-f) writer-g)
@@ -1082,13 +1082,13 @@
   (is (not= (set-list 1) (set-list 2)))
   (is (not= (set-list {:a 1} {:b 2}) (set-list {:a 2} {:b 2}))))
 
-(def do-result-set-list (partial m/do-result (set-list [nil])))
+(def return-set-list (partial m/return (set-list [nil])))
 (def zero-val-set-list (m/zero (set-list [nil])))
 
-(deftest do-result-and-list-t-factory-func-equiv
-  (is (= (do-result-set-list [nil])
+(deftest return-and-list-t-factory-func-equiv
+  (is (= (return-set-list [nil])
          (set-list [nil])))
-  (is (= @(do-result-set-list [nil])
+  (is (= @(return-set-list [nil])
          @(set-list [nil]))))
 
 (defn list-t-f [& ns]
@@ -1098,7 +1098,7 @@
   (apply set-list (map #(+ % 5) ns)))
 
 (deftest first-law-list-t
-  (is (= (m/bind (do-result-set-list 10) list-t-f)
+  (is (= (m/bind (return-set-list 10) list-t-f)
          (list-t-f 10))))
 
 (deftest first-law-list-t-factory
@@ -1106,8 +1106,8 @@
          (list-t-f 10 11 12))))
 
 (deftest second-law-list-t
-  (is (= (m/bind (do-result-set-list 10) do-result-set-list)
-         (do-result-set-list 10))))
+  (is (= (m/bind (return-set-list 10) return-set-list)
+         (return-set-list 10))))
 
 (deftest second-law-list-t-factory
   (is (= (m/bind (set-list 10 11 12) set-list)
@@ -1187,13 +1187,13 @@
   (is (not= (set-vec 1) (set-vec 2)))
   (is (not= (set-vec {:a 1} {:b 2}) (set-vec {:a 2} {:b 2}))))
 
-(def do-result-set-vec (partial m/do-result (set-vec [nil])))
+(def return-set-vec (partial m/return (set-vec [nil])))
 (def zero-val-set-vec (m/zero (set-vec [nil])))
 
-(deftest do-result-and-vector-t-factory-func-equiv
-  (is (= (do-result-set-vec [nil])
+(deftest return-and-vector-t-factory-func-equiv
+  (is (= (return-set-vec [nil])
          (set-vec [nil])))
-  (is (= @(do-result-set-vec [nil])
+  (is (= @(return-set-vec [nil])
          @(set-vec [nil]))))
 
 (defn vector-t-f [& ns]
@@ -1203,7 +1203,7 @@
   (apply set-vec (map #(+ % 5) ns)))
 
 (deftest first-law-vector-t
-  (is (= (m/bind (do-result-set-vec 10) vector-t-f)
+  (is (= (m/bind (return-set-vec 10) vector-t-f)
          (vector-t-f 10))))
 
 (deftest first-law-vector-factory
@@ -1211,8 +1211,8 @@
          (vector-t-f 10 11 12))))
 
 (deftest second-law-vector-t
-  (is (= (m/bind (do-result-set-vec 10) do-result-set-vec)
-         (do-result-set-vec 10))))
+  (is (= (m/bind (return-set-vec 10) return-set-vec)
+         (return-set-vec 10))))
 
 (deftest second-law-vector-t-factory
   (is (= (m/bind (set-vec 10 11 12) set-vec)
@@ -1292,13 +1292,13 @@
   (is (not= (set-lazy-seq 1) (set-lazy-seq 2)))
   (is (not= (set-lazy-seq {:a 1} {:b 2}) (set-lazy-seq {:a 2} {:b 2}))))
 
-(def do-result-set-lazy-seq (partial m/do-result (set-lazy-seq [nil])))
+(def return-set-lazy-seq (partial m/return (set-lazy-seq [nil])))
 (def zero-val-set-lazy-seq (m/zero (set-lazy-seq [nil])))
 
-(deftest do-result-and-lazy-seq-t-factory-func-equiv
-  (is (= (do-result-set-lazy-seq [nil])
+(deftest return-and-lazy-seq-t-factory-func-equiv
+  (is (= (return-set-lazy-seq [nil])
          (set-lazy-seq [nil])))
-  (is (= @(do-result-set-lazy-seq [nil])
+  (is (= @(return-set-lazy-seq [nil])
          @(set-lazy-seq [nil]))))
 
 (defn lazy-seq-t-f [& ns]
@@ -1308,7 +1308,7 @@
   (apply set-lazy-seq (map #(+ % 5) ns)))
 
 (deftest first-law-lazy-seq-t
-  (is (= (m/bind (do-result-set-lazy-seq 10) lazy-seq-t-f)
+  (is (= (m/bind (return-set-lazy-seq 10) lazy-seq-t-f)
          (lazy-seq-t-f 10))))
 
 (deftest first-law-lazy-seq-t-factory
@@ -1316,8 +1316,8 @@
          (lazy-seq-t-f 10 11 12))))
 
 (deftest second-law-lazy-seq-t
-  (is (= (m/bind (do-result-set-lazy-seq 10) do-result-set-lazy-seq)
-         (do-result-set-lazy-seq 10))))
+  (is (= (m/bind (return-set-lazy-seq 10) return-set-lazy-seq)
+         (return-set-lazy-seq 10))))
 
 (deftest second-law-lazy-seq-t-factory
   (is (= (m/bind (set-lazy-seq 10 11 12) set-lazy-seq)
@@ -1397,13 +1397,13 @@
   (is (not= (vec-set 1) (vec-set 2)))
   (is (not= (vec-set {:a 1} {:b 2}) (vec-set {:a 2} {:b 2}))))
 
-(def do-result-vec-set (partial m/do-result (vec-set [nil])))
+(def return-vec-set (partial m/return (vec-set [nil])))
 (def zero-val-vec-set (m/zero (vec-set [nil])))
 
-(deftest do-result-and-set-t-factory-func-equiv
-  (is (= (do-result-vec-set [nil])
+(deftest return-and-set-t-factory-func-equiv
+  (is (= (return-vec-set [nil])
          (vec-set [nil])))
-  (is (= @(do-result-vec-set [nil])
+  (is (= @(return-vec-set [nil])
          @(vec-set [nil]))))
 
 (defn set-t-f [& ns]
@@ -1413,7 +1413,7 @@
   (apply vec-set (map #(+ % 5) ns)))
 
 (deftest first-law-set-t
-  (is (= (m/bind (do-result-vec-set 10) set-t-f)
+  (is (= (m/bind (return-vec-set 10) set-t-f)
          (set-t-f 10))))
 
 (deftest first-law-vector-factory
@@ -1421,8 +1421,8 @@
          (set-t-f 10 11 12))))
 
 (deftest second-law-set-t
-  (is (= (m/bind (do-result-vec-set 10) do-result-vec-set)
-         (do-result-vec-set 10))))
+  (is (= (m/bind (return-vec-set 10) return-vec-set)
+         (return-vec-set 10))))
 
 (deftest second-law-set-t-factory
   (is (= (m/bind (vec-set 10 11 12) vec-set)
@@ -1499,24 +1499,24 @@
   (is (not= (vec-maybe 1) (vec-maybe 2)))
   (is (not= (vec-maybe {:a 1} {:b 2}) (vec-maybe {:a 2} {:b 2}))))
 
-(def do-result-vec-maybe (partial m/do-result (vec-maybe [nil])))
+(def return-vec-maybe (partial m/return (vec-maybe [nil])))
 (def zero-val-vec-maybe (m/zero (vec-maybe [nil])))
 
-(deftest do-result-and-maybe-t-factory-func-equiv
-  (is (= (do-result-vec-maybe [nil])
+(deftest return-and-maybe-t-factory-func-equiv
+  (is (= (return-vec-maybe [nil])
          (vec-maybe [nil])))
-  (is (= @(do-result-vec-maybe [nil])
+  (is (= @(return-vec-maybe [nil])
          @(vec-maybe [nil]))))
 
-(deftest do-result-and-maybe-t-factory-func-not-equiv-for-*Nothing*
-  (is (not= (do-result-vec-maybe nil)
+(deftest return-and-maybe-t-factory-func-not-equiv-for-*Nothing*
+  (is (not= (return-vec-maybe nil)
             (vec-maybe nil)))
-  (is (not= @(do-result-vec-maybe nil)
+  (is (not= @(return-vec-maybe nil)
             @(vec-maybe nil)))
   (binding [m/*Nothing* {:some ['value]}]
-    (is (not= (do-result-vec-maybe {:some ['value]})
+    (is (not= (return-vec-maybe {:some ['value]})
               (vec-maybe {:some ['value]})))
-    (is (not= @(do-result-vec-maybe {:some ['value]})
+    (is (not= @(return-vec-maybe {:some ['value]})
               @(vec-maybe {:some ['value]})))))
 
 (deftest zero-val-from-maybe-t-factory-func
@@ -1539,7 +1539,7 @@
   (apply vec-maybe (map #(when % (+ % 5)) ns)))
 
 (deftest first-law-maybe-t
-  (is (= (m/bind (do-result-vec-maybe 10) maybe-t-f)
+  (is (= (m/bind (return-vec-maybe 10) maybe-t-f)
          (maybe-t-f 10))))
 
 (deftest first-law-maybe-t-factory
@@ -1547,8 +1547,8 @@
          (maybe-t-f 10 nil 11))))
 
 (deftest second-law-maybe-t
-  (is (= (m/bind (do-result-vec-maybe 10) do-result-vec-maybe)
-         (do-result-vec-maybe 10))))
+  (is (= (m/bind (return-vec-maybe 10) return-vec-maybe)
+         (return-vec-maybe 10))))
 
 (deftest second-law-maybe-t-factory
   (is (= (m/bind (vec-maybe 10 nil 11) vec-maybe)
@@ -1565,18 +1565,18 @@
 ;; generate the monadic value passed as the first argument to m/bind,
 ;; since m/maybe-t implements "convenience logic" which short-circuits
 ;; the value of monads.core/*Nothing* (default: nil) to
-;; maybe-zero-val. The protocol method do-result, as implemented for
+;; maybe-zero-val. The protocol method return, as implemented for
 ;; class MaybeTransformer, does not short-circuit.
 (deftest first-law-maybe-t-*Nothing*
-  (is (= (m/bind (do-result-vec-maybe nil) (comp vec-maybe not))
+  (is (= (m/bind (return-vec-maybe nil) (comp vec-maybe not))
          ((comp vec-maybe not) nil))))
 
 ;; For the same reasons given in the previous comment, vec-maybe is
 ;; not used as the monadic function for this test, nor to generate the
 ;; monadic value passed as the first argument to m/bind.
 (deftest second-law-maybe-t-*Nothing*
-  (is (= (m/bind (do-result-vec-maybe nil) do-result-vec-maybe)
-         (do-result-vec-maybe nil))))
+  (is (= (m/bind (return-vec-maybe nil) return-vec-maybe)
+         (return-vec-maybe nil))))
 
 (deftest plus-maybe-t
   (let [plus-maybe-t (m/plus [(vec-maybe 1 2) (vec-maybe) (vec-maybe 3 4)])
@@ -1658,11 +1658,11 @@
     (is (not= (m/bind (vec-state 1) #(vec-state (inc %)))
               (m/bind (vec-state 1) #(vec-state (inc %)))))))
 
-(def do-result-vec-state (partial m/do-result (vec-state [nil])))
+(def return-vec-state (partial m/return (vec-state [nil])))
 (def zero-val-vec-state (m/zero (vec-state [nil])))
 
-(deftest do-result-and-state-t-factory-func-equiv
-  (is (= ((do-result-vec-state [nil]) :state)
+(deftest return-and-state-t-factory-func-equiv
+  (is (= ((return-vec-state [nil]) :state)
          ((vec-state [nil]) :state))))
 
 (deftest zero-val-from-state-t-factory-func
@@ -1677,13 +1677,13 @@
   (vec-state (+ n 5)))
 
 (deftest first-law-state-t
-  (let [mv1 (m/bind (do-result-vec-state 10) state-t-f)
+  (let [mv1 (m/bind (return-vec-state 10) state-t-f)
         mv2 (state-t-f 10)]
     (is (= (mv1 {}) (mv2 {})))))
 
 (deftest second-law-state-t
-  (let [mv1 (m/bind (do-result-vec-state 10) do-result-vec-state)
-        mv2 (do-result-vec-state 10)]
+  (let [mv1 (m/bind (return-vec-state 10) return-vec-state)
+        mv2 (return-vec-state 10)]
     (is (= (mv1 :state-t) (mv2 :state-t)))))
 
 (deftest third-law-state-t
@@ -1762,7 +1762,7 @@
              (fn [v] (vec-state (+ v 5)))))
 
 (deftest first-law-state-t-2+-ary
-  (let [mv1 (m/bind (do-result-vec-state 10) state-t-f-2+-ary-factory)
+  (let [mv1 (m/bind (return-vec-state 10) state-t-f-2+-ary-factory)
         mv2 (state-t-f-2+-ary-factory 10)]
     (is (= (mv1 []) (mv2 [])))))
 
@@ -1939,13 +1939,13 @@
   (is (not= (set-writer+vec 1) (set-writer+vec 2)))
   (is (not= (set-writer+vec {:a 1}) (set-writer+vec {:a 2}))))
 
-(def do-result-set-writer+vec (partial m/do-result (set-writer+vec [nil])))
+(def return-set-writer+vec (partial m/return (set-writer+vec [nil])))
 (def zero-val-set-writer+vec (m/zero (set-writer+vec [nil])))
 
-(deftest do-result-and-writer-t-factory-func-equiv
-  (is (= (do-result-set-writer+vec [nil])
+(deftest return-and-writer-t-factory-func-equiv
+  (is (= (return-set-writer+vec [nil])
          (set-writer+vec [nil])))
-  (is (= @(do-result-set-writer+vec [nil])
+  (is (= @(return-set-writer+vec [nil])
          @(set-writer+vec [nil]))))
 
 (defn writer-t-f [n]
@@ -1955,12 +1955,12 @@
   (set-writer+vec (+ n 5)))
 
 (deftest first-law-writer-t
-  (is (= (m/bind (do-result-set-writer+vec 10) writer-t-f)
+  (is (= (m/bind (return-set-writer+vec 10) writer-t-f)
          (writer-t-f 10))))
 
 (deftest second-law-writer-t
-  (is (= (m/bind (do-result-set-writer+vec 10) do-result-set-writer+vec)
-         (do-result-set-writer+vec 10))))
+  (is (= (m/bind (return-set-writer+vec 10) return-set-writer+vec)
+         (return-set-writer+vec 10))))
 
 (deftest third-law-writer-t
   (is (= (m/bind (m/bind (set-writer+vec 4) writer-t-f) writer-t-g)
