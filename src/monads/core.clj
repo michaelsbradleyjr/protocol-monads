@@ -10,30 +10,30 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (defprotocol Monad
-  (return [_ v])
-  (bind [mv f]))
-
-(defprotocol MonadZero
-  (zero [_])
-  (plus-step [mv mvs])
-  (plus-step* [mv mvs]))
-
-(defprotocol MonadTransformer
-  (default-return-m [_])
-  (default-plus [_]))
+  (bind [mv f])
+  (return [_ v]))
 
 (defprotocol MonadDev
   "Used in conjunction with the type checker."
-  (val-types [_]))
+  (types [_]))
+
+(defprotocol MonadTransformer
+  (default-plus [_])
+  (default-return-m [_]))
 
 (defprotocol MonadWriter
   "Accumulation of values into containers."
-  (writer-m-empty [_]
-    "return an empty container")
   (writer-m-add [container value]
     "add value to container, return new container")
   (writer-m-combine [container1 container2]
-    "combine two containers, return new container"))
+    "combine two containers, return new container")
+  (writer-m-empty [_]
+    "return an empty container"))
+
+(defprotocol MonadZero
+  (plus' [mv mvs])
+  (plus'* [mv mvs])
+  (zero [_]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -41,21 +41,21 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def list clojure.core/list)
-
-(def vector clojure.core/vector)
-
-(def vec clojure.core/vec)
+(def hash-set clojure.core/hash-set)
 
 (def ^{:macro true} lazy-seq #'clojure.core/lazy-seq)
+
+(def list clojure.core/list)
 
 (defmacro lazy-seq*
   [& vs]
   `(lazy-seq (list ~@vs)))
 
-(def hash-set clojure.core/hash-set)
-
 (def set clojure.core/set)
+
+(def vec clojure.core/vec)
+
+(def vector clojure.core/vector)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -63,11 +63,11 @@
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(def ^:private seq* clojure.core/seq)
-
 (def ^:private map* clojure.core/map)
 
 (def ^:private reduce* clojure.core/reduce)
+
+(def ^:private seq* clojure.core/seq)
 
 (defn- lazy-concat
   ([l] l)
@@ -92,7 +92,7 @@
 (defn- check-return-type [mv f check-types]
   (fn [v]
     (let [return-val (f v)
-          mv-types (val-types mv)]
+          mv-types (types mv)]
       (if-not (seq* mv-types)
         return-val
         (let []
@@ -112,12 +112,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
-;; The "dummy value" [nil] is used in several expressions below to
+;; The "dummy value" [::dummy] is used in several expressions below to
 ;; couple calls to bind, zero and return to a particular
 ;; protocol-monad, as determined by the return type of the monadic
 ;; value factory function.
 ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(def ^:private dummy [::dummy])
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -138,13 +140,13 @@
   MonadZero
   (zero [_]
     (list))
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (apply list (apply concat mv mvs)))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (apply list (apply concat mv (map* #(%) mvs))))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[java.util.List]])
 
   MonadWriter
@@ -171,13 +173,13 @@
   MonadZero
   (zero [_]
     (list))
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (apply list (apply concat mv mvs)))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (apply list (apply concat mv (map* #(%) mvs))))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[java.util.List]])
 
   MonadWriter
@@ -204,13 +206,13 @@
   MonadZero
   (zero [_]
     [])
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (vec (apply concat mv mvs)))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (vec (apply concat mv (map* #(%) mvs))))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[java.util.List]])
 
   MonadWriter
@@ -237,13 +239,13 @@
   MonadZero
   (zero [_]
     (lazy-seq))
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (lazy-concat mv mvs))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (lazy-concat mv (map* #(%) mvs)))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[java.util.List]])
 
   MonadWriter
@@ -270,13 +272,13 @@
   MonadZero
   (zero [_]
     #{})
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (apply cset/union mv mvs))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (apply cset/union mv (map* #(%) mvs)))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[java.util.Set]])
 
   MonadWriter
@@ -335,14 +337,14 @@
   MonadZero
   (zero [_]
     Nothing)
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (let [mv (->> (cons mv mvs)
                   (drop-while #(= Nothing %))
                   first)]
       (if (nil? mv)
         Nothing
         mv)))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (if-not (= Nothing mv)
       mv
       (let [mv (->> mvs
@@ -353,7 +355,7 @@
           (mv)))))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[Maybe]]))
 
 (def Nothing (Maybe. ::Nothing))
@@ -422,7 +424,7 @@
             (wrap-check mv f)))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[State]]))
 
 (declare state-mv-dummy)
@@ -449,7 +451,7 @@
                         (wrap-check state-mv-dummy f))
                 f*)))))
 
-(def ^:private state-mv-dummy (state [nil]))
+(def ^:private state-mv-dummy (state dummy))
 
 (defn- state*
   [v]
@@ -557,7 +559,7 @@
                    (wrap-check mv f)))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[Continuation]]))
 
 (defn cont
@@ -632,7 +634,7 @@
                (writer-m-combine a1 a2))))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[Writer]]))
 
 (defn writer
@@ -668,32 +670,39 @@
   are given as a vector as for the use in let, establishes additional
   bindings that can be used in the following steps. "
   [mv-factory bindings expr]
-  (let [steps (partition 2 bindings)]
-    `(monads.core/bind (~mv-factory [nil])
-                       (fn [_#]
-                         ~(reduce* (fn [expr [sym mv]]
-                                     (cond
-                                       (= :when sym) `(if ~mv
-                                                        ~expr
-                                                        (monads.core/zero (~mv-factory [nil])))
-                                       (= :let sym) `(let ~mv
-                                                       ~expr)
-                                       :else `(monads.core/bind ~mv (fn [~sym]
-                                                                      ~expr))))
-                                   `(monads.core/return (~mv-factory [nil]) ~expr)
-                                   (reverse steps))))))
+  (let [steps (partition 2 bindings)
+        mv-dummy (gensym "mv-dummy")]
+    `(let [~mv-dummy (~mv-factory ~dummy)]
+       (monads.core/bind ~mv-dummy
+                         (fn [_#]
+                           ~(monads.core/reduce*
+                             (fn [expr [sym mv]]
+                               (cond
+                                 (= :when sym)
+                                 `(if ~mv
+                                    ~expr
+                                    (monads.core/zero ~mv-dummy))
+
+                                 (= :let sym)
+                                 `(let ~mv
+                                    ~expr)
+
+                                 :else
+                                 `(monads.core/bind ~mv (fn [~sym] ~expr))))
+                             `(monads.core/return ~mv-dummy ~expr)
+                             (reverse steps)))))))
 
 (defn plus [[mv & mvs]]
-  (plus-step mv mvs))
+  (plus' mv mvs))
 
 (defmacro plus*
   "Lazy variant of plus. Implemented as a macro to avoid eager
   argument evaluation. Takes one argument, a sequence of monadic values,
   which must be expressed as a vector literal. Each member of the
   argument-sequence is wrapped in a thunk, which is later evaluated by
-  protocol method mondas.core/plus-step*."
+  protocol method mondas.core/plus'*."
   [[mv & mvs]]
-  `(plus-step* ~mv (list ~@(map* (fn [m] `(fn thunk [] ~m)) mvs))))
+  `(monads.core/plus'* ~mv (list ~@(map* (fn [m] `(fn thunk [] ~m)) mvs))))
 
 (defn- comprehend [f mvs]
   (let [mv (first mvs)
@@ -718,7 +727,7 @@
   ([mv-factory mvs]
      (if (seq* mvs)
        (comprehend (partial apply list) mvs)
-       (return (mv-factory [nil]) (list)))))
+       (return (mv-factory dummy) (list)))))
 
 (defn lift
   "Converts a function f to a function of monadic arguments returning a
@@ -843,24 +852,24 @@
   (zero [_]
     (ListTransformer. return-m
                       (return-m (list))))
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (ListTransformer. return-m
                       (apply
                        (lift (fn [& vs] (plus vs)))
                        (map* deref (cons mv mvs)))))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (ListTransformer. return-m
                       (apply
                        (lift (fn [& vs] (plus vs)))
                        (map* deref (cons mv (map* #(%) mvs))))))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[ListTransformer]]))
 
 (defn list-t
   [mv-factory]
-  (let [return-m (partial return (mv-factory [nil]))]
+  (let [return-m (partial return (mv-factory dummy))]
     (if (= mv-factory maybe)
       (fn [& vs]
         (ListTransformer. return-m
@@ -920,24 +929,24 @@
   (zero [_]
     (VectorTransformer. return-m
                         (return-m [])))
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (VectorTransformer. return-m
                         (apply
                          (lift (fn [& vs] (plus vs)))
                          (map* deref (cons mv mvs)))))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (VectorTransformer. return-m
                         (apply
                          (lift (fn [& vs] (plus vs)))
                          (map* deref (cons mv (map* #(%) mvs))))))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[VectorTransformer]]))
 
 (defn vector-t
   [mv-factory]
-  (let [return-m (partial return (mv-factory [nil]))]
+  (let [return-m (partial return (mv-factory dummy))]
     (if (= mv-factory maybe)
       (fn [& vs]
         (VectorTransformer. return-m
@@ -999,24 +1008,24 @@
   (zero [_]
     (LazySeqTransformer. return-m
                          (return-m (lazy-seq))))
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (LazySeqTransformer. return-m
                          (apply
                           (lift (fn [& vs] (plus vs)))
                           (map* deref (cons mv mvs)))))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (LazySeqTransformer. return-m
                          (apply
                           (lift (fn [& vs] (plus vs)))
                           (map* deref (cons mv (map* #(%) mvs))))))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[LazySeqTransformer]]))
 
 (defn lazy-seq-t
   [mv-factory]
-  (let [return-m (partial return (mv-factory [nil]))]
+  (let [return-m (partial return (mv-factory dummy))]
     (if (= mv-factory maybe)
       (fn [& vs]
         (LazySeqTransformer. return-m
@@ -1078,24 +1087,24 @@
   (zero [_]
     (SetTransformer. return-m
                      (return-m #{})))
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (SetTransformer. return-m
                      (apply
                       (lift (fn [& vs] (plus vs)))
                       (map* deref (cons mv mvs)))))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (SetTransformer. return-m
                      (apply
                       (lift (fn [& vs] (plus vs)))
                       (map* deref (cons mv (map* #(%) mvs))))))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[SetTransformer]]))
 
 (defn set-t
   [mv-factory]
-  (let [return-m (partial return (mv-factory [nil]))]
+  (let [return-m (partial return (mv-factory dummy))]
     (if (= mv-factory maybe)
       (fn [& vs]
         (SetTransformer. return-m
@@ -1160,7 +1169,7 @@
   (zero [_]
     (MaybeTransformer. return-m
                        (return-m Nothing)))
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (MaybeTransformer. return-m
                        (bind (deref mv)
                              (fn [x]
@@ -1173,7 +1182,7 @@
 
                                  :else
                                  (return-m x))))))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (let [mv (fn thunk [] mv)]
       (MaybeTransformer. return-m
                          (bind (deref (mv))
@@ -1189,12 +1198,12 @@
                                    (return-m x)))))))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[MaybeTransformer]]))
 
 (defn maybe-t
   [mv-factory]
-  (let [return-m (partial return (mv-factory [nil]))]
+  (let [return-m (partial return (mv-factory dummy))]
     (fn [& vs]
       (MaybeTransformer. return-m
                          (apply mv-factory
@@ -1245,16 +1254,16 @@
   clojure.lang.IFn
   (invoke [_ s]
     (cond
-      alts (plus-step ((first alts) s)
-                      (map* #(% s) (second alts)))
-      lzalts (plus-step* ((first lzalts) s)
-                         (map* #(fn [] ((%) s)) (second lzalts)))
+      alts (plus' ((first alts) s)
+                  (map* #(% s) (second alts)))
+      lzalts (plus'* ((first lzalts) s)
+                     (map* #(fn [] ((%) s)) (second lzalts)))
       f (bind (mv s)
               (fn [[v ss]]
                 ((f v) ss)))
       :else (if (and (not update?)
                      m-zero?
-                     (= v (zero (return-m [nil]))))
+                     (= v (zero (return-m dummy))))
               v
               (return-m [v s]))))
 
@@ -1282,7 +1291,7 @@
   (zero [_]
     (StateTransformer. return-m
                        nil
-                       (fn [s] (zero (return-m [nil])))
+                       (fn [s] (zero (return-m dummy)))
                        (fn [v]
                          (StateTransformer. return-m
                                             v
@@ -1296,7 +1305,7 @@
                        nil
                        nil
                        m-zero?))
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (StateTransformer. return-m
                        nil
                        nil
@@ -1305,7 +1314,7 @@
                        nil
                        nil
                        m-zero?))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (StateTransformer. return-m
                        nil
                        nil
@@ -1320,32 +1329,32 @@
     :return)
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[StateTransformer]]))
 
 (defn state-t
   ([mv-factory]
      (state-t mv-factory (default-return-m (StateTransformer. nil
-                                                                 nil
-                                                                 nil
-                                                                 nil
-                                                                 nil
-                                                                 nil
-                                                                 nil
-                                                                 nil))))
+                                                              nil
+                                                              nil
+                                                              nil
+                                                              nil
+                                                              nil
+                                                              nil
+                                                              nil))))
   ([mv-factory which-return-m]
-     (let [mv-dummy (mv-factory [nil])
+     (let [mv-dummy (mv-factory dummy)
            return-m (case which-return-m
-                         :return
-                         (partial return mv-dummy)
-                         :factory
-                         mv-factory)
+                      :return
+                      (partial return mv-dummy)
+                      :factory
+                      mv-factory)
            maybe? (let [c (class mv-dummy)]
                     (or (= c Maybe)
                         (= c MaybeTransformer)))
            m-zero? (satisfies? MonadZero mv-dummy)
            state-t-mv-dummy (StateTransformer. return-m
-                                               [nil]
+                                               dummy
                                                nil
                                                nil
                                                nil
@@ -1400,7 +1409,7 @@
 
 (defn update-state-t
   [state-t-factory]
-  (let [state-t-mv-dummy (state-t-factory [nil])]
+  (let [state-t-mv-dummy (state-t-factory dummy)]
     (when *check-types*
       (assert (instance? StateTransformer
                          state-t-mv-dummy)
@@ -1446,7 +1455,7 @@
   is not modified."
   [state-t-factory]
   (let [g (get-state-t state-t-factory)
-        return-m-state (partial return (state-t-factory [nil]))]
+        return-m-state (partial return (state-t-factory dummy))]
     (fn [key]
       (bind (g)
             #(return-m-state (get % key))))))
@@ -1459,7 +1468,7 @@
   returned."
   [state-t-factory]
   (let [u (update-state-t state-t-factory)
-        return-m-state (partial return (state-t-factory [nil]))]
+        return-m-state (partial return (state-t-factory dummy))]
     (fn [key f & args]
       (bind (u #(apply update-in % [key] f args))
             #(return-m-state (get % key))))))
@@ -1477,7 +1486,7 @@
 (defn get-in-state-t-val
   [state-t-factory]
   (let [g (get-state-t state-t-factory)
-        return-m-state (partial return (state-t-factory [nil]))]
+        return-m-state (partial return (state-t-factory dummy))]
     (fn [path & [default]]
       (bind (g)
             #(return-m-state (get-in % path default))))))
@@ -1485,7 +1494,7 @@
 (defn assoc-in-state-t-val
   [state-t-factory]
   (let [u (update-state-t state-t-factory)
-        return-m-state (partial return (state-t-factory [nil]))]
+        return-m-state (partial return (state-t-factory dummy))]
     (fn [path val]
       (bind (u #(assoc-in % path val))
             #(return-m-state (get-in % path))))))
@@ -1493,7 +1502,7 @@
 (defn update-in-state-t-val
   [state-t-factory]
   (let [u (update-state-t state-t-factory)
-        return-m-state (partial return (state-t-factory [nil]))]
+        return-m-state (partial return (state-t-factory dummy))]
     (fn [path f & args]
       (bind (u #(apply update-in % path f args))
             #(return-m-state (get-in % path))))))
@@ -1537,7 +1546,7 @@
                                         (fn [v]
                                           (let [[v2 a2] (deref v)]
                                             (return-m (Writer. v2
-                                                                  (writer-m-combine a1 a2)))))))))
+                                                               (writer-m-combine a1 a2)))))))))
                         writer-m))
 
   MonadZero
@@ -1546,21 +1555,21 @@
       (WriterTransformer. return-m
                           (zero v)
                           writer-m)))
-  (plus-step [mv mvs]
+  (plus' [mv mvs]
     (WriterTransformer. return-m
                         (plus (map* deref (cons mv mvs)))
                         writer-m))
-  (plus-step* [mv mvs]
+  (plus'* [mv mvs]
     (WriterTransformer. return-m
                         (plus (map* deref (cons mv (map* #(%) mvs))))
                         writer-m))
 
   MonadDev
-  (val-types [_]
+  (types [_]
     [[WriterTransformer]]))
 
 (defn writer-t [mv-factory accumulator]
-  (let [return-m (partial return (mv-factory [nil]))
+  (let [return-m (partial return (mv-factory dummy))
         writer-m (writer accumulator)]
     (if (= mv-factory maybe)
       (fn [v]
@@ -1602,7 +1611,7 @@
 
 (defn write-writer
   [writer-factory val-to-write]
-  (write-writer* (writer-factory [nil])
+  (write-writer* (writer-factory dummy)
                  val-to-write))
 
 (defmulti listen-writer
