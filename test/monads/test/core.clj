@@ -81,12 +81,12 @@
 (defn list-g [n]
   (list (+ n 5)))
 
-(def return-list (partial m/return (list [nil])))
-(def zero-val-list (m/zero (list [nil])))
+(def return-list (partial m/return (list [::dummy])))
+(def zero-val-list (m/zero (list [::dummy])))
 
 (deftest return-and-list-factory-func-equiv
-  (is (= (return-list [nil])
-         (list [nil]))))
+  (is (= (return-list [::dummy])
+         (list [::dummy]))))
 
 (deftest first-law-list
   (is (= (m/bind (return-list 10) list-f)
@@ -123,12 +123,12 @@
 (defn vector-g [n]
   (vector (+ n 5)))
 
-(def return-vector (partial m/return (vector [nil])))
-(def zero-val-vector (m/zero (vector [nil])))
+(def return-vector (partial m/return (vector [::dummy])))
+(def zero-val-vector (m/zero (vector [::dummy])))
 
 (deftest return-and-vector-factory-func-equiv
-  (is (= (return-vector [nil])
-         (vector [nil]))))
+  (is (= (return-vector [::dummy])
+         (vector [::dummy]))))
 
 (deftest first-law-vector
   (is (= (m/bind (return-vector 10) vector-f)
@@ -165,12 +165,12 @@
 (defn lazy-seq-g [n]
   (m/lazy-seq* (+ n 5)))
 
-(def return-lazy-seq (partial m/return (m/lazy-seq* [nil])))
-(def zero-val-lazy-seq (m/zero (m/lazy-seq* [nil])))
+(def return-lazy-seq (partial m/return (m/lazy-seq* [::dummy])))
+(def zero-val-lazy-seq (m/zero (m/lazy-seq* [::dummy])))
 
 (deftest return-and-lazy-seq-factory-func-equiv
-  (is (= (return-lazy-seq [nil])
-         (m/lazy-seq* [nil]))))
+  (is (= (return-lazy-seq [::dummy])
+         (m/lazy-seq* [::dummy]))))
 
 (deftest first-law-lazy-seq
   (is (= (m/bind (return-lazy-seq 10) lazy-seq-f)
@@ -207,12 +207,12 @@
 (defn set-g [n]
   (hash-set (+ n 5)))
 
-(def return-set (partial m/return (hash-set [nil])))
-(def zero-val-set (m/zero (hash-set [nil])))
+(def return-set (partial m/return (hash-set [::dummy])))
+(def zero-val-set (m/zero (hash-set [::dummy])))
 
 (deftest return-and-set-factory-func-equiv
-  (is (= (return-set [nil])
-         (hash-set [nil]))))
+  (is (= (return-set [::dummy])
+         (hash-set [::dummy]))))
 
 (deftest first-law-set
   (is (= (m/bind (return-set 10) set-f)
@@ -252,14 +252,14 @@
   (is (not= (m/maybe 1) (m/maybe 2)))
   (is (not= (m/maybe {:a 1}) (m/maybe {:a 2}))))
 
-(def return-maybe (partial m/return (m/maybe [nil])))
-(def zero-val-maybe (m/zero (m/maybe [nil])))
+(def return-maybe (partial m/return (m/maybe [::dummy])))
+(def zero-val-maybe (m/zero (m/maybe [::dummy])))
 
 (deftest return-and-maybe-factory-func-equiv
-  (is (= (return-maybe [nil])
-         (m/maybe [nil])))
-  (is (= @(return-maybe [nil])
-         @(m/maybe [nil]))))
+  (is (= (return-maybe [::dummy])
+         (m/maybe [::dummy])))
+  (is (= @(return-maybe [::dummy])
+         @(m/maybe [::dummy]))))
 
 (deftest return-and-maybe-factory-func-not-equiv-for-*Nothing*
   (is (not= (return-maybe nil)
@@ -361,11 +361,11 @@
     (is (not= (m/bind (m/state 1) #(m/state (inc %)))
               (m/bind (m/state 1) #(m/state (inc %)))))))
 
-(def return-state (partial m/return (m/state [nil])))
+(def return-state (partial m/return (m/state [::dummy])))
 
 (deftest return-and-state-factory-func-equiv
-  (let [mv1 (return-state [nil])
-        mv2 (m/state [nil])]
+  (let [mv1 (return-state [::dummy])
+        mv2 (m/state [::dummy])]
     (is (= (mv1 {}) (mv2 {})))))
 
 (defn state-f [n]
@@ -502,11 +502,11 @@
     (is (not= (m/bind (m/cont 1) #(m/cont (inc %)))
               (m/bind (m/cont 1) #(m/cont (inc %)))))))
 
-(def return-cont (partial m/return (m/cont [nil])))
+(def return-cont (partial m/return (m/cont [::dummy])))
 
 (deftest return-and-cont-factory-func-equiv
-  (is (= @(return-cont [nil])
-         @(m/cont [nil]))))
+  (is (= @(return-cont [::dummy])
+         @(m/cont [::dummy]))))
 
 (defn cont-f [n]
   (m/cont (inc n)))
@@ -559,11 +559,11 @@
   (is (not= (writer+set 1) (writer+set 2)))
   (is (not= (writer+set {:a 1}) (writer+set {:a 2}))))
 
-(def return-writer+set (partial m/return (writer+set [nil])))
+(def return-writer+set (partial m/return (writer+set [::dummy])))
 
 (deftest return-and-writer-factory-func-equiv
-  (is (= (return-writer+set [nil])
-         (writer+set [nil]))))
+  (is (= (return-writer+set [::dummy])
+         (writer+set [::dummy]))))
 
 (defn writer-f [n]
   (writer+set (inc n)))
@@ -1082,14 +1082,14 @@
   (is (not= (set-list 1) (set-list 2)))
   (is (not= (set-list {:a 1} {:b 2}) (set-list {:a 2} {:b 2}))))
 
-(def return-set-list (partial m/return (set-list [nil])))
-(def zero-val-set-list (m/zero (set-list [nil])))
+(def return-set-list (partial m/return (set-list [::dummy])))
+(def zero-val-set-list (m/zero (set-list [::dummy])))
 
 (deftest return-and-list-t-factory-func-equiv
-  (is (= (return-set-list [nil])
-         (set-list [nil])))
-  (is (= @(return-set-list [nil])
-         @(set-list [nil]))))
+  (is (= (return-set-list [::dummy])
+         (set-list [::dummy])))
+  (is (= @(return-set-list [::dummy])
+         @(set-list [::dummy]))))
 
 (defn list-t-f [& ns]
   (apply set-list (map inc ns)))
@@ -1187,14 +1187,14 @@
   (is (not= (set-vec 1) (set-vec 2)))
   (is (not= (set-vec {:a 1} {:b 2}) (set-vec {:a 2} {:b 2}))))
 
-(def return-set-vec (partial m/return (set-vec [nil])))
-(def zero-val-set-vec (m/zero (set-vec [nil])))
+(def return-set-vec (partial m/return (set-vec [::dummy])))
+(def zero-val-set-vec (m/zero (set-vec [::dummy])))
 
 (deftest return-and-vector-t-factory-func-equiv
-  (is (= (return-set-vec [nil])
-         (set-vec [nil])))
-  (is (= @(return-set-vec [nil])
-         @(set-vec [nil]))))
+  (is (= (return-set-vec [::dummy])
+         (set-vec [::dummy])))
+  (is (= @(return-set-vec [::dummy])
+         @(set-vec [::dummy]))))
 
 (defn vector-t-f [& ns]
   (apply set-vec (map inc ns)))
@@ -1292,14 +1292,14 @@
   (is (not= (set-lazy-seq 1) (set-lazy-seq 2)))
   (is (not= (set-lazy-seq {:a 1} {:b 2}) (set-lazy-seq {:a 2} {:b 2}))))
 
-(def return-set-lazy-seq (partial m/return (set-lazy-seq [nil])))
-(def zero-val-set-lazy-seq (m/zero (set-lazy-seq [nil])))
+(def return-set-lazy-seq (partial m/return (set-lazy-seq [::dummy])))
+(def zero-val-set-lazy-seq (m/zero (set-lazy-seq [::dummy])))
 
 (deftest return-and-lazy-seq-t-factory-func-equiv
-  (is (= (return-set-lazy-seq [nil])
-         (set-lazy-seq [nil])))
-  (is (= @(return-set-lazy-seq [nil])
-         @(set-lazy-seq [nil]))))
+  (is (= (return-set-lazy-seq [::dummy])
+         (set-lazy-seq [::dummy])))
+  (is (= @(return-set-lazy-seq [::dummy])
+         @(set-lazy-seq [::dummy]))))
 
 (defn lazy-seq-t-f [& ns]
   (apply set-lazy-seq (map inc ns)))
@@ -1397,14 +1397,14 @@
   (is (not= (vec-set 1) (vec-set 2)))
   (is (not= (vec-set {:a 1} {:b 2}) (vec-set {:a 2} {:b 2}))))
 
-(def return-vec-set (partial m/return (vec-set [nil])))
-(def zero-val-vec-set (m/zero (vec-set [nil])))
+(def return-vec-set (partial m/return (vec-set [::dummy])))
+(def zero-val-vec-set (m/zero (vec-set [::dummy])))
 
 (deftest return-and-set-t-factory-func-equiv
-  (is (= (return-vec-set [nil])
-         (vec-set [nil])))
-  (is (= @(return-vec-set [nil])
-         @(vec-set [nil]))))
+  (is (= (return-vec-set [::dummy])
+         (vec-set [::dummy])))
+  (is (= @(return-vec-set [::dummy])
+         @(vec-set [::dummy]))))
 
 (defn set-t-f [& ns]
   (apply vec-set (map inc ns)))
@@ -1499,14 +1499,14 @@
   (is (not= (vec-maybe 1) (vec-maybe 2)))
   (is (not= (vec-maybe {:a 1} {:b 2}) (vec-maybe {:a 2} {:b 2}))))
 
-(def return-vec-maybe (partial m/return (vec-maybe [nil])))
-(def zero-val-vec-maybe (m/zero (vec-maybe [nil])))
+(def return-vec-maybe (partial m/return (vec-maybe [::dummy])))
+(def zero-val-vec-maybe (m/zero (vec-maybe [::dummy])))
 
 (deftest return-and-maybe-t-factory-func-equiv
-  (is (= (return-vec-maybe [nil])
-         (vec-maybe [nil])))
-  (is (= @(return-vec-maybe [nil])
-         @(vec-maybe [nil]))))
+  (is (= (return-vec-maybe [::dummy])
+         (vec-maybe [::dummy])))
+  (is (= @(return-vec-maybe [::dummy])
+         @(vec-maybe [::dummy]))))
 
 (deftest return-and-maybe-t-factory-func-not-equiv-for-*Nothing*
   (is (not= (return-vec-maybe nil)
@@ -1658,12 +1658,12 @@
     (is (not= (m/bind (vec-state 1) #(vec-state (inc %)))
               (m/bind (vec-state 1) #(vec-state (inc %)))))))
 
-(def return-vec-state (partial m/return (vec-state [nil])))
-(def zero-val-vec-state (m/zero (vec-state [nil])))
+(def return-vec-state (partial m/return (vec-state [::dummy])))
+(def zero-val-vec-state (m/zero (vec-state [::dummy])))
 
 (deftest return-and-state-t-factory-func-equiv
-  (is (= ((return-vec-state [nil]) :state)
-         ((vec-state [nil]) :state))))
+  (is (= ((return-vec-state [::dummy]) :state)
+         ((vec-state [::dummy]) :state))))
 
 (deftest zero-val-from-state-t-factory-func
   (is (= []
@@ -1939,14 +1939,14 @@
   (is (not= (set-writer+vec 1) (set-writer+vec 2)))
   (is (not= (set-writer+vec {:a 1}) (set-writer+vec {:a 2}))))
 
-(def return-set-writer+vec (partial m/return (set-writer+vec [nil])))
-(def zero-val-set-writer+vec (m/zero (set-writer+vec [nil])))
+(def return-set-writer+vec (partial m/return (set-writer+vec [::dummy])))
+(def zero-val-set-writer+vec (m/zero (set-writer+vec [::dummy])))
 
 (deftest return-and-writer-t-factory-func-equiv
-  (is (= (return-set-writer+vec [nil])
-         (set-writer+vec [nil])))
-  (is (= @(return-set-writer+vec [nil])
-         @(set-writer+vec [nil]))))
+  (is (= (return-set-writer+vec [::dummy])
+         (set-writer+vec [::dummy])))
+  (is (= @(return-set-writer+vec [::dummy])
+         @(set-writer+vec [::dummy]))))
 
 (defn writer-t-f [n]
   (set-writer+vec (inc n)))
