@@ -314,8 +314,8 @@
 ;; as the first argument to m/bind, since m/maybe implements
 ;; "convenience logic" which short-circuits the value of
 ;; monads.core/*Nothing* (default: nil) to maybe-zero-val. The
-;; protocol method return, as implemented for class Maybe, does not
-;; short-circuit.
+;; protocol method return which uses a "stored" factory (m/maybe*), as
+;; implemented for class Maybe, does not short-circuit.
 (deftest first-law-maybe-*Nothing*
   (is (= (m/bind (return-maybe nil) (comp m/maybe not))
          ((comp m/maybe not) nil))))

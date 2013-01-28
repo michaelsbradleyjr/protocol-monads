@@ -309,7 +309,7 @@
 
 (declare Nothing)
 
-(deftype Maybe [v]
+(deftype Maybe [factory v]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str Maybe))
@@ -318,6 +318,7 @@
     (hash v))
   (equals [this that]
     (and (= Maybe (class that))
+         (= (.factory that) factory)
          (= (.v that) v)))
 
   clojure.lang.IDeref
@@ -328,7 +329,7 @@
 
   Monad
   (return [_ v]
-    (Maybe. v))
+    (factory v))
   (bind [mv f]
     (if (= mv Nothing)
       Nothing
@@ -358,13 +359,17 @@
   (types [_]
     [[Maybe]]))
 
-(def Nothing (Maybe. ::Nothing))
+(defn- maybe*
+  [v]
+  (Maybe. maybe* v))
 
 (defn maybe
   [v]
   (if (= *Nothing* v)
     Nothing
-    (Maybe. v)))
+    (Maybe. maybe* v)))
+
+(def Nothing (Maybe. maybe* ::Nothing))
 
 (let [pr-on (ns-resolve 'clojure.core 'pr-on)
       print-sequential (ns-resolve 'clojure.core 'print-sequential)]
@@ -1151,7 +1156,7 @@
   Monad
   (return [_ v]
     (MaybeTransformer. return-m
-                       (return-m (Maybe. v))))
+                       (return-m (maybe* v))))
   (bind [mv f]
     (let [v (deref mv)]
       (MaybeTransformer. return-m
