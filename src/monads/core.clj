@@ -409,10 +409,10 @@
              (hash f)))
   (equals [this that]
     (and (= State (class that))
-         (and (= (.factory that) factory)
-              (= (.v that) v)
-              (= (.mv that) mv)
-              (= (.f that) f))))
+         (= (.factory that) factory)
+         (= (.v that) v)
+         (= (.mv that) mv)
+         (= (.f that) f)))
 
   clojure.lang.IFn
   (invoke [_ s]
@@ -518,20 +518,22 @@
 ;; representing the continuation of the computation, to which they
 ;; pass their result.
 
-(deftype Continuation [v mv f]
+(deftype Continuation [factory v mv f]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str Continuation))
              (.hashCode this)))
   (hashCode [_]
-    (bit-xor (hash v)
+    (bit-xor (hash factory)
+             (hash v)
              (hash mv)
              (hash f)))
   (equals [this that]
     (and (= Continuation (class that))
-         (and (= (.v that) v)
-              (= (.mv that) mv)
-              (= (.f that) f))))
+         (= (.factory that) factory)
+         (= (.v that) v)
+         (= (.mv that) mv)
+         (= (.f that) f)))
 
   clojure.lang.IDeref
   (deref [mv]
@@ -545,23 +547,34 @@
 
   Monad
   (return [_ v]
-    (Continuation. v
-                   nil
-                   nil))
+    (factory v))
   (bind [mv f]
-    (Continuation. nil
-                   mv
-                   (wrap-check mv f)))
+    (factory mv f))
 
   MonadDev
   (types [_]
     [[Continuation]]))
 
+(declare cont-mv-dummy)
+
 (defn cont
-  [v]
-  (Continuation. v
-                 nil
-                 nil))
+  ([v]
+     (Continuation. cont
+                    v
+                    nil
+                    nil))
+  ([mv f]
+     (Continuation. cont
+                    nil
+                    mv
+                    (wrap-check cont-mv-dummy f)))
+  ([mv f & fs]
+     (let [f* (first fs)]
+       (if-let [fs (seq* (rest fs))]
+         (apply cont (concat [(cont mv f) f*] fs))
+         (cont (cont mv f) f*)))))
+
+(def ^:private cont-mv-dummy (cont dummy))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
