@@ -440,13 +440,13 @@
        [nil {:a {:b [1]}}]  {:a nil}     [:a :b]  [(fnil conj []) 1]))
 
 (defn state-f-2+-ary-factory [n]
-  (m/state (m/update-state (fn [s] (conj s `["increment" ~n])))
+  (m/state (m/update-state (fn [s] (conj s ["increment" n])))
            (fn [_] (m/update-state (fn [s] (conj s ["update-f!"]))))
            (fn [_] (m/state (inc n)))
            (fn [v] (m/state (inc v)))))
 
 (defn state-g-2+-ary-factory [n]
-  (m/state (m/update-state (fn [s] (conj s `["plus-five" ~n])))
+  (m/state (m/update-state (fn [s] (conj s ["plus-five" n])))
            (fn [_] (m/update-state (fn [s] (conj s ["update-g!"]))))
            (fn [_] (m/state (+ n 5)))
            (fn [v] (m/state (+ v 5)))))
@@ -1750,13 +1750,13 @@
          [[nil {:a {:b [1]}}]]  {:a nil}     [:a :b]  [(fnil conj []) 1])))
 
 (defn state-t-f-2+-ary-factory [n]
-  (vec-state (update-vec-state (fn [s] (conj s `["increment" ~n])))
+  (vec-state (update-vec-state (fn [s] (conj s ["increment" n])))
              (fn [_] (update-vec-state (fn [s] (conj s ["update-f!"]))))
              (fn [_] (vec-state (inc n)))
              (fn [v] (vec-state (inc v)))))
 
 (defn state-t-g-2+-ary-factory [n]
-  (vec-state (update-vec-state (fn [s] (conj s `["plus-five" ~n])))
+  (vec-state (update-vec-state (fn [s] (conj s ["plus-five" n])))
              (fn [_] (update-vec-state (fn [s] (conj s ["update-g!"]))))
              (fn [_] (vec-state (+ n 5)))
              (fn [v] (vec-state (+ v 5)))))

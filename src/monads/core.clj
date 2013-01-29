@@ -73,11 +73,11 @@
   ([l] l)
   ([l ls]
      (lazy-seq
-       (cond
-         (seq* l) (cons (first l)
-                        (lazy-concat (rest l) ls))
-         (seq* ls) (lazy-concat (first ls) (rest ls))
-         :else (lazy-seq)))))
+      (cond
+       (seq* l) (cons (first l)
+                      (lazy-concat (rest l) ls))
+       (seq* ls) (lazy-concat (first ls) (rest ls))
+       :else (lazy-seq)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
@@ -315,7 +315,8 @@
     (bit-xor (hash (str Maybe))
              (.hashCode this)))
   (hashCode [_]
-    (hash v))
+    (bit-xor (hash factory)
+             (hash v)))
   (equals [this that]
     (and (= Maybe (class that))
          (= (.factory that) factory)
@@ -394,20 +395,22 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;; Monad describing stateful computations. The monadic values have the
-;; structure (fn [old-state] [result new-state]).
+;; effective structure (fn [old-state] [result new-state]).
 
-(deftype State [v mv f]
+(deftype State [factory v mv f]
   clojure.lang.IHashEq
   (hasheq [this]
     (bit-xor (hash (str State))
              (.hashCode this)))
   (hashCode [_]
-    (bit-xor (hash v)
+    (bit-xor (hash factory)
+             (hash v)
              (hash mv)
              (hash f)))
   (equals [this that]
     (and (= State (class that))
-         (and (= (.v that) v)
+         (and (= (.factory that) factory)
+              (= (.v that) v)
               (= (.mv that) mv)
               (= (.f that) f))))
 
@@ -420,13 +423,9 @@
 
   Monad
   (return [_ v]
-    (State. v
-            nil
-            nil))
+    (factory v))
   (bind [mv f]
-    (State. nil
-            mv
-            (wrap-check mv f)))
+    (factory mv f))
 
   MonadDev
   (types [_]
@@ -436,36 +435,27 @@
 
 (defn state
   ([v]
-     (State. v
+     (State. state
+             v
              nil
              nil))
   ([mv f]
-     (State. nil
+     (State. state
+             nil
              mv
              (wrap-check state-mv-dummy f)))
   ([mv f & fs]
      (let [f* (first fs)]
        (if-let [fs (seq* (rest fs))]
-         (apply state (concat
-                       [(State. nil
-                                mv
-                                (wrap-check state-mv-dummy f))
-                        f*] fs))
-         (state (State. nil
-                        mv
-                        (wrap-check state-mv-dummy f))
-                f*)))))
+         (apply state (concat [(state mv f) f*] fs))
+         (state (state mv f) f*)))))
 
 (def ^:private state-mv-dummy (state dummy))
-
-(defn- state*
-  [v]
-  (state v))
 
 (defn update-state
   [f]
   (state (fn [s] [s (f s)])
-         state*))
+         state))
 
 (defn set-state
   "Return a State monad value that replaces the current state by s and
@@ -683,17 +673,17 @@
                            ~(monads.core/reduce*
                              (fn [expr [sym mv]]
                                (cond
-                                 (= :when sym)
-                                 `(if ~mv
-                                    ~expr
-                                    (monads.core/zero ~mv-dummy))
+                                (= :when sym)
+                                `(if ~mv
+                                   ~expr
+                                   (monads.core/zero ~mv-dummy))
 
-                                 (= :let sym)
-                                 `(let ~mv
-                                    ~expr)
+                                (= :let sym)
+                                `(let ~mv
+                                   ~expr)
 
-                                 :else
-                                 `(monads.core/bind ~mv (fn [~sym] ~expr))))
+                                :else
+                                `(monads.core/bind ~mv (fn [~sym] ~expr))))
                              `(monads.core/return ~mv-dummy ~expr)
                              (reverse steps)))))))
 
@@ -1179,28 +1169,28 @@
                        (bind (deref mv)
                              (fn [x]
                                (cond
-                                 (and (= x Nothing) (empty? mvs))
-                                 (return-m Nothing)
+                                (and (= x Nothing) (empty? mvs))
+                                (return-m Nothing)
 
-                                 (= x Nothing)
-                                 (deref (plus mvs))
+                                (= x Nothing)
+                                (deref (plus mvs))
 
-                                 :else
-                                 (return-m x))))))
+                                :else
+                                (return-m x))))))
   (plus'* [mv mvs]
     (let [mv (fn thunk [] mv)]
       (MaybeTransformer. return-m
                          (bind (deref (mv))
                                (fn [x]
                                  (cond
-                                   (and (= x Nothing) (empty? mvs))
-                                   (return-m Nothing)
+                                  (and (= x Nothing) (empty? mvs))
+                                  (return-m Nothing)
 
-                                   (= x Nothing)
-                                   (deref (plus mvs))
+                                  (= x Nothing)
+                                  (deref (plus mvs))
 
-                                   :else
-                                   (return-m x)))))))
+                                  :else
+                                  (return-m x)))))))
 
   MonadDev
   (types [_]
@@ -1259,18 +1249,18 @@
   clojure.lang.IFn
   (invoke [_ s]
     (cond
-      alts (plus' ((first alts) s)
-                  (map* #(% s) (second alts)))
-      lzalts (plus'* ((first lzalts) s)
-                     (map* #(fn [] ((%) s)) (second lzalts)))
-      f (bind (mv s)
-              (fn [[v ss]]
-                ((f v) ss)))
-      :else (if (and (not update?)
-                     m-zero?
-                     (= v (zero (return-m dummy))))
-              v
-              (return-m [v s]))))
+     alts (plus' ((first alts) s)
+                 (map* #(% s) (second alts)))
+     lzalts (plus'* ((first lzalts) s)
+                    (map* #(fn [] ((%) s)) (second lzalts)))
+     f (bind (mv s)
+             (fn [[v ss]]
+               ((f v) ss)))
+     :else (if (and (not update?)
+                    m-zero?
+                    (= v (zero (return-m dummy))))
+             v
+             (return-m [v s]))))
 
   Monad
   (return [_ v]
