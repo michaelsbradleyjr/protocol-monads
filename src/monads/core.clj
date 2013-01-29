@@ -624,8 +624,8 @@
              (hash accumulator)))
   (equals [this that]
     (and (= Writer (class that))
-         (and (= (.v that) v)
-              (= (.accumulator that) accumulator))))
+         (= (.v that) v)
+         (= (.accumulator that) accumulator)))
 
   clojure.lang.IDeref
   (deref [_]
@@ -836,8 +836,8 @@
              (hash v)))
   (equals [this that]
     (and (= ListTransformer (class that))
-         (and (= (.return-m that) return-m)
-              (= (.v that) v))))
+         (= (.return-m that) return-m)
+         (= (.v that) v)))
 
   clojure.lang.IDeref
   (deref [_]
@@ -912,8 +912,8 @@
              (hash v)))
   (equals [this that]
     (and (= VectorTransformer (class that))
-         (and (= (.return-m that) return-m)
-              (= (.v that) v))))
+         (= (.return-m that) return-m)
+         (= (.v that) v)))
 
   clojure.lang.IDeref
   (deref [_]
@@ -991,8 +991,8 @@
              (hash v)))
   (equals [this that]
     (and (= LazySeqTransformer (class that))
-         (and (= (.return-m that) return-m)
-              (= (.v that) v))))
+         (= (.return-m that) return-m)
+         (= (.v that) v)))
 
   clojure.lang.IDeref
   (deref [_]
@@ -1070,8 +1070,8 @@
              (hash v)))
   (equals [this that]
     (and (= SetTransformer (class that))
-         (and (= (.return-m that) return-m)
-              (= (.v that) v))))
+         (= (.return-m that) return-m)
+         (= (.v that) v)))
 
   clojure.lang.IDeref
   (deref [_]
@@ -1149,8 +1149,8 @@
              (hash v)))
   (equals [this that]
     (and (= MaybeTransformer (class that))
-         (and (= (.return-m that) return-m)
-              (= (.v that) v))))
+         (= (.return-m that) return-m)
+         (= (.v that) v)))
 
   clojure.lang.IDeref
   (deref [_]
@@ -1250,14 +1250,14 @@
              (hash m-zero?)))
   (equals [this that]
     (and (= StateTransformer (class that))
-         (and (= (.return-m that) return-m)
-              (= (.v that) v)
-              (= (.mv that) mv)
-              (= (.f that) f)
-              (= (.alts that) alts)
-              (= (.lzalts that) lzalts)
-              (= (.update? that) update?)
-              (= (.m-zero? that) m-zero?))))
+         (= (.return-m that) return-m)
+         (= (.v that) v)
+         (= (.mv that) mv)
+         (= (.f that) f)
+         (= (.alts that) alts)
+         (= (.lzalts that) lzalts)
+         (= (.update? that) update?)
+         (= (.m-zero? that) m-zero?)))
 
   clojure.lang.IFn
   (invoke [_ s]
@@ -1532,9 +1532,9 @@
              (hash writer-m)))
   (equals [this that]
     (and (= WriterTransformer (class that))
-         (and (= (.return-m that) return-m)
-              (= (.mv that) mv)
-              (= (.writer-m that) writer-m))))
+         (= (.return-m that) return-m)
+         (= (.mv that) mv)
+         (= (.writer-m that) writer-m)))
 
   clojure.lang.IDeref
   (deref [_]
